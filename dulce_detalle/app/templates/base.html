@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}{% if negocio %}{{ negocio.nombre }}{% else %}Mi Tienda{% endif %}{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .transition-all { transition: all 0.3s ease; }
+    /* Colores dinámicos por negocio via CSS vars */
+    :root {
+      --color-primary: {{ negocio.color_primario|default:"#6d28d9" }};
+      --color-secondary: {{ negocio.color_secundario|default:"#7c3aed" }};
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '{{ negocio.color_primario|default:"#6d28d9" }}',
+            secondary: '{{ negocio.color_secundario|default:"#7c3aed" }}',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+  <!-- NAVBAR -->
+  <nav class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <!-- Logo / Negocio activo -->
+      <a href="{% url 'lista_productos' %}" class="flex items-center gap-2 group">
+        <span class="text-2xl">{% if negocio %}{{ negocio.emoji }}{% else %}🛍️{% endif %}</span>
+        <span class="text-xl font-bold text-white group-hover:text-purple-400 transition-all">
+          {% if negocio %}{{ negocio.nombre }}{% else %}Mi Tienda{% endif %}
+        </span>
+      </a>
+
+      <!-- Switcher de negocios -->
+      <div class="flex items-center gap-2">
+        {% for n in negocios %}
+          <a href="{% url 'cambiar_negocio' n.slug %}"
+             class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all
+                    {% if negocio and negocio.slug == n.slug %}
+                      bg-purple-600 text-white shadow-lg shadow-purple-900/40
+                    {% else %}
+                      bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white
+                    {% endif %}">
+            <span>{{ n.emoji }}</span>
+            <span>{{ n.nombre }}</span>
+          </a>
+        {% endfor %}
+
+        <!-- Botón nuevo producto -->
+        {% if negocio %}
+        <a href="{% url 'crear_producto' %}"
+           class="ml-2 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold
+                  bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-lg shadow-emerald-900/30">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Nuevo
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <!-- MENSAJES -->
+  {% if messages %}
+  <div class="max-w-6xl mx-auto px-4 pt-4">
+    {% for msg in messages %}
+      <div class="mb-2 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2
+                  {% if msg.tags == 'success' %}bg-emerald-900/60 text-emerald-300 border border-emerald-700
+                  {% elif msg.tags == 'error' %}bg-red-900/60 text-red-300 border border-red-700
+                  {% else %}bg-blue-900/60 text-blue-300 border border-blue-700{% endif %}">
+        {% if msg.tags == 'success' %}✅{% elif msg.tags == 'error' %}❌{% else %}ℹ️{% endif %}
+        {{ msg }}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- CONTENIDO -->
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-gray-800 mt-16 py-6 text-center text-gray-600 text-sm">
+    {% if negocio %}{{ negocio.emoji }} {{ negocio.nombre }} &mdash;{% endif %}
+    Sistema de gestión de productos &copy; 2026
+  </footer>
+
+</body>
+</html>
