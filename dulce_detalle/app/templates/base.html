@@ -29,74 +29,152 @@
     }
   </script>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen">
+<body class="bg-gray-950 text-gray-100 min-h-screen flex">
 
-  <!-- NAVBAR -->
-  <nav class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <!-- Logo / Negocio activo -->
-      <a href="{% url 'lista_productos' %}" class="flex items-center gap-2 group">
-        <span class="text-2xl">{% if negocio %}{{ negocio.emoji }}{% else %}🛍️{% endif %}</span>
-        <span class="text-xl font-bold text-white group-hover:text-purple-400 transition-all">
-          {% if negocio %}{{ negocio.nombre }}{% else %}Mi Tienda{% endif %}
-        </span>
+  <!-- SIDEBAR IZQUIERDO -->
+  {% if negocio %}
+  <aside class="w-64 flex-shrink-0 border-r border-gray-800 bg-gray-900/80 backdrop-blur flex flex-col sticky top-0 h-screen overflow-y-auto hidden md:flex">
+    <div class="p-6 border-b border-gray-800 flex items-center gap-3">
+      <span class="text-3xl">{{ negocio.emoji }}</span>
+      <span class="text-xl font-bold tracking-tight text-white">{{ negocio.nombre }}</span>
+    </div>
+    
+    <nav class="flex-1 p-4 space-y-2">
+      <!-- Nav Item: Productos -->
+      <a href="{% url 'lista_productos' %}" 
+         class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm
+                {% if 'producto' in current_view or 'inicio' in current_view %}
+                  bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-inner
+                {% else %}
+                  text-gray-400 hover:bg-gray-800 hover:text-white
+                {% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+        </svg>
+        Productos
       </a>
 
-      <!-- Switcher de negocios -->
-      <div class="flex items-center gap-2">
-        {% for n in negocios %}
-          <a href="{% url 'cambiar_negocio' n.slug %}"
-             class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all
-                    {% if negocio and negocio.slug == n.slug %}
-                      bg-purple-600 text-white shadow-lg shadow-purple-900/40
-                    {% else %}
-                      bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white
-                    {% endif %}">
-            <span>{{ n.emoji }}</span>
-            <span>{{ n.nombre }}</span>
-          </a>
-        {% endfor %}
-
-        <!-- Botón nuevo producto -->
-        {% if negocio %}
-        <a href="{% url 'crear_producto' %}"
-           class="ml-2 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold
-                  bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-lg shadow-emerald-900/30">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      <!-- Nav Item: Ventas -->
+      <a href="{% url 'lista_ventas' %}" 
+         class="flex items-center justify-between px-4 py-3 rounded-xl transition-all font-medium text-sm
+                {% if 'venta' in current_view %}
+                  bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-inner
+                {% else %}
+                  text-gray-400 hover:bg-gray-800 hover:text-white
+                {% endif %}">
+        <div class="flex items-center gap-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
           </svg>
-          Nuevo
-        </a>
-        {% endif %}
-      </div>
-    </div>
-  </nav>
+          Ventas
+        </div>
+      </a>
 
-  <!-- MENSAJES -->
-  {% if messages %}
-  <div class="max-w-6xl mx-auto px-4 pt-4">
-    {% for msg in messages %}
-      <div class="mb-2 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2
-                  {% if msg.tags == 'success' %}bg-emerald-900/60 text-emerald-300 border border-emerald-700
-                  {% elif msg.tags == 'error' %}bg-red-900/60 text-red-300 border border-red-700
-                  {% else %}bg-blue-900/60 text-blue-300 border border-blue-700{% endif %}">
-        {% if msg.tags == 'success' %}✅{% elif msg.tags == 'error' %}❌{% else %}ℹ️{% endif %}
-        {{ msg }}
+      <!-- Nav Item: Estadísticas -->
+      <a href="{% url 'estadisticas_ventas' %}"
+         class="flex items-center justify-between px-4 py-3 rounded-xl transition-all font-medium text-sm
+                {% if 'estadisticas' in current_view %}
+                  bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-inner
+                {% else %}
+                  text-gray-400 hover:bg-gray-800 hover:text-white
+                {% endif %}">
+        <div class="flex items-center gap-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+          </svg>
+          Estadísticas
+        </div>
+      </a>
+      
+      <!-- Nav Item: Carrito -->
+      <div class="pt-4 mt-4 border-t border-gray-800">
+        <a href="{% url 'nueva_venta' %}" 
+           class="flex items-center justify-between px-4 py-3 rounded-xl transition-all font-medium text-sm bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-inner hover:bg-emerald-600/30">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 100 4 2 2 0 000-4z"/>
+            </svg>
+            Carrito
+          </div>
+          {% if carrito_count > 0 %}
+          <span class="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ carrito_count }}</span>
+          {% endif %}
+        </a>
       </div>
-    {% endfor %}
-  </div>
+    </nav>
+    
+    <div class="p-4 border-t border-gray-800 text-xs text-center text-gray-500">
+      &copy; 2026 Mi Tienda
+    </div>
+  </aside>
   {% endif %}
 
-  <!-- CONTENIDO -->
-  <main class="max-w-6xl mx-auto px-4 py-8">
-    {% block content %}{% endblock %}
-  </main>
+  <!-- CONTENEDOR DERECHO -->
+  <div class="flex-1 flex flex-col min-h-screen min-w-0">
 
-  <!-- FOOTER -->
-  <footer class="border-t border-gray-800 mt-16 py-6 text-center text-gray-600 text-sm">
-    {% if negocio %}{{ negocio.emoji }} {{ negocio.nombre }} &mdash;{% endif %}
-    Sistema de gestión de productos &copy; 2026
-  </footer>
+    <!-- TOPBAR -->
+    <nav class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-40">
+      <div class="px-6 py-3 flex items-center justify-between">
+        
+        <!-- Mobile menu toggle & Title -->
+        <div class="flex items-center gap-3 md:hidden">
+          <span class="text-2xl">{% if negocio %}{{ negocio.emoji }}{% else %}🛍️{% endif %}</span>
+          <span class="text-lg font-bold text-white">
+            {% if negocio %}{{ negocio.nombre }}{% else %}Mi Tienda{% endif %}
+          </span>
+        </div>
+
+        <!-- Ocultar logo en desktop si hay sidebar -->
+        <div class="hidden md:block">
+          {% if not negocio %}
+            <!-- Logo solo si no hay negocio (no hay sidebar) -->
+            <a href="{% url 'lista_productos' %}" class="flex items-center gap-2">
+              <span class="text-2xl">🛍️</span>
+              <span class="text-xl font-bold text-white">Mi Tienda</span>
+            </a>
+          {% endif %}
+        </div>
+
+        <!-- Switcher de negocios (lado derecho) -->
+        <div class="flex items-center gap-2 ml-auto">
+          <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 hidden sm:block">Cambiar de tienda:</span>
+          {% for n in negocios %}
+            <a href="{% url 'cambiar_negocio' n.slug %}"
+               class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all
+                      {% if negocio and negocio.slug == n.slug %}
+                        bg-purple-600 text-white shadow shadow-purple-900/40
+                      {% else %}
+                        bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white
+                      {% endif %}">
+              <span>{{ n.emoji }}</span>
+              <span class="hidden sm:inline">{{ n.nombre }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </nav>
+
+    <!-- MENSAJES -->
+    {% if messages %}
+    <div class="px-6 pt-4">
+      {% for msg in messages %}
+        <div class="mb-2 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2
+                    {% if msg.tags == 'success' %}bg-emerald-900/60 text-emerald-300 border border-emerald-700
+                    {% elif msg.tags == 'error' %}bg-red-900/60 text-red-300 border border-red-700
+                    {% else %}bg-blue-900/60 text-blue-300 border border-blue-700{% endif %}">
+          {% if msg.tags == 'success' %}✅{% elif msg.tags == 'error' %}❌{% else %}ℹ️{% endif %}
+          {{ msg }}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 p-6 lg:p-8">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
 
 </body>
 </html>

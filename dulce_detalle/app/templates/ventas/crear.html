@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Venta — {{ negocio.nombre }}{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+  <a href="{% url 'lista_ventas' %}" class="hover:text-emerald-400 transition-all">Ventas</a>
+  <span>/</span>
+  <span class="text-gray-300">Nueva venta</span>
+</div>
+
+<div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+  
+  <!-- Columna Principal: Formulario de la Imagen de Referencia -->
+  <div class="lg:col-span-7 space-y-6">
+    
+    <div class="bg-white text-gray-800 rounded-xl shadow-lg border border-gray-200 overflow-hidden relative">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <span class="bg-emerald-100 p-1.5 rounded text-emerald-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+          </span>
+          Crear Venta
+        </h2>
+        <a href="{% url 'lista_productos' %}" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </a>
+      </div>
+      
+      <form method="post" id="ventaForm" class="p-6">
+        {% csrf_token %}
+        <p class="text-xs text-gray-500 mb-4">Los campos marcados con asterisco (<span class="text-red-500">*</span>) son obligatorios</p>
+
+        <!-- Toggle Pagada/Crédito -->
+        <div class="flex border border-gray-300 rounded-lg overflow-hidden mb-6">
+          <label class="flex-1 text-center cursor-pointer">
+            <input type="radio" name="tipo" value="pagada" class="peer sr-only" checked>
+            <div class="py-2.5 font-bold text-sm text-gray-500 peer-checked:bg-emerald-600 peer-checked:text-white transition-all">Pagada</div>
+          </label>
+          <div class="w-px bg-gray-300"></div>
+          <label class="flex-1 text-center cursor-pointer">
+            <input type="radio" name="tipo" value="credito" class="peer sr-only">
+            <div class="py-2.5 font-bold text-sm text-gray-500 peer-checked:bg-emerald-600 peer-checked:text-white transition-all">A crédito</div>
+          </label>
+        </div>
+
+        <!-- Fecha * -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Fecha de la venta <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <input type="date" name="fecha" value="{{ hoy|date:'Y-m-d' }}" required
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+          </div>
+        </div>
+
+        <!-- Valor * -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Valor<span class="text-red-500">*</span></label>
+          <div class="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent transition-all">
+            <input type="text" value="{{ total }}" readonly
+                   class="w-full px-4 py-3 text-right font-bold text-gray-800 bg-white focus:outline-none">
+            <div class="bg-gray-100 px-4 py-3 flex justify-between text-sm">
+              <span class="text-gray-600">Valor total</span>
+              <span class="font-bold text-emerald-600">= $ {{ total }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Método de Pago * -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Selecciona el método de pago<span class="text-red-500">*</span></label>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Efectivo -->
+            <label class="cursor-pointer group relative">
+              <input type="radio" name="metodo_pago" value="efectivo" class="peer sr-only" checked>
+              <div class="flex flex-col items-center justify-center p-4 h-24 border border-gray-300 rounded-lg bg-white peer-checked:border-emerald-600 peer-checked:ring-1 peer-checked:ring-emerald-600 transition-all hover:bg-gray-50">
+                <span class="text-2xl mb-2">💵</span>
+                <span class="text-sm font-bold text-gray-600 group-hover:text-gray-800 peer-checked:text-emerald-700 text-center">Efectivo</span>
+              </div>
+              <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 text-emerald-600 bg-white rounded-full transition-opacity">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              </div>
+            </label>
+
+            <!-- Tarjeta -->
+            <label class="cursor-pointer group relative">
+              <input type="radio" name="metodo_pago" value="tarjeta" class="peer sr-only">
+              <div class="flex flex-col items-center justify-center p-4 h-24 border border-gray-300 rounded-lg bg-white peer-checked:border-emerald-600 peer-checked:ring-1 peer-checked:ring-emerald-600 transition-all hover:bg-gray-50">
+                <span class="text-2xl mb-2">💳</span>
+                <span class="text-sm font-bold text-gray-600 group-hover:text-gray-800 peer-checked:text-emerald-700 text-center">Tarjeta</span>
+              </div>
+              <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 text-emerald-600 bg-white rounded-full transition-opacity">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              </div>
+            </label>
+
+            <!-- Transferencia bancaria -->
+            <label class="cursor-pointer group relative">
+              <input type="radio" name="metodo_pago" value="transferencia" class="peer sr-only">
+              <div class="flex flex-col items-center justify-center p-4 h-24 border border-gray-300 rounded-lg bg-white peer-checked:border-emerald-600 peer-checked:ring-1 peer-checked:ring-emerald-600 transition-all hover:bg-gray-50">
+                <span class="text-2xl mb-2">🏦</span>
+                <span class="text-sm font-bold text-gray-600 group-hover:text-gray-800 peer-checked:text-emerald-700 text-center">Transferencia bancaria</span>
+              </div>
+              <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 text-emerald-600 bg-white rounded-full transition-opacity">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              </div>
+            </label>
+
+            <!-- Otro -->
+            <label class="cursor-pointer group relative">
+              <input type="radio" name="metodo_pago" value="otro" class="peer sr-only">
+              <div class="flex flex-col items-center justify-center p-4 h-24 border border-gray-300 rounded-lg bg-white peer-checked:border-emerald-600 peer-checked:ring-1 peer-checked:ring-emerald-600 transition-all hover:bg-gray-50">
+                <span class="text-2xl mb-2">🔠</span>
+                <span class="text-sm font-bold text-gray-600 group-hover:text-gray-800 peer-checked:text-emerald-700 text-center">Otro</span>
+              </div>
+              <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 text-emerald-600 bg-white rounded-full transition-opacity">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              </div>
+            </label>
+
+            <!-- Mercado Pago -->
+            <label class="cursor-pointer group relative">
+              <input type="radio" name="metodo_pago" value="mercadopago" class="peer sr-only">
+              <div class="flex flex-col items-center justify-center p-4 h-24 border border-gray-300 rounded-lg bg-white peer-checked:border-emerald-600 peer-checked:ring-1 peer-checked:ring-emerald-600 transition-all hover:bg-gray-50">
+                <span class="text-2xl mb-2">🟦</span>
+                <span class="text-sm font-bold text-gray-600 group-hover:text-gray-800 peer-checked:text-emerald-700 text-center">Mercado Pago</span>
+              </div>
+              <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 text-emerald-600 bg-white rounded-full transition-opacity">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              </div>
+            </label>
+
+            <!-- QR -->
+            <label class="cursor-pointer group relative">
+              <input type="radio" name="metodo_pago" value="qr" class="peer sr-only">
+              <div class="flex flex-col items-center justify-center p-4 h-24 border border-gray-300 rounded-lg bg-white peer-checked:border-emerald-600 peer-checked:ring-1 peer-checked:ring-emerald-600 transition-all hover:bg-gray-50">
+                <span class="text-2xl mb-2">🔲</span>
+                <span class="text-sm font-bold text-gray-600 group-hover:text-gray-800 peer-checked:text-emerald-700 text-center">QR</span>
+              </div>
+              <div class="absolute top-2 right-2 opacity-0 peer-checked:opacity-100 text-emerald-600 bg-white rounded-full transition-opacity">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Botón Guardar -->
+        <button type="submit" {% if not carrito_items %}disabled{% endif %}
+                class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-lg transition-colors shadow-lg shadow-emerald-600/30">
+          Confirmar Venta
+        </button>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Columna Derecha: Vista de Carrito (Resumen) -->
+  <div class="lg:col-span-5">
+    
+    <div class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden sticky top-24">
+      <div class="bg-gray-800/80 px-5 py-4 border-b border-gray-700 flex justify-between items-center">
+        <h3 class="font-bold text-white flex items-center gap-2">
+          <span>🛒</span> Resumen de la orden
+        </h3>
+        <span class="bg-gray-700 text-white text-xs font-bold px-2.5 py-1 rounded-full">{{ carrito_count }} items</span>
+      </div>
+      
+      <div class="p-5 max-h-[400px] overflow-y-auto">
+        {% if carrito_items %}
+          <ul class="space-y-4">
+            {% for item in carrito_items %}
+            <li class="flex items-start gap-4 pb-4 border-b border-gray-800/50 last:border-0 last:pb-0">
+              <div class="w-16 h-16 rounded bg-gray-800 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-700">
+                {% if item.producto.imagen %}
+                  <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}" class="w-full h-full object-cover">
+                {% else %}
+                  <span class="text-2xl text-gray-600">🛍️</span>
+                {% endif %}
+              </div>
+              <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-semibold text-gray-200 line-clamp-1">{{ item.producto.nombre }}</h4>
+                <p class="text-xs text-emerald-400 mt-1">${{ item.producto.precio }} /u</p>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-xs font-bold bg-gray-800 text-gray-300 px-2 py-0.5 rounded border border-gray-700">x{{ item.cantidad }}</span>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0 flex flex-col items-end gap-2">
+                <p class="font-bold text-white">${{ item.subtotal }}</p>
+                <a href="{% url 'carrito_quitar' item.producto.pk %}" class="text-red-400 hover:text-red-300 p-1 bg-red-400/10 rounded" title="Quitar">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </a>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="py-12 text-center">
+            <p class="text-gray-500 mb-4">El carrito está vacío.</p>
+            <a href="{% url 'lista_productos' %}" class="inline-block border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+              Explorar productos
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      
+      {% if carrito_items %}
+      <div class="bg-gray-800/50 border-t border-gray-700 p-5 mt-auto">
+        <div class="flex justify-between items-center mb-4 text-white">
+          <span class="text-gray-400">Total</span>
+          <span class="text-2xl font-bold text-emerald-400">${{ total }}</span>
+        </div>
+        <a href="{% url 'carrito_limpiar' %}" class="block text-center text-xs text-gray-500 hover:text-red-400 underline transition-colors">
+          Vaciar carrito
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

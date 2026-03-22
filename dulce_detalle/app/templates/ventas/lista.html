@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Ventas — {{ negocio.nombre }}{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+  <a href="{% url 'lista_productos' %}" class="hover:text-emerald-400 transition-all">Productos</a>
+  <span>/</span>
+  <span class="text-gray-300">Ventas</span>
+</div>
+
+<!-- Encabezado -->
+<div class="mb-8 flex items-center justify-between">
+  <div>
+    <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+      <span class="text-2xl">💰</span>
+      Historial de Ventas
+    </h1>
+    <p class="text-gray-400 mt-1">Revisá todas las ventas registradas de {{ negocio.nombre }}</p>
+  </div>
+  <div>
+    <a href="{% url 'nueva_venta' %}"
+       class="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-emerald-900/40 border border-emerald-500/50">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nueva venta
+    </a>
+  </div>
+</div>
+
+{% if not ventas %}
+<div class="bg-gray-900 rounded-2xl border border-gray-800 p-16 text-center shadow-xl">
+  <span class="text-6xl opacity-30">🧾</span>
+  <h2 class="text-xl font-semibold text-white mt-4">Aún no hay ventas registradas</h2>
+  <p class="text-gray-400 mt-2">Agregá productos al carrito y generá tu primera venta.</p>
+</div>
+{% else %}
+
+<!-- Filtros -->
+<form method="get" class="mb-6 flex flex-wrap items-end gap-4 bg-gray-900 p-4 rounded-xl border border-gray-800">
+  <div>
+    <label class="block text-xs text-gray-400 mb-1">Fecha exacta</label>
+    <input type="date" name="fecha" value="{{ filtro_fecha }}" class="bg-gray-800 border border-gray-700 text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 transition-all">
+  </div>
+  <div>
+    <label class="block text-xs text-gray-400 mb-1">Método de pago</label>
+    <select name="metodo" class="bg-gray-800 border border-gray-700 text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 transition-all">
+      <option value="">Todos</option>
+      <option value="efectivo" {% if filtro_metodo == 'efectivo' %}selected{% endif %}>Efectivo</option>
+      <option value="tarjeta" {% if filtro_metodo == 'tarjeta' %}selected{% endif %}>Tarjeta</option>
+      <option value="transferencia" {% if filtro_metodo == 'transferencia' %}selected{% endif %}>Transferencia</option>
+      <option value="mercadopago" {% if filtro_metodo == 'mercadopago' %}selected{% endif %}>Mercado Pago</option>
+      <option value="qr" {% if filtro_metodo == 'qr' %}selected{% endif %}>QR</option>
+      <option value="otro" {% if filtro_metodo == 'otro' %}selected{% endif %}>Otro</option>
+    </select>
+  </div>
+  <div class="flex items-center gap-2">
+    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg">
+      Filtrar
+    </button>
+    {% if filtro_fecha or filtro_metodo %}
+    <a href="{% url 'lista_ventas' %}" class="text-gray-400 hover:text-white px-3 py-2 text-sm font-medium transition-colors">Limpiar</a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Tabla de Ventas -->
+<div class="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+  <table class="w-full">
+    <thead>
+      <tr class="border-b border-gray-800 text-xs uppercase tracking-wider text-gray-500 bg-gray-900/50">
+        <th class="w-10 px-4 py-4"></th>
+        <th class="text-left px-2 py-4">Venta</th>
+        <th class="text-left px-4 py-4">Fecha</th>
+        <th class="text-left px-4 py-4">Tipo</th>
+        <th class="text-left px-4 py-4">Método</th>
+        <th class="text-right px-4 py-4">Ganancia Total</th>
+        <th class="text-right px-6 py-4">Total Cobrado</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-800/50">
+      {% for venta in ventas %}
+      <tr class="hover:bg-gray-800/40 transition-colors group cursor-pointer" onclick="document.getElementById('detalle-{{ venta.pk }}').classList.toggle('hidden')">
+        <td class="px-4 py-4 text-center text-gray-500 group-hover:text-emerald-400 transition-colors">
+          <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </td>
+        <td class="px-2 py-4">
+          <span class="font-bold text-gray-300">#{{ venta.pk }}</span>
+        </td>
+        <td class="px-4 py-4 text-gray-300">
+          {{ venta.fecha|date:"d M Y" }}
+        </td>
+        <td class="px-4 py-4">
+          {% if venta.tipo == 'pagada' %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">
+              Pagada
+            </span>
+          {% else %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-900/30 text-amber-400 border border-amber-800/50">
+              A crédito
+            </span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-4 text-gray-400 text-sm capitalize">
+          {{ venta.get_metodo_pago_display }}
+        </td>
+        <td class="px-4 py-4 text-right">
+          <span class="font-bold text-emerald-400/80 text-sm">+$ {{ venta.ganancia_total }}</span>
+        </td>
+        <td class="px-6 py-4 text-right">
+          <span class="font-bold text-emerald-400 text-lg">${{ venta.total }}</span>
+        </td>
+      </tr>
+      
+      <!-- Fila Expandible (Oculta por defecto) -->
+      <tr id="detalle-{{ venta.pk }}" class="hidden bg-gray-950/50 border-b border-gray-800/30 transition-all">
+        <td colspan="7" class="p-0">
+          <div class="px-10 py-5 bg-gradient-to-r from-emerald-900/10 to-transparent">
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detalle de los artículos:</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {% for item in venta.items.all %}
+              <div class="flex items-center justify-between bg-gray-900 p-3 rounded-xl border border-gray-800">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center border border-gray-700 overflow-hidden">
+                    {% if item.producto.imagen %}
+                      <img src="{{ item.producto.imagen.url }}" class="w-full h-full object-cover">
+                    {% else %}
+                      <span class="text-gray-500">🛒</span>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-200">{{ item.producto.nombre }}</p>
+                    <p class="text-xs text-gray-500">{{ item.cantidad }} x ${{ item.precio_unitario }} (Costo c/u: ${{ item.costo_unitario }})</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-bold text-gray-300">Subtotal: ${{ item.subtotal }}</p>
+                  <p class="text-xs font-bold text-emerald-500">Ganancia: +${{ item.ganancia }}</p>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

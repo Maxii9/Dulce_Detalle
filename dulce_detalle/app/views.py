@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.utils import timezone
 from . import services
 
 
@@ -26,10 +27,16 @@ def lista_productos(request):
     if negocio is None:
         return render(request, 'productos/sin_negocio.html', {'negocios': negocios})
     productos = services.get_productos(negocio.slug)
+    
+    query = request.GET.get('q', '').strip()
+    if query:
+        productos = productos.filter(nombre__icontains=query)
+        
     return render(request, 'productos/lista.html', {
         'negocio': negocio,
         'negocios': negocios,
         'productos': productos,
+        'query': query,
     })
 
 
@@ -41,21 +48,25 @@ def crear_producto(request):
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
         precio = request.POST.get('precio', '0')
+        costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
+        imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
                 services.crear_producto(
                     negocio=negocio,
                     nombre=nombre,
                     precio=float(precio),
+                    costo=float(costo),
                     descripcion=descripcion,
                     stock=int(stock),
+                    imagen=imagen,
                 )
                 messages.success(request, f'Producto "{nombre}" creado exitosamente.')
                 return redirect('lista_productos')
             except ValueError:
-                messages.error(request, 'Precio o stock inválidos.')
+                messages.error(request, 'Precio, costo o stock inválidos.')
         else:
             messages.error(request, 'Nombre y precio son obligatorios.')
 
@@ -74,21 +85,25 @@ def editar_producto(request, pk):
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
         precio = request.POST.get('precio', '0')
+        costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
+        imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
                 services.actualizar_producto(
                     pk=pk,
                     nombre=nombre,
                     precio=float(precio),
+                    costo=float(costo),
                     descripcion=descripcion,
                     stock=int(stock),
+                    imagen=imagen,
                 )
                 messages.success(request, f'Producto "{nombre}" actualizado.')
                 return redirect('lista_productos')
             except ValueError:
-                messages.error(request, 'Precio o stock inválidos.')
+                messages.error(request, 'Precio, costo o stock inválidos.')
         else:
             messages.error(request, 'Nombre y precio son obligatorios.')
 
@@ -114,4 +129,103 @@ def eliminar_producto(request, pk):
         'negocio': negocio,
         'negocios': negocios,
         'producto': producto,
+    })
+
+
+# ── Carrito ────────────────────────────────────────────────────────────────
+
+def carrito_agregar(request, pk):
+    """Agrega un producto al carrito y vuelve a la lista de productos."""
+    services.carrito_agregar(request.session, pk)
+    return redirect('lista_productos')
+
+
+def carrito_quitar(request, pk):
+    """Quita un producto del carrito."""
+    services.carrito_quitar(request.session, pk)
+    return redirect('nueva_venta')
+
+
+def carrito_limpiar(request):
+    """Vacía el carrito."""
+    services.carrito_limpiar(request.session)
+    return redirect('lista_productos')
+
+
+# ── Ventas ─────────────────────────────────────────────────────────────────
+
+def lista_ventas(request):
+    negocio, negocios = _contexto_base(request)
+    if negocio is None:
+        return redirect('lista_productos')
+    ventas = services.get_ventas(negocio.slug)
+
+    # Filtros
+    fecha = request.GET.get('fecha', '')
+    metodo = request.GET.get('metodo', '')
+    if fecha:
+        ventas = ventas.filter(fecha=fecha)
+    if metodo:
+        ventas = ventas.filter(metodo_pago=metodo)
+
+    return render(request, 'ventas/lista.html', {
+        'negocio': negocio,
+        'negocios': negocios,
+        'ventas': ventas,
+        'filtro_fecha': fecha,
+        'filtro_metodo': metodo,
+        'carrito_count': len(services.get_carrito(request.session)),
+    })
+
+
+def nueva_venta(request):
+    negocio, negocios = _contexto_base(request)
+    if negocio is None:
+        return redirect('lista_productos')
+
+    carrito_items = services.get_carrito_detalle(request.session)
+    total = services.carrito_total(request.session)
+
+    if request.method == 'POST':
+        if not carrito_items:
+            messages.error(request, 'El carrito está vacío.')
+            return redirect('lista_productos')
+
+        fecha = request.POST.get('fecha', str(timezone.localdate()))
+        tipo = request.POST.get('tipo', 'pagada')
+        metodo_pago = request.POST.get('metodo_pago', 'efectivo')
+
+        venta = services.crear_venta(
+            negocio=negocio,
+            fecha=fecha,
+            tipo=tipo,
+            metodo_pago=metodo_pago,
+            items_data=carrito_items,
+        )
+        services.carrito_limpiar(request.session)
+        messages.success(request, f'Venta #{venta.pk} registrada por ${venta.total}.')
+        return redirect('lista_ventas')
+
+    return render(request, 'ventas/crear.html', {
+        'negocio': negocio,
+        'negocios': negocios,
+        'carrito_items': carrito_items,
+        'total': total,
+        'hoy': timezone.localdate(),
+        'carrito_count': len(carrito_items),
+    })
+
+
+def estadisticas_ventas(request):
+    negocio, negocios = _contexto_base(request)
+    if negocio is None:
+        return redirect('lista_productos')
+
+    stats = services.get_resumen_estadisticas(negocio.slug)
+
+    return render(request, 'ventas/estadisticas.html', {
+        'negocio': negocio,
+        'negocios': negocios,
+        'stats': stats,
+        'carrito_count': len(services.get_carrito(request.session)),
     })
