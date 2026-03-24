@@ -19,5 +19,9 @@ urlpatterns = [
     # Ventas
     path('ventas/', views.lista_ventas, name='lista_ventas'),
     path('ventas/nueva/', views.nueva_venta, name='nueva_venta'),
+    path('ventas/<int:pk>/cambiar-tipo/', views.cambiar_tipo_venta, name='cambiar_tipo_venta'),
     path('estadisticas/', views.estadisticas_ventas, name='estadisticas_ventas'),
+    # Notas
+    path('notas/', views.lista_notas, name='lista_notas'),
+    path('notas/<int:pk>/eliminar/', views.eliminar_nota, name='eliminar_nota'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
