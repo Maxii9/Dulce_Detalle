@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 import json
 from . import services
+from .models import Nota
 
 
 def _contexto_base(request):
@@ -257,12 +258,9 @@ def lista_notas(request):
     if request.method == 'POST':
         texto = request.POST.get('texto', '').strip()
         if texto:
-            from .models import Nota
             Nota.objects.create(negocio=negocio, texto=texto)
             messages.success(request, 'Nota agregada exitosamente.')
         return redirect('lista_notas')
-        
-    from .models import Nota
     notas = Nota.objects.filter(negocio=negocio)
     return render(request, 'notas/lista.html', {
         'negocio': negocio,
@@ -273,7 +271,6 @@ def lista_notas(request):
 
 def eliminar_nota(request, pk):
     negocio, _ = _contexto_base(request)
-    from .models import Nota
     nota = get_object_or_404(Nota, pk=pk, negocio=negocio)
     if request.method == 'POST':
         nota.delete()
