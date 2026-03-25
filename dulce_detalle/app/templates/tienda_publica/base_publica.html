@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}{{ negocio.nombre }} - Tienda Online{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .transition-all { transition: all 0.3s ease; }
+    :root {
+      --color-primary: {{ negocio.color_primario|default:"#6d28d9" }};
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '{{ negocio.color_primario|default:"#6d28d9" }}',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col selection:bg-brand selection:text-white">
+  <!-- Topbar Pública -->
+  <nav class="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-100">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="{% url 'tienda_publica' negocio.slug %}" class="flex items-center gap-3 group">
+        <span class="text-3xl group-hover:scale-110 transition-transform">{{ negocio.emoji }}</span>
+        <span class="text-xl font-extrabold tracking-tight text-gray-900">{{ negocio.nombre }}</span>
+      </a>
+      
+      <div>
+        <a href="{% url 'checkout_publico' negocio.slug %}" class="relative inline-flex items-center p-2 text-gray-600 hover:text-brand transition-colors bg-gray-100 hover:bg-gray-200 rounded-full">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          {% if carrito_count and carrito_count > 0 %}
+          <span class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white transform translate-x-1/4 -translate-y-1/4 bg-brand rounded-full border-2 border-white">{{ carrito_count }}</span>
+          {% endif %}
+        </a>
+      </div>
+    </div>
+  </nav>
+  
+  <main class="flex-1 max-w-5xl mx-auto w-full p-4 lg:p-8">
+    {% block content %}{% endblock %}
+  </main>
+  
+  <footer class="bg-white border-t border-gray-100 py-8 mt-auto">
+    <div class="mx-auto max-w-5xl px-4 text-center">
+      <p class="text-gray-500 text-sm">&copy; {% now "Y" %} {{ negocio.nombre }}. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+</body>
+</html>

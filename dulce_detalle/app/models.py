@@ -16,6 +16,9 @@ class Negocio(models.Model):
     def __str__(self):
         return self.nombre
 
+    @property
+    def pedidos_pendientes_count(self):
+        return self.pedidos.filter(estado='pendiente').count()
 
 class Producto(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='productos')
@@ -80,6 +83,52 @@ class ItemVenta(models.Model):
     @property
     def ganancia(self):
         return self.cantidad * (self.precio_unitario - self.costo_unitario)
+
+    def __str__(self):
+        return f"{self.cantidad}x {self.producto.nombre}"
+
+class Insumo(models.Model):
+    negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='insumos')
+    nombre = models.CharField(max_length=150)
+    costo_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.nombre} (${self.costo_unitario})"
+
+    class Meta:
+        ordering = ['nombre']
+
+class Pedido(models.Model):
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('aceptado', 'Aceptado'),
+        ('rechazado', 'Rechazado'),
+    ]
+    negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='pedidos')
+    cliente_nombre = models.CharField(max_length=150)
+    cliente_telefono = models.CharField(max_length=50)
+    cliente_direccion = models.CharField(max_length=250, blank=True)
+    estado = models.CharField(max_length=15, choices=ESTADO_CHOICES, default='pendiente')
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Pedido #{self.pk} - {self.cliente_nombre} - ${self.total}"
+
+    class Meta:
+        ordering = ['-creado']
+
+class ItemPedido(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='items')
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='items_pedido')
+    cantidad = models.PositiveIntegerField(default=1)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
 
     def __str__(self):
         return f"{self.cantidad}x {self.producto.nombre}"

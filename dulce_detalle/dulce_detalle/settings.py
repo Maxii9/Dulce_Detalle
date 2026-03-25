@@ -74,13 +74,13 @@ WSGI_APPLICATION = 'dulce_detalle.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+#'PASSWORD':'1234',
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'TiendaBD',
         'USER': 'root',
-        'PASSWORD':'1234',
+        'PASSWORD':'admin',
         'HOST': 'localhost',
         'PORT': '3306',
     }

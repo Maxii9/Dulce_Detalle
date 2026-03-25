@@ -1,0 +1,77 @@
+{% extends "tienda_publica/base_publica.html" %}
+
+{% block content %}
+<!-- Cabecera -->
+<div class="mb-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-900">Catálogo de Productos</h1>
+    <p class="text-gray-500 mt-1">{{ negocio.descripcion }}</p>
+  </div>
+  
+  <form method="get" class="relative flex items-center w-full sm:w-auto">
+    <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar en la tienda..."
+           class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm text-gray-900 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand shadow-sm transition-all">
+    <svg class="w-4 h-4 text-gray-400 absolute left-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    {% if query %}
+    <a href="{% url 'tienda_publica' negocio.slug %}" class="absolute right-3 text-gray-400 hover:text-red-500 p-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Grilla de productos -->
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+  
+  {% for producto in productos %}
+  <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col group border border-gray-100">
+    <div class="w-full aspect-[4/5] overflow-hidden bg-gray-50 relative">
+      {% if producto.stock <= 0 %}
+        <div class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
+          <span class="bg-gray-900 text-white font-bold text-xs tracking-widest uppercase px-3 py-1.5 rounded-full shadow-lg">Agotado</span>
+        </div>
+      {% endif %}
+
+      {% if producto.imagen %}
+        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
+             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+      {% else %}
+        <div class="w-full h-full flex items-center justify-center text-gray-300">
+          <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="p-4 flex flex-col flex-1">
+      <p class="text-xs text-gray-500 mb-1 leading-snug line-clamp-2">{{ producto.nombre }}</p>
+      <p class="text-lg font-extrabold text-gray-900 mt-auto">$ {{ producto.precio }}</p>
+      
+      <div class="mt-4">
+        {% if producto.stock > 0 %}
+        <a href="{% url 'agregar_carrito_publico' negocio.slug producto.pk %}"
+           class="block w-full text-center py-2.5 bg-gray-900 hover:bg-brand text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm">
+          Añadir
+        </a>
+        {% else %}
+        <button disabled class="w-full py-2.5 bg-gray-100 text-gray-400 font-medium rounded-xl cursor-not-allowed text-sm">
+          Sin Stock
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-span-full py-16 text-center text-gray-400">
+    <span class="text-6xl opacity-30 block mb-4">🛍️</span>
+    <p class="text-lg">No hay productos disponibles por el momento.</p>
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

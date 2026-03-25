@@ -20,4 +20,22 @@ urlpatterns = [
     path('ventas/', views.lista_ventas, name='lista_ventas'),
     path('ventas/nueva/', views.nueva_venta, name='nueva_venta'),
     path('estadisticas/', views.estadisticas_ventas, name='estadisticas_ventas'),
+    # Calculadora de Costos
+    path('calculadora/', views.calculadora_costos, name='calculadora_costos'),
+    path('calculadora/insumo/nuevo/', views.crear_insumo, name='crear_insumo'),
+    path('calculadora/insumo/<int:pk>/editar/', views.editar_insumo, name='editar_insumo'),
+    path('calculadora/insumo/<int:pk>/eliminar/', views.eliminar_insumo, name='eliminar_insumo'),
+    
+    # ── Pedidos (Administrador) ──
+    path('pedidos/', views.lista_pedidos, name='lista_pedidos'),
+    path('pedidos/<int:pk>/aceptar/', views.aceptar_pedido, name='aceptar_pedido'),
+    path('pedidos/<int:pk>/eliminar/', views.eliminar_pedido, name='eliminar_pedido'),
+    
+    # ── Tienda Pública (Cliente) ──
+    path('tienda/<str:slug>/', views.tienda_publica, name='tienda_publica'),
+    path('tienda/<str:slug>/carrito/agregar/<int:pk>/', views.agregar_carrito_publico, name='agregar_carrito_publico'),
+    path('tienda/<str:slug>/carrito/quitar/<int:pk>/', views.quitar_carrito_publico, name='quitar_carrito_publico'),
+    path('tienda/<str:slug>/checkout/', views.checkout_publico, name='checkout_publico'),
+    path('tienda/<str:slug>/pedido/<int:pedido_id>/exito/', views.exito_publico, name='exito_publico'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

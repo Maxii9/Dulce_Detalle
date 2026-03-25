@@ -3,7 +3,7 @@ Capa de servicios para la lógica CRUD de Productos, Negocios y Ventas.
 Las vistas delegan toda la lógica de datos a este módulo.
 """
 from decimal import Decimal
-from .models import Negocio, Producto, Venta, ItemVenta
+from .models import Negocio, Producto, Venta, ItemVenta, Insumo, Pedido, ItemPedido
 
 
 # ── Negocios ──────────────────────────────────────────────────────────────
@@ -79,6 +79,50 @@ def eliminar_producto(pk: int) -> bool:
     if producto is None:
         return False
     producto.delete()
+    return True
+
+
+# ── Insumos (Calculadora de Costos) ───────────────────────────────────────
+
+def get_insumos(negocio_slug: str):
+    """Lista todos los insumos de un negocio dado su slug."""
+    return Insumo.objects.filter(negocio__slug=negocio_slug)
+
+
+def get_insumo(pk: int) -> Insumo | None:
+    """Retorna un insumo por su PK, o None si no existe."""
+    try:
+        return Insumo.objects.get(pk=pk)
+    except Insumo.DoesNotExist:
+        return None
+
+
+def crear_insumo(negocio: Negocio, nombre: str, costo_unitario) -> Insumo:
+    """Crea y retorna un nuevo insumo para el negocio dado."""
+    return Insumo.objects.create(
+        negocio=negocio,
+        nombre=nombre,
+        costo_unitario=costo_unitario
+    )
+
+
+def actualizar_insumo(pk: int, nombre: str, costo_unitario) -> Insumo | None:
+    """Actualiza un insumo existente. Retorna el insumo actualizado o None."""
+    insumo = get_insumo(pk)
+    if insumo is None:
+        return None
+    insumo.nombre = nombre
+    insumo.costo_unitario = costo_unitario
+    insumo.save()
+    return insumo
+
+
+def eliminar_insumo(pk: int) -> bool:
+    """Elimina un insumo por PK. Retorna True si fue eliminado, False si no existía."""
+    insumo = get_insumo(pk)
+    if insumo is None:
+        return False
+    insumo.delete()
     return True
 
 
@@ -194,3 +238,117 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
         'semana': _calcular(ventas_semana),
         'mes': _calcular(ventas_mes),
     }
+
+
+# ── Pedidos de Clientes (Catálogo Público) ────────────────────────────────
+
+def get_pedidos(negocio_slug: str):
+    """Retorna todos los pedidos de un negocio, ordenados por fecha descendente."""
+    return Pedido.objects.filter(negocio__slug=negocio_slug).prefetch_related('items__producto')
+
+def get_pedidos_pendientes_count(negocio_slug: str) -> int:
+    return Pedido.objects.filter(negocio__slug=negocio_slug, estado='pendiente').count()
+
+def crear_pedido_cliente(negocio: Negocio, nombre: str, telefono: str, direccion: str, items_data: list) -> Pedido:
+    """Crea un pedido desde la tienda pública."""
+    total = sum(Decimal(str(item['producto'].precio)) * item['cantidad'] for item in items_data)
+    pedido = Pedido.objects.create(
+        negocio=negocio,
+        cliente_nombre=nombre,
+        cliente_telefono=telefono,
+        cliente_direccion=direccion,
+        total=total
+    )
+    for item in items_data:
+        ItemPedido.objects.create(
+            pedido=pedido,
+            producto=item['producto'],
+            cantidad=item['cantidad'],
+            precio_unitario=item['producto'].precio
+        )
+    return pedido
+
+def aceptar_pedido(pk: int) -> bool:
+    """Marca como aceptado, descuenta stock y crea una Venta oficial."""
+    from django.utils import timezone
+    try:
+        pedido = Pedido.objects.get(pk=pk, estado='pendiente')
+    except Pedido.DoesNotExist:
+        return False
+
+    # Descontar stock
+    for item in pedido.items.all():
+        producto = item.producto
+        producto.stock -= item.cantidad
+        if producto.stock < 0:
+            producto.stock = 0
+        producto.save()
+
+    # Transforma en venta
+    venta = Venta.objects.create(
+        negocio=pedido.negocio,
+        fecha=timezone.localdate(),
+        tipo='pagada',
+        metodo_pago='otro', # O podría agregarse como 'pedido_online'
+        total=pedido.total
+    )
+    for item in pedido.items.all():
+        ItemVenta.objects.create(
+            venta=venta,
+            producto=item.producto,
+            cantidad=item.cantidad,
+            precio_unitario=item.precio_unitario,
+            costo_unitario=item.producto.costo
+        )
+
+    pedido.estado = 'aceptado'
+    pedido.save()
+    return True
+
+def eliminar_pedido(pk: int) -> bool:
+    """Elimina el pedido, sirve también para rechazarlo."""
+    try:
+        pedido = Pedido.objects.get(pk=pk)
+        pedido.delete()
+        return True
+    except Pedido.DoesNotExist:
+        return False
+
+
+# ── Carrito Público (session-based) ───────────────────────────────────────
+
+def get_carrito_publico(session: dict) -> dict:
+    return session.get('carrito_publico', {})
+
+def carrito_publico_agregar(session: dict, producto_pk: int) -> None:
+    carrito = session.get('carrito_publico', {})
+    key = str(producto_pk)
+    carrito[key] = carrito.get(key, 0) + 1
+    session['carrito_publico'] = carrito
+    session.modified = True
+
+def carrito_publico_quitar(session: dict, producto_pk: int) -> None:
+    carrito = session.get('carrito_publico', {})
+    carrito.pop(str(producto_pk), None)
+    session['carrito_publico'] = carrito
+    session.modified = True
+
+def carrito_publico_limpiar(session: dict) -> None:
+    session['carrito_publico'] = {}
+    session.modified = True
+
+def get_carrito_publico_detalle(session: dict, negocio_slug: str) -> list[dict]:
+    carrito = get_carrito_publico(session)
+    items = []
+    for pk_str, cantidad in carrito.items():
+        try:
+            # Asegurarse de que el producto pertenezca a la tienda que se está viendo
+            producto = Producto.objects.get(pk=int(pk_str), negocio__slug=negocio_slug)
+            subtotal = Decimal(str(producto.precio)) * cantidad
+            items.append({'producto': producto, 'cantidad': cantidad, 'subtotal': subtotal})
+        except Producto.DoesNotExist:
+            pass
+    return items
+
+def carrito_publico_total(session: dict, negocio_slug: str) -> Decimal:
+    return sum(item['subtotal'] for item in get_carrito_publico_detalle(session, negocio_slug)) or Decimal('0')
