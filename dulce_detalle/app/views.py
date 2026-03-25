@@ -1,7 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
+from django.http import JsonResponse
+import json
 from . import services
+from .models import Nota
 
 
 def _contexto_base(request):
@@ -32,13 +35,19 @@ def lista_productos(request):
     if query:
         productos = productos.filter(nombre__icontains=query)
         
+    carrito_items = services.get_carrito_detalle(request.session)
+    total = services.carrito_total(request.session)
+    
     valor_inventario = sum(p.costo * p.stock for p in productos)
-
+        
     return render(request, 'productos/lista.html', {
         'negocio': negocio,
         'negocios': negocios,
         'productos': productos,
         'query': query,
+        'carrito_items': carrito_items,
+        'total': total,
+        'carrito_count': len(carrito_items),
         'valor_inventario': valor_inventario,
     })
 
@@ -144,8 +153,11 @@ def carrito_agregar(request, pk):
 
 
 def carrito_quitar(request, pk):
-    """Quita un producto del carrito."""
+    """Quita un producto del carrito y vuelve a la página anterior."""
     services.carrito_quitar(request.session, pk)
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
     return redirect('nueva_venta')
 
 
@@ -197,6 +209,7 @@ def nueva_venta(request):
         fecha = request.POST.get('fecha', str(timezone.localdate()))
         tipo = request.POST.get('tipo', 'pagada')
         metodo_pago = request.POST.get('metodo_pago', 'efectivo')
+        observacion = request.POST.get('observacion', '').strip()
 
         venta = services.crear_venta(
             negocio=negocio,
@@ -204,6 +217,7 @@ def nueva_venta(request):
             tipo=tipo,
             metodo_pago=metodo_pago,
             items_data=carrito_items,
+            observacion=observacion,
         )
         services.carrito_limpiar(request.session)
         messages.success(request, f'Venta #{venta.pk} registrada por ${venta.total}.')
@@ -431,3 +445,59 @@ def eliminar_pedido(request, pk):
         else:
             messages.error(request, 'No se encontró el pedido.')
     return redirect('lista_pedidos')
+
+# ── Notas ──────────────────────────────────────────────────────────────────
+
+def lista_notas(request):
+    negocio, negocios = _contexto_base(request)
+    if negocio is None:
+        return redirect('lista_productos')
+        
+    if request.method == 'POST':
+        texto = request.POST.get('texto', '').strip()
+        if texto:
+            Nota.objects.create(negocio=negocio, texto=texto)
+            messages.success(request, 'Nota agregada exitosamente.')
+        return redirect('lista_notas')
+    notas = Nota.objects.filter(negocio=negocio)
+    return render(request, 'notas/lista.html', {
+        'negocio': negocio,
+        'negocios': negocios,
+        'notas': notas,
+        'carrito_count': len(services.get_carrito(request.session)),
+    })
+
+def eliminar_nota(request, pk):
+    negocio, _ = _contexto_base(request)
+    nota = get_object_or_404(Nota, pk=pk, negocio=negocio)
+    if request.method == 'POST':
+        nota.delete()
+        messages.success(request, 'Nota eliminada.')
+    return redirect('lista_notas')
+
+
+def cambiar_tipo_venta(request, pk):
+    """Permite cambiar el tipo de venta (pagada/credito) vía AJAX."""
+    if request.method == 'POST':
+        negocio, _ = _contexto_base(request)
+        if negocio is None:
+            return JsonResponse({'error': 'No autorizado'}, status=403)
+            
+        try:
+            data = json.loads(request.body)
+            nuevo_tipo = data.get('tipo')
+            venta = get_object_or_404(services.Venta, pk=pk, negocio=negocio)
+            
+            # TIPO_CHOICES de Venta: [('pagada', 'Pagada'), ('credito', 'A crédito')]
+            if nuevo_tipo in ['pagada', 'credito']:
+                venta.tipo = nuevo_tipo
+                venta.save()
+                # Retornamos display para actualizar el DOM fácilmente si hiciera falta
+                display = 'Pagada' if nuevo_tipo == 'pagada' else 'A crédito'
+                return JsonResponse({'status': 'success', 'nuevo_tipo': venta.tipo, 'display': display})
+            else:
+                return JsonResponse({'error': 'Tipo inválido'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+            
+    return JsonResponse({'error': 'Método no permitido'}, status=405)

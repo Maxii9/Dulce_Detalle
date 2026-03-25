@@ -19,6 +19,7 @@ urlpatterns = [
     # Ventas
     path('ventas/', views.lista_ventas, name='lista_ventas'),
     path('ventas/nueva/', views.nueva_venta, name='nueva_venta'),
+    path('ventas/<int:pk>/cambiar-tipo/', views.cambiar_tipo_venta, name='cambiar_tipo_venta'),
     path('estadisticas/', views.estadisticas_ventas, name='estadisticas_ventas'),
     # Calculadora de Costos
     path('calculadora/', views.calculadora_costos, name='calculadora_costos'),
@@ -38,4 +39,7 @@ urlpatterns = [
     path('tienda/<str:slug>/checkout/', views.checkout_publico, name='checkout_publico'),
     path('tienda/<str:slug>/pedido/<int:pedido_id>/exito/', views.exito_publico, name='exito_publico'),
 
+    # Notas
+    path('notas/', views.lista_notas, name='lista_notas'),
+    path('notas/<int:pk>/eliminar/', views.eliminar_nota, name='eliminar_nota'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

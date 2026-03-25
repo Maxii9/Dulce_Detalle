@@ -56,6 +56,7 @@ class Venta(models.Model):
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default='pagada')
     metodo_pago = models.CharField(max_length=20, choices=METODO_CHOICES, default='efectivo')
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    observacion = models.TextField(blank=True, null=True)
     creado = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -117,9 +118,6 @@ class Pedido(models.Model):
     def __str__(self):
         return f"Pedido #{self.pk} - {self.cliente_nombre} - ${self.total}"
 
-    class Meta:
-        ordering = ['-creado']
-
 class ItemPedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='items')
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='items_pedido')
@@ -132,3 +130,14 @@ class ItemPedido(models.Model):
 
     def __str__(self):
         return f"{self.cantidad}x {self.producto.nombre}"
+
+class Nota(models.Model):
+    negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='notas')
+    texto = models.TextField()
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado']
+
+    def __str__(self):
+        return f"Nota de {self.negocio.nombre} - {self.creado.strftime('%d/%m/%Y')}"

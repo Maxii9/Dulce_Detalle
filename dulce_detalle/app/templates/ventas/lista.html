@@ -93,16 +93,10 @@
         <td class="px-4 py-4 text-gray-300">
           {{ venta.fecha|date:"d M Y" }}
         </td>
-        <td class="px-4 py-4">
-          {% if venta.tipo == 'pagada' %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">
-              Pagada
-            </span>
-          {% else %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-900/30 text-amber-400 border border-amber-800/50">
-              A crédito
-            </span>
-          {% endif %}
+        <td class="px-4 py-4" onclick="event.stopPropagation(); window.cambiarTipoVenta({{ venta.pk }}, '{{ venta.tipo }}')">
+          <span id="badge-tipo-{{ venta.pk }}" class="cursor-pointer hover:opacity-80 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold {% if venta.tipo == 'pagada' %}bg-emerald-900/30 text-emerald-400 border border-emerald-800/50{% else %}bg-amber-900/30 text-amber-400 border border-amber-800/50{% endif %}">
+            {% if venta.tipo == 'pagada' %}Pagada{% else %}A crédito{% endif %}
+          </span>
         </td>
         <td class="px-4 py-4 text-gray-400 text-sm capitalize">
           {{ venta.get_metodo_pago_display }}
@@ -119,6 +113,14 @@
       <tr id="detalle-{{ venta.pk }}" class="hidden bg-gray-950/50 border-b border-gray-800/30 transition-all">
         <td colspan="7" class="p-0">
           <div class="px-10 py-5 bg-gradient-to-r from-emerald-900/10 to-transparent">
+            {% if venta.observacion %}
+            <div class="mb-5 bg-gray-800/50 border border-gray-700/50 rounded-xl p-4">
+              <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <span>📝</span> Observación
+              </h4>
+              <p class="text-sm text-gray-300 whitespace-pre-line">{{ venta.observacion }}</p>
+            </div>
+            {% endif %}
             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detalle de los artículos:</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {% for item in venta.items.all %}
@@ -152,4 +154,44 @@
 </div>
 {% endif %}
 
+{% csrf_token %}
+<script>
+window.cambiarTipoVenta = async function(pk, tipoActual) {
+    const nuevoTipo = tipoActual === 'pagada' ? 'credito' : 'pagada';
+    const confirmMsg = nuevoTipo === 'pagada' ? '¿Marcar como pagada?' : '¿Marcar como a crédito?';
+    
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const res = await fetch(`/ventas/${pk}/cambiar-tipo/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ tipo: nuevoTipo })
+        });
+        
+        const data = await res.json();
+        if (data.status === 'success') {
+            const tdElement = document.querySelector(`#badge-tipo-${pk}`).closest('td');
+            tdElement.setAttribute('onclick', `event.stopPropagation(); window.cambiarTipoVenta(${pk}, '${data.nuevo_tipo}')`);
+            
+            const badge = document.getElementById(`badge-tipo-${pk}`);
+            badge.innerText = data.display;
+            
+            if (data.nuevo_tipo === 'pagada') {
+                badge.className = 'cursor-pointer hover:opacity-80 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-900/30 text-emerald-400 border border-emerald-800/50';
+            } else {
+                badge.className = 'cursor-pointer hover:opacity-80 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-900/30 text-amber-400 border border-amber-800/50';
+            }
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (e) {
+        alert('Ocurrió un error al intentar cambiar el tipo.');
+    }
+}
+</script>
 {% endblock %}

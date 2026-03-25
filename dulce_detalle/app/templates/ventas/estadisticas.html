@@ -21,42 +21,65 @@
     <p class="text-gray-400 mt-1">Resumen de rendimiento de {{ negocio.nombre }}</p>
   </div>
   <div>
-    <a href="{% url 'nueva_venta' %}" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg text-sm flex items-center gap-2 inline-flex">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    <a href="{% url 'nueva_venta' %}"
+      class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg text-sm flex items-center gap-2 inline-flex">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
       Registrar Venta
     </a>
   </div>
 </div>
 
 <div class="space-y-10">
-  
+
   <!-- SECCIÓN HOY -->
   <section>
     <div class="flex items-center gap-3 mb-4">
       <h2 class="text-xl font-bold text-white">Hoy</h2>
       <div class="h-px bg-gray-800 flex-1"></div>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
       <!-- Tarjeta Total -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-blue-500/50 transition-colors">
-        <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-600/10 rounded-full blur-2xl group-hover:bg-blue-600/20 transition-all"></div>
+      <div
+        class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-blue-500/50 transition-colors">
+        <div
+          class="absolute -right-4 -top-4 w-24 h-24 bg-blue-600/10 rounded-full blur-2xl group-hover:bg-blue-600/20 transition-all">
+        </div>
         <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Cobrado</p>
         <p class="text-4xl font-bold text-white">${{ stats.hoy.total }}</p>
       </div>
 
       <!-- Tarjeta Ganancia -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-emerald-500/50 transition-colors">
-        <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-600/10 rounded-full blur-2xl group-hover:bg-emerald-600/20 transition-all"></div>
+      <div
+        class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-emerald-500/50 transition-colors">
+        <div
+          class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-600/10 rounded-full blur-2xl group-hover:bg-emerald-600/20 transition-all">
+        </div>
         <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Ganancia Neta</p>
         <p class="text-4xl font-bold text-emerald-400">+${{ stats.hoy.ganancia }}</p>
       </div>
 
+      <!-- Tarjeta Gastos -->
+      <div
+        class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-red-500/50 transition-colors">
+        <div
+          class="absolute -right-4 -top-4 w-24 h-24 bg-red-600/10 rounded-full blur-2xl group-hover:bg-red-600/20 transition-all">
+        </div>
+        <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Gastos</p>
+        <p class="text-4xl font-bold text-red-400">-${{ stats.hoy.gastos }}</p>
+      </div>
+
       <!-- Tarjeta Cantidad -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-purple-500/50 transition-colors">
-        <div class="absolute -right-4 -top-4 w-24 h-24 bg-purple-600/10 rounded-full blur-2xl group-hover:bg-purple-600/20 transition-all"></div>
+      <div
+        class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-purple-500/50 transition-colors">
+        <div
+          class="absolute -right-4 -top-4 w-24 h-24 bg-purple-600/10 rounded-full blur-2xl group-hover:bg-purple-600/20 transition-all">
+        </div>
         <p class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Operaciones</p>
-        <p class="text-4xl font-bold text-white">{{ stats.hoy.cantidad }} <span class="text-lg text-gray-500 ml-1">ventas</span></p>
+        <p class="text-4xl font-bold text-white">{{ stats.hoy.cantidad }} <span
+            class="text-lg text-gray-500 ml-1">ventas</span></p>
       </div>
     </div>
   </section>
@@ -67,8 +90,8 @@
       <h2 class="text-xl font-bold text-white">Esta Semana</h2>
       <div class="h-px bg-gray-800 flex-1"></div>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
       <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Cobrado</p>
         <p class="text-2xl font-bold text-gray-200">${{ stats.semana.total }}</p>
@@ -77,9 +100,14 @@
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Ganancia Neta</p>
         <p class="text-2xl font-bold text-emerald-400/90">+${{ stats.semana.ganancia }}</p>
       </div>
+      <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 border-l-4 border-l-red-500">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Gastos</p>
+        <p class="text-2xl font-bold text-red-400/90">-${{ stats.semana.gastos }}</p>
+      </div>
       <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 border-l-4 border-l-purple-500">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Operaciones</p>
-        <p class="text-2xl font-bold text-gray-200">{{ stats.semana.cantidad }} <span class="text-sm text-gray-500 ml-1">ventas</span></p>
+        <p class="text-2xl font-bold text-gray-200">{{ stats.semana.cantidad }} <span
+            class="text-sm text-gray-500 ml-1">ventas</span></p>
       </div>
     </div>
   </section>
@@ -90,8 +118,8 @@
       <h2 class="text-xl font-bold text-white">Este Mes</h2>
       <div class="h-px bg-gray-800 flex-1"></div>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
       <div class="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Cobrado</p>
         <p class="text-2xl font-bold text-gray-300">${{ stats.mes.total }}</p>
@@ -100,13 +128,109 @@
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Ganancia Neta</p>
         <p class="text-2xl font-bold text-emerald-400/80">+${{ stats.mes.ganancia }}</p>
       </div>
+      <div class="bg-gray-800/30 border border-gray-800 rounded-2xl p-5 border-l-4 border-l-red-600">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Gastos</p>
+        <p class="text-2xl font-bold text-red-400/80">-${{ stats.mes.gastos }}</p>
+      </div>
       <div class="bg-gray-800/30 border border-gray-800 rounded-2xl p-5 border-l-4 border-l-indigo-500">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Operaciones</p>
-        <p class="text-2xl font-bold text-gray-300">{{ stats.mes.cantidad }} <span class="text-sm text-gray-500 ml-1">ventas</span></p>
+        <p class="text-2xl font-bold text-gray-300">{{ stats.mes.cantidad }} <span
+            class="text-sm text-gray-500 ml-1">ventas</span></p>
       </div>
     </div>
   </section>
 
+  <!-- SECCIÓN GRÁFICO MENSUAL -->
+  <section class="mt-4">
+    <div class="flex items-center gap-3 mb-4">
+      <h2 class="text-xl font-bold text-white">Evolución (Últimos 6 meses)</h2>
+      <div class="h-px bg-gray-800 flex-1"></div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl w-full h-80">
+      <canvas id="mensualChart"></canvas>
+    </div>
+  </section>
+
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('mensualChart').getContext('2d');
+
+    const labels = JSON.parse('{{ stats.grafico_labels|escapejs }}');
+    const gastosData = JSON.parse('{{ stats.grafico_gastos|escapejs }}');
+    const gananciasData = JSON.parse('{{ stats.grafico_ganancias|escapejs }}');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Gastos',
+          data: gastosData,
+          backgroundColor: 'rgba(239, 68, 68, 0.8)', // red-500
+          borderColor: 'rgb(239, 68, 68)',
+          borderWidth: 1,
+          borderRadius: 4
+        },
+        {
+          label: 'Ganancias Neta',
+          data: gananciasData,
+          backgroundColor: 'rgba(16, 185, 129, 0.8)', // emerald-500
+          borderColor: 'rgb(16, 185, 129)',
+          borderWidth: 1,
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: '#9ca3af', font: { family: "'Inter', sans-serif" } }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null) {
+                label += '$' + context.parsed.y;
+              }
+              return label;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(55, 65, 81, 0.5)' },
+          ticks: {
+            color: '#9ca3af',
+            callback: function(value, index, values) {
+              return '$' + value;
+            }
+          },
+          stacked: false
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: '#9ca3af' },
+          stacked: false
+        }
+      }
+    }
+  });
+});
+</script>
 
 {% endblock %}
