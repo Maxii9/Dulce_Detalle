@@ -69,6 +69,31 @@
                       focus:border-transparent transition-all"/>
       </div>
 
+      <!-- Tipo / Categoría -->
+      <div>
+        <label for="tipo" class="block text-sm font-semibold text-gray-300 mb-2">Categoría</label>
+        <div class="relative">
+          <select name="tipo" id="tipo"
+                  class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
+                         focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                         transition-all appearance-none cursor-pointer">
+            <option value="medias"     {% if producto.tipo == 'medias' %}selected{% endif %}>🧦 Medias</option>
+            <option value="accesorios" {% if producto.tipo == 'accesorios' %}selected{% endif %}>💍 Accesorios</option>
+            <option value="bazar"      {% if producto.tipo == 'bazar' %}selected{% endif %}>🏠 Bazar</option>
+            <option value="maquillaje" {% if producto.tipo == 'maquillaje' %}selected{% endif %}>💄 Maquillaje</option>
+            <option value="aromas"     {% if producto.tipo == 'aromas' %}selected{% endif %}>🌸 Aromas</option>
+            <option value="papeleria"  {% if producto.tipo == 'papeleria' %}selected{% endif %}>📓 Papelería</option>
+            <option value="unas"       {% if producto.tipo == 'unas' %}selected{% endif %}>💅 Uñas</option>
+            <option value="otros"      {% if not producto or producto.tipo == 'otros' or not producto.tipo %}selected{% endif %}>📦 Otros</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
       <!-- Precio de venta y Costo en fila -->
       <div class="grid grid-cols-2 gap-4">
         <div>

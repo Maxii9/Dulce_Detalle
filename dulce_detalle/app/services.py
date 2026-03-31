@@ -44,10 +44,11 @@ def get_producto(pk: int) -> Producto | None:
         return None
 
 
-def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None) -> Producto:
+def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, tipo: str = 'otros') -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
     return Producto.objects.create(
         negocio=negocio,
+        tipo=tipo,
         nombre=nombre,
         precio=precio,
         costo=costo,
@@ -57,11 +58,12 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
     )
 
 
-def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None) -> Producto | None:
+def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, tipo: str = 'otros') -> Producto | None:
     """Actualiza un producto existente. Retorna el producto actualizado o None."""
     producto = get_producto(pk)
     if producto is None:
         return None
+    producto.tipo = tipo
     producto.nombre = nombre
     producto.precio = precio
     producto.costo = costo
@@ -80,6 +82,19 @@ def eliminar_producto(pk: int) -> bool:
         return False
     producto.delete()
     return True
+
+
+def get_top_vendidos(negocio_slug: str, limite: int = 5) -> list:
+    """Retorna una lista con los PKs de los N productos más vendidos del negocio."""
+    from django.db.models import Sum
+    top = (
+        ItemVenta.objects
+        .filter(venta__negocio__slug=negocio_slug)
+        .values('producto_id')
+        .annotate(total=Sum('cantidad'))
+        .order_by('-total')[:limite]
+    )
+    return [item['producto_id'] for item in top]
 
 
 # ── Insumos (Calculadora de Costos) ───────────────────────────────────────

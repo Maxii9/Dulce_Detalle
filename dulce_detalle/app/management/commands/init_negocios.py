@@ -9,11 +9,11 @@ class Command(BaseCommand):
         negocios_data = [
             {
                 'slug': 'bijouteria',
-                'nombre': 'MangoA',
+                'nombre': 'Mango Accesorios',
                 'descripcion': 'Accesorios, joyas y artículos de moda para toda ocasión.',
                 'color_primario': '#7c3aed',
                 'color_secundario': '#6d28d9',
-                'emoji': '💎',
+                'emoji': '👜',
             },
             {
                 'slug': 'dulceria',

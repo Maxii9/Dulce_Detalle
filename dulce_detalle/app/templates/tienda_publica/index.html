@@ -24,12 +24,37 @@
   </form>
 </div>
 
+<!-- Filtros de Categoría -->
+<div class="mb-6 -mx-4 px-4 overflow-x-auto">
+  <div class="flex gap-2 pb-2 min-w-max">
+    <a href="{% url 'tienda_publica' negocio.slug %}{% if query %}?q={{ query }}{% endif %}"
+       class="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all
+              {% if not tipo_activo %}bg-gray-900 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+      🛍️ Todos
+    </a>
+    {% for valor, etiqueta in tipos %}
+    <a href="?tipo={{ valor }}{% if query %}&q={{ query }}{% endif %}"
+       class="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all
+              {% if tipo_activo == valor %}bg-gray-900 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+      {{ etiqueta }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
 <!-- Grilla de productos -->
 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
   
-  {% for producto in productos %}
+  {% for producto, en_carrito in productos_con_cant %}
   <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col group border border-gray-100">
     <div class="w-full aspect-[4/5] overflow-hidden bg-gray-50 relative">
+      {% if producto.pk in top_vendidos %}
+        <div class="absolute top-2 left-2 z-20">
+          <span class="inline-flex items-center gap-1 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+            🔥 Más vendido
+          </span>
+        </div>
+      {% endif %}
       {% if producto.stock <= 0 %}
         <div class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
           <span class="bg-gray-900 text-white font-bold text-xs tracking-widest uppercase px-3 py-1.5 rounded-full shadow-lg">Agotado</span>
@@ -49,15 +74,25 @@
     </div>
 
     <div class="p-4 flex flex-col flex-1">
-      <p class="text-xs text-gray-500 mb-1 leading-snug line-clamp-2">{{ producto.nombre }}</p>
+      <!-- Categoría badge -->
+      <span class="inline-block self-start px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 mb-1">
+        {{ producto.get_tipo_display }}
+      </span>
+      <p class="text-xs text-gray-500 leading-snug line-clamp-2">{{ producto.nombre }}</p>
       <p class="text-lg font-extrabold text-gray-900 mt-auto">$ {{ producto.precio }}</p>
       
       <div class="mt-4">
         {% if producto.stock > 0 %}
-        <a href="{% url 'agregar_carrito_publico' negocio.slug producto.pk %}"
-           class="block w-full text-center py-2.5 bg-gray-900 hover:bg-brand text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm">
-          Añadir
-        </a>
+          {% if en_carrito >= producto.stock %}
+          <button disabled class="w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm">
+            Máx. en carrito ({{ en_carrito }})
+          </button>
+          {% else %}
+          <a href="{% url 'agregar_carrito_publico' negocio.slug producto.pk %}"
+             class="block w-full text-center py-2.5 bg-gray-900 hover:bg-brand text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm">
+            Añadir{% if en_carrito > 0 %} · {{ en_carrito }} en carrito{% endif %}
+          </a>
+          {% endif %}
         {% else %}
         <button disabled class="w-full py-2.5 bg-gray-100 text-gray-400 font-medium rounded-xl cursor-not-allowed text-sm">
           Sin Stock

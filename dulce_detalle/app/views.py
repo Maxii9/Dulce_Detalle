@@ -32,23 +32,38 @@ def lista_productos(request):
     productos = services.get_productos(negocio.slug)
     
     query = request.GET.get('q', '').strip()
+    tipo = request.GET.get('tipo', '').strip()
     if query:
         productos = productos.filter(nombre__icontains=query)
+    if tipo:
+        productos = productos.filter(tipo=tipo)
         
     carrito_items = services.get_carrito_detalle(request.session)
     total = services.carrito_total(request.session)
     
     valor_inventario = sum(p.costo * p.stock for p in productos)
+
+    from .models import Producto as ProdModel
+    tipos = ProdModel.TIPO_CHOICES
+
+    # PKs de productos cuyo stock ya está agotado en el carrito
+    carrito_cantidades = {item['producto'].pk: item['cantidad'] for item in carrito_items}
+    carrito_maxed = [pk for pk, cant in carrito_cantidades.items()
+                     if cant >= (services.get_producto(pk).stock if services.get_producto(pk) else 0)]
         
     return render(request, 'productos/lista.html', {
         'negocio': negocio,
         'negocios': negocios,
         'productos': productos,
         'query': query,
+        'tipo_activo': tipo,
+        'tipos': tipos,
         'carrito_items': carrito_items,
         'total': total,
         'carrito_count': len(carrito_items),
         'valor_inventario': valor_inventario,
+        'carrito_maxed': carrito_maxed,
+        'carrito_cantidades': carrito_cantidades,
     })
 
 
@@ -63,6 +78,7 @@ def crear_producto(request):
         costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
+        tipo = request.POST.get('tipo', 'otros')
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
@@ -74,6 +90,7 @@ def crear_producto(request):
                     descripcion=descripcion,
                     stock=int(stock),
                     imagen=imagen,
+                    tipo=tipo,
                 )
                 messages.success(request, f'Producto "{nombre}" creado exitosamente.')
                 return redirect('lista_productos')
@@ -100,6 +117,7 @@ def editar_producto(request, pk):
         costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
+        tipo = request.POST.get('tipo', 'otros')
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
@@ -111,6 +129,7 @@ def editar_producto(request, pk):
                     descripcion=descripcion,
                     stock=int(stock),
                     imagen=imagen,
+                    tipo=tipo,
                 )
                 messages.success(request, f'Producto "{nombre}" actualizado.')
                 return redirect('lista_productos')
@@ -147,8 +166,14 @@ def eliminar_producto(request, pk):
 # ── Carrito ────────────────────────────────────────────────────────────────
 
 def carrito_agregar(request, pk):
-    """Agrega un producto al carrito y vuelve a la lista de productos."""
-    services.carrito_agregar(request.session, pk)
+    """Agrega un producto al carrito solo si hay stock disponible."""
+    producto = get_object_or_404(services.Producto, pk=pk)
+    carrito = request.session.get('carrito', {})
+    cantidad_actual = carrito.get(str(pk), 0)
+    if cantidad_actual >= producto.stock:
+        messages.warning(request, f'Stock máximo alcanzado para "{producto.nombre}" ({producto.stock} disp.).')
+    else:
+        services.carrito_agregar(request.session, pk)
     return redirect('lista_productos')
 
 
@@ -176,19 +201,24 @@ def lista_ventas(request):
     ventas = services.get_ventas(negocio.slug)
 
     # Filtros
-    fecha = request.GET.get('fecha', '')
+    fecha  = request.GET.get('fecha', '')
     metodo = request.GET.get('metodo', '')
+    tipo   = request.GET.get('tipo', '')
+
     if fecha:
         ventas = ventas.filter(fecha=fecha)
     if metodo:
         ventas = ventas.filter(metodo_pago=metodo)
+    if tipo:
+        ventas = ventas.filter(tipo=tipo)
 
     return render(request, 'ventas/lista.html', {
-        'negocio': negocio,
-        'negocios': negocios,
-        'ventas': ventas,
-        'filtro_fecha': fecha,
+        'negocio':       negocio,
+        'negocios':      negocios,
+        'ventas':        ventas,
+        'filtro_fecha':  fecha,
         'filtro_metodo': metodo,
+        'filtro_tipo':   tipo,
         'carrito_count': len(services.get_carrito(request.session)),
     })
 
@@ -348,24 +378,48 @@ def eliminar_insumo(request, pk):
 
 def tienda_publica(request, slug):
     negocio = get_object_or_404(services.Negocio, slug=slug)
-    productos = services.get_productos(slug)
+    # Solo mostrar productos con stock disponible
+    productos = services.get_productos(slug).filter(stock__gt=0)
     
     query = request.GET.get('q', '').strip()
+    tipo = request.GET.get('tipo', '').strip()
     if query:
         productos = productos.filter(nombre__icontains=query)
+    if tipo:
+        productos = productos.filter(tipo=tipo)
+
+    from .models import Producto as ProdModel
+    tipos = ProdModel.TIPO_CHOICES
 
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
+    top_vendidos = services.get_top_vendidos(slug)
+
+    # Anotar cada producto con la cantidad ya en el carrito del cliente
+    carrito_cantidades = {item['producto'].pk: item['cantidad'] for item in carrito_items}
+    productos_con_cant = [
+        (p, carrito_cantidades.get(p.pk, 0))
+        for p in productos
+    ]
 
     return render(request, 'tienda_publica/index.html', {
         'negocio': negocio,
-        'productos': productos,
+        'productos_con_cant': productos_con_cant,
         'query': query,
+        'tipo_activo': tipo,
+        'tipos': tipos,
         'carrito_count': carrito_count,
+        'top_vendidos': top_vendidos,
     })
 
 def agregar_carrito_publico(request, slug, pk):
-    services.carrito_publico_agregar(request.session, pk)
+    producto = get_object_or_404(services.Producto, pk=pk, negocio__slug=slug)
+    carrito = request.session.get('carrito_publico', {})
+    cantidad_actual = carrito.get(str(pk), 0)
+    if cantidad_actual >= producto.stock:
+        messages.warning(request, f'Solo hay {producto.stock} unidad(es) disponible(s) de "{producto.nombre}".')
+    else:
+        services.carrito_publico_agregar(request.session, pk)
     return redirect('tienda_publica', slug=slug)
 
 def quitar_carrito_publico(request, slug, pk):

@@ -21,7 +21,18 @@ class Negocio(models.Model):
         return self.pedidos.filter(estado='pendiente').count()
 
 class Producto(models.Model):
+    TIPO_CHOICES = [
+        ('medias', 'Medias'),
+        ('accesorios', 'Accesorios'),
+        ('bazar', 'Bazar'),
+        ('maquillaje', 'Maquillaje'),
+        ('aromas', 'Aromas'),
+        ('papeleria', 'Papelería'),
+        ('unas', 'Uñas'),
+        ('otros', 'Otros'),
+    ]
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='productos')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='otros')
     nombre = models.CharField(max_length=100)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     costo = models.DecimalField(max_digits=10, decimal_places=2, default=0)

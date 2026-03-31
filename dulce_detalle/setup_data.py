@@ -19,7 +19,7 @@ call_command('migrate', verbosity=1)
 datos = [
     {
         'slug': 'bijouteria',
-        'nombre': 'MangoA',
+        'nombre': 'Mango Accesorios',
         'descripcion': 'Tienda de bijoutería y accesorios',
         'color_primario': '#b45309',
         'color_secundario': '#d97706',
