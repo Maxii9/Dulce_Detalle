@@ -1,7 +1,10 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class Negocio(models.Model):
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='negocios', null=True, blank=True)
     TIPOS = [
         ('bijouteria', 'Bijoutería'),
         ('dulceria', 'Dulcería'),
@@ -19,6 +22,19 @@ class Negocio(models.Model):
     @property
     def pedidos_pendientes_count(self):
         return self.pedidos.filter(estado='pendiente').count()
+
+
+class CategoriaProducto(models.Model):
+    negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='categorias_producto')
+    nombre = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.negocio.nombre})"
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name_plural = "Categorias de Producto"
+
 
 class Producto(models.Model):
     TIPO_CHOICES = [
@@ -83,7 +99,8 @@ class Venta(models.Model):
 
 class ItemVenta(models.Model):
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='items')
-    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='items_venta')
+    producto = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True, related_name='items_venta')
+    nombre_libre = models.CharField(max_length=150, null=True, blank=True)
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
     costo_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -97,7 +114,8 @@ class ItemVenta(models.Model):
         return self.cantidad * (self.precio_unitario - self.costo_unitario)
 
     def __str__(self):
-        return f"{self.cantidad}x {self.producto.nombre}"
+        nombre = self.producto.nombre if self.producto else self.nombre_libre
+        return f"{self.cantidad}x {nombre}"
 
 class Insumo(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='insumos')

@@ -152,7 +152,7 @@
         <!-- Observación -->
         <div class="mb-6">
           <label class="block text-sm font-bold text-gray-700 mb-2">Observación (opcional)</label>
-          <textarea name="observacion" rows="3" placeholder="Añadir notas o detalles adicionales a esta venta..."
+          <textarea name="observacion" rows="3" placeholder="Añadir notas o detalles adicionales a esta venta..." maxlength="500"
                     class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"></textarea>
         </div>
 
@@ -167,48 +167,82 @@
   </div>
 
   <!-- Columna Derecha: Vista de Carrito (Resumen) -->
-  <div class="lg:col-span-5">
+  <div class="lg:col-span-5 space-y-6">
     
-    <div class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden sticky top-24">
-      <div class="bg-gray-800/80 px-5 py-4 border-b border-gray-700 flex justify-between items-center">
-        <h3 class="font-bold text-white flex items-center gap-2">
+    <!-- Panel Agregar Producto Libre -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-lg p-5">
+      <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <span>✨</span> Venta Libre (Sin stock)
+      </h3>
+      <form action="{% url 'carrito_libre_agregar' %}" method="post" class="space-y-3">
+        {% csrf_token %}
+        <div>
+          <input type="text" name="nombre_libre" placeholder="Nombre completo" maxlength="100" required class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+        <div class="flex gap-2">
+          <div class="flex-1 relative">
+            <span class="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
+            <input type="number" step="0.01" min="0" name="precio_libre" placeholder="Precio" required class="w-full text-sm border border-gray-300 rounded-lg pl-7 pr-2 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div class="flex-1 relative">
+            <span class="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
+            <input type="number" step="0.01" min="0" name="costo_libre" placeholder="Costo" class="w-full text-sm border border-gray-300 rounded-lg pl-7 pr-2 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div class="w-16">
+            <input type="number" step="1" min="1" name="cantidad_libre" value="1" title="Cant." class="w-full text-sm border border-gray-300 rounded-lg px-2 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-center">
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-gray-50 hover:bg-emerald-50 text-emerald-600 border border-gray-300 hover:border-emerald-400 font-semibold py-2.5 rounded-lg text-sm transition-all shadow-sm">
+          + Añadir sin registrar
+        </button>
+      </form>
+    </div>
+
+    <div class="bg-white border border-card-border rounded-2xl p-5 shadow-sm sticky top-6">
+      <div class="flex justify-between items-center mb-4 border-b border-card-border pb-3">
+        <h3 class="text-xl font-bold text-content-title flex items-center gap-2">
           <span>🛒</span> Resumen de la orden
         </h3>
-        <span class="bg-gray-700 text-white text-xs font-bold px-2.5 py-1 rounded-full">{{ carrito_count }} items</span>
+        <span class="bg-pink-100 text-pink-600 text-xs font-bold px-2.5 py-1 rounded-full">{{ carrito_count }} items</span>
       </div>
       
-      <div class="p-5 max-h-[400px] overflow-y-auto">
+      <div class="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
         {% if carrito_items %}
-          <ul class="space-y-4">
+          <div class="space-y-3 mb-4">
             {% for item in carrito_items %}
-            <li class="flex items-start gap-4 pb-4 border-b border-gray-800/50 last:border-0 last:pb-0">
-              <div class="w-16 h-16 rounded bg-gray-800 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-700">
-                {% if item.producto.imagen %}
+            <div class="flex gap-3 items-start p-3 bg-pink-50 rounded-xl border border-card-border hover:border-pink-300 transition-all">
+              <div class="w-12 h-12 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-card-border flex items-center justify-center">
+                {% if item.es_libre %}
+                  <span class="text-xl text-pink-400">✨</span>
+                {% elif item.producto.imagen %}
                   <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}" class="w-full h-full object-cover">
                 {% else %}
-                  <span class="text-2xl text-gray-600">🛍️</span>
+                  <span class="text-xl text-pink-300">📦</span>
                 {% endif %}
               </div>
               <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-semibold text-gray-200 line-clamp-1">{{ item.producto.nombre }}</h4>
-                <p class="text-xs text-emerald-400 mt-1">${{ item.producto.precio }} /u</p>
-                <div class="flex items-center gap-2 mt-2">
-                  <span class="text-xs font-bold bg-gray-800 text-gray-300 px-2 py-0.5 rounded border border-gray-700">x{{ item.cantidad }}</span>
+                <h4 class="text-sm font-semibold text-content-title line-clamp-1">{% if item.es_libre %}{{ item.nombre_libre }}{% else %}{{ item.producto.nombre }}{% endif %}</h4>
+                <p class="text-xs text-content-subtitle mt-0.5">${% if item.es_libre %}{{ item.precio_libre }}{% else %}{{ item.producto.precio }}{% endif %} /u</p>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-xs font-bold bg-white text-content-muted px-2 py-0.5 rounded border border-card-border">x{{ item.cantidad }}</span>
                 </div>
               </div>
-              <div class="text-right flex-shrink-0 flex flex-col items-end gap-2">
-                <p class="font-bold text-white">${{ item.subtotal }}</p>
-                <a href="{% url 'carrito_quitar' item.producto.pk %}" class="text-red-400 hover:text-red-300 p-1 bg-red-400/10 rounded" title="Quitar">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </a>
+              <div class="text-right flex-shrink-0 flex flex-col items-end gap-1">
+                <p class="text-sm font-bold text-content-accent">${{ item.subtotal }}</p>
+                {% if item.es_libre %}
+                  <a href="{% url 'carrito_libre_quitar' item.id_str %}" class="text-xs text-red-400 hover:text-red-600 transition-colors" title="Quitar libre">Quitar</a>
+                {% else %}
+                  <a href="{% url 'carrito_quitar' item.id_str %}" class="text-xs text-red-400 hover:text-red-600 transition-colors" title="Quitar del carrito">Quitar</a>
+                {% endif %}
               </div>
-            </li>
+            </div>
             {% endfor %}
-          </ul>
+          </div>
         {% else %}
-          <div class="py-12 text-center">
-            <p class="text-gray-500 mb-4">El carrito está vacío.</p>
-            <a href="{% url 'lista_productos' %}" class="inline-block border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+          <div class="py-10 flex flex-col items-center justify-center text-center px-4">
+            <span class="text-4xl opacity-50 mb-3">🛍️</span>
+            <p class="text-content-subtitle text-sm">El carrito está vacío</p>
+            <a href="{% url 'lista_productos' %}" class="mt-3 text-emerald-600 hover:text-emerald-500 font-semibold text-sm transition-colors">
               Explorar productos
             </a>
           </div>
@@ -216,12 +250,12 @@
       </div>
       
       {% if carrito_items %}
-      <div class="bg-gray-800/50 border-t border-gray-700 p-5 mt-auto">
-        <div class="flex justify-between items-center mb-4 text-white">
-          <span class="text-gray-400">Total</span>
-          <span class="text-2xl font-bold text-emerald-400">${{ total }}</span>
+      <div class="border-t border-card-border pt-4 mt-2">
+        <div class="flex justify-between items-center mb-4">
+          <span class="text-content-subtitle font-medium">Total a cobrar</span>
+          <span class="text-2xl font-bold text-content-title">${{ total }}</span>
         </div>
-        <a href="{% url 'carrito_limpiar' %}" class="block text-center text-xs text-gray-500 hover:text-red-400 underline transition-colors">
+        <a href="{% url 'carrito_limpiar' %}" class="w-full py-2 block bg-white hover:bg-red-50 text-content-muted hover:text-red-500 text-center rounded-xl font-medium transition-all text-sm border border-card-border hover:border-red-300">
           Vaciar carrito
         </a>
       </div>

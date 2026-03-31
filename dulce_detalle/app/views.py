@@ -5,19 +5,48 @@ from django.http import JsonResponse
 import json
 from . import services
 from .models import Nota
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.models import User
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from app.models import Negocio, CategoriaProducto
+import functools
 
+def tienda_requerida(view_func):
+    @functools.wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        
+        # Check if user has any store
+        if not request.user.negocios.exists():
+            return redirect('crear_tienda_inicial')
+            
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
 
 def _contexto_base(request):
-    """Contexto compartido con datos del negocio activo."""
-    negocio = services.get_negocio_activo(request.session)
-    negocios = services.get_negocios()
+    """Contexto compartido con datos del negocio activo para el usuario."""
+    if not request.user.is_authenticated:
+        return None, []
+    
+    negocios = list(request.user.negocios.all())
+        
+    negocio_slug = request.session.get('negocio_slug')
+    negocio = None
+    if negocio_slug:
+        negocio = next((n for n in negocios if n.slug == negocio_slug), None)
+    if not negocio and negocios:
+        negocio = negocios[0]
+        request.session['negocio_slug'] = negocio.slug
     return negocio, negocios
 
 
+@tienda_requerida
 def inicio(request):
     return redirect('lista_productos')
 
 
+@tienda_requerida
 def cambiar_negocio(request, slug):
     """Guarda el negocio activo en la sesión."""
     negocio = get_object_or_404(services.Negocio, slug=slug)
@@ -25,6 +54,7 @@ def cambiar_negocio(request, slug):
     return redirect('lista_productos')
 
 
+@tienda_requerida
 def lista_productos(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -43,8 +73,7 @@ def lista_productos(request):
     
     valor_inventario = sum(p.costo * p.stock for p in productos)
 
-    from .models import Producto as ProdModel
-    tipos = ProdModel.TIPO_CHOICES
+    tipos = negocio.categorias_producto.all()
 
     # PKs de productos cuyo stock ya está agotado en el carrito
     carrito_cantidades = {item['producto'].pk: item['cantidad'] for item in carrito_items}
@@ -67,6 +96,7 @@ def lista_productos(request):
     })
 
 
+@tienda_requerida
 def crear_producto(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -82,31 +112,40 @@ def crear_producto(request):
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
-                services.crear_producto(
-                    negocio=negocio,
-                    nombre=nombre,
-                    precio=float(precio),
-                    costo=float(costo),
-                    descripcion=descripcion,
-                    stock=int(stock),
-                    imagen=imagen,
-                    tipo=tipo,
-                )
-                messages.success(request, f'Producto "{nombre}" creado exitosamente.')
-                return redirect('lista_productos')
+                p_val = float(precio)
+                c_val = float(costo)
+                s_val = int(stock)
+                
+                if p_val < 0 or c_val < 0 or s_val < 0:
+                    messages.error(request, 'Precio, costo y stock no pueden ser negativos.')
+                else:
+                    services.crear_producto(
+                        negocio=negocio,
+                        nombre=nombre[:100],
+                        precio=p_val,
+                        costo=c_val,
+                        descripcion=descripcion[:500],
+                        stock=s_val,
+                        imagen=imagen,
+                        tipo=tipo[:50],
+                    )
+                    messages.success(request, f'Producto "{nombre}" creado exitosamente.')
+                    return redirect('lista_productos')
             except ValueError:
-                messages.error(request, 'Precio, costo o stock inválidos.')
+                messages.error(request, 'Los valores numéricos ingresados no son válidos.')
         else:
-            messages.error(request, 'Nombre y precio son obligatorios.')
+            messages.error(request, 'El nombre y el precio son campos obligatorios.')
 
     return render(request, 'productos/form.html', {
         'negocio': negocio,
         'negocios': negocios,
         'accion': 'Nuevo producto',
         'producto': None,
+        'categorias': negocio.categorias_producto.all(),
     })
 
 
+@tienda_requerida
 def editar_producto(request, pk):
     negocio, negocios = _contexto_base(request)
     producto = get_object_or_404(services.Producto, pk=pk)
@@ -121,31 +160,40 @@ def editar_producto(request, pk):
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
-                services.actualizar_producto(
-                    pk=pk,
-                    nombre=nombre,
-                    precio=float(precio),
-                    costo=float(costo),
-                    descripcion=descripcion,
-                    stock=int(stock),
-                    imagen=imagen,
-                    tipo=tipo,
-                )
-                messages.success(request, f'Producto "{nombre}" actualizado.')
-                return redirect('lista_productos')
+                p_val = float(precio)
+                c_val = float(costo)
+                s_val = int(stock)
+
+                if p_val < 0 or c_val < 0 or s_val < 0:
+                    messages.error(request, 'Precio, costo y stock no pueden ser negativos.')
+                else:
+                    services.actualizar_producto(
+                        pk=pk,
+                        nombre=nombre[:100],
+                        precio=p_val,
+                        costo=c_val,
+                        descripcion=descripcion[:500],
+                        stock=s_val,
+                        imagen=imagen,
+                        tipo=tipo[:50],
+                    )
+                    messages.success(request, f'Producto "{nombre}" actualizado.')
+                    return redirect('lista_productos')
             except ValueError:
-                messages.error(request, 'Precio, costo o stock inválidos.')
+                messages.error(request, 'Los valores numéricos ingresados no son válidos.')
         else:
-            messages.error(request, 'Nombre y precio son obligatorios.')
+            messages.error(request, 'El nombre y el precio son campos obligatorios.')
 
     return render(request, 'productos/form.html', {
         'negocio': negocio,
         'negocios': negocios,
         'accion': 'Editar producto',
         'producto': producto,
+        'categorias': negocio.categorias_producto.all(),
     })
 
 
+@tienda_requerida
 def eliminar_producto(request, pk):
     negocio, negocios = _contexto_base(request)
     producto = get_object_or_404(services.Producto, pk=pk)
@@ -165,6 +213,7 @@ def eliminar_producto(request, pk):
 
 # ── Carrito ────────────────────────────────────────────────────────────────
 
+@tienda_requerida
 def carrito_agregar(request, pk):
     """Agrega un producto al carrito solo si hay stock disponible."""
     producto = get_object_or_404(services.Producto, pk=pk)
@@ -177,6 +226,7 @@ def carrito_agregar(request, pk):
     return redirect('lista_productos')
 
 
+@tienda_requerida
 def carrito_quitar(request, pk):
     """Quita un producto del carrito y vuelve a la página anterior."""
     services.carrito_quitar(request.session, pk)
@@ -186,14 +236,54 @@ def carrito_quitar(request, pk):
     return redirect('nueva_venta')
 
 
+@tienda_requerida
 def carrito_limpiar(request):
     """Vacía el carrito."""
     services.carrito_limpiar(request.session)
     return redirect('lista_productos')
 
 
+@tienda_requerida
+def carrito_libre_agregar_view(request):
+    """Agrega un producto no registrado al carrito."""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre_libre', '').strip()
+        precio = request.POST.get('precio_libre', '0').strip() or '0'
+        costo = request.POST.get('costo_libre', '0').strip() or '0'
+        cantidad = request.POST.get('cantidad_libre', '1').strip() or '1'
+        
+        try:
+            p_val = float(precio)
+            c_val = float(costo)
+            cant_val = int(cantidad)
+            
+            if nombre and p_val >= 0 and c_val >= 0 and cant_val > 0:
+                services.carrito_libre_agregar(
+                    request.session, 
+                    nombre=nombre[:100], 
+                    precio=p_val, 
+                    costo=c_val, 
+                    cantidad=cant_val
+                )
+                messages.success(request, f'Producto libre "{nombre}" agregado por ${p_val}.')
+            else:
+                messages.error(request, 'Revisa los datos: nombre requerido, precio/costo >= 0 y cantidad > 0.')
+        except ValueError:
+            messages.error(request, 'Asegúrate de ingresar números válidos en precio, costo y cantidad.')
+            
+    return redirect('nueva_venta')
+
+
+@tienda_requerida
+def carrito_libre_quitar_view(request, id_libre):
+    """Quita un producto libre del carrito."""
+    services.carrito_libre_quitar(request.session, id_libre)
+    return redirect('nueva_venta')
+
+
 # ── Ventas ─────────────────────────────────────────────────────────────────
 
+@tienda_requerida
 def lista_ventas(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -223,6 +313,7 @@ def lista_ventas(request):
     })
 
 
+@tienda_requerida
 def nueva_venta(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -239,7 +330,7 @@ def nueva_venta(request):
         fecha = request.POST.get('fecha', str(timezone.localdate()))
         tipo = request.POST.get('tipo', 'pagada')
         metodo_pago = request.POST.get('metodo_pago', 'efectivo')
-        observacion = request.POST.get('observacion', '').strip()
+        observacion = request.POST.get('observacion', '').strip()[:500]
 
         venta = services.crear_venta(
             negocio=negocio,
@@ -263,6 +354,33 @@ def nueva_venta(request):
     })
 
 
+@tienda_requerida
+def ventas_bulk_eliminar(request):
+    """Elimina las ventas seleccionadas y restaura el stock asociado."""
+    if request.method == 'POST':
+        negocio, _ = _contexto_base(request)
+        if not negocio:
+            return redirect('lista_productos')
+            
+        venta_ids = request.POST.getlist('venta_ids')
+        if not venta_ids:
+            messages.warning(request, 'No seleccionaste ninguna venta para eliminar.')
+            return redirect('lista_ventas')
+            
+        try:
+            ids_enteros = [int(vid) for vid in venta_ids]
+            count = services.eliminar_ventas(ids_enteros)
+            if count > 0:
+                messages.success(request, f'Se eliminaron {count} venta(s) exitosamente.')
+            else:
+                messages.warning(request, 'Las ventas indicadas no existen o ya fueron eliminadas.')
+        except ValueError:
+            messages.error(request, 'Error al procesar la solicitud.')
+            
+    return redirect('lista_ventas')
+
+
+@tienda_requerida
 def estadisticas_ventas(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -280,6 +398,7 @@ def estadisticas_ventas(request):
 
 # ── Calculadora de Costos ──────────────────────────────────────────────────
 
+@tienda_requerida
 def calculadora_costos(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -295,6 +414,7 @@ def calculadora_costos(request):
     })
 
 
+@tienda_requerida
 def crear_insumo(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -305,17 +425,21 @@ def crear_insumo(request):
         costo_unitario = request.POST.get('costo_unitario', '0')
         if nombre and costo_unitario:
             try:
-                services.crear_insumo(
-                    negocio=negocio,
-                    nombre=nombre,
-                    costo_unitario=float(costo_unitario)
-                )
-                messages.success(request, f'Insumo "{nombre}" creado exitosamente.')
-                return redirect('calculadora_costos')
+                c_val = float(costo_unitario)
+                if c_val < 0:
+                    messages.error(request, 'El costo no puede ser negativo.')
+                else:
+                    services.crear_insumo(
+                        negocio=negocio,
+                        nombre=nombre[:100],
+                        costo_unitario=c_val
+                    )
+                    messages.success(request, f'Insumo "{nombre}" creado exitosamente.')
+                    return redirect('calculadora_costos')
             except ValueError:
                 messages.error(request, 'Costo unitario inválido.')
         else:
-            messages.error(request, 'El nombre y costo son obligatorios.')
+            messages.error(request, 'El nombre y el costo son obligatorios.')
 
     return render(request, 'calculadora/form_insumo.html', {
         'negocio': negocio,
@@ -326,6 +450,7 @@ def crear_insumo(request):
     })
 
 
+@tienda_requerida
 def editar_insumo(request, pk):
     negocio, negocios = _contexto_base(request)
     insumo = get_object_or_404(services.Insumo, pk=pk)
@@ -335,17 +460,21 @@ def editar_insumo(request, pk):
         costo_unitario = request.POST.get('costo_unitario', '0')
         if nombre and costo_unitario:
             try:
-                services.actualizar_insumo(
-                    pk=pk,
-                    nombre=nombre,
-                    costo_unitario=float(costo_unitario)
-                )
-                messages.success(request, f'Insumo "{nombre}" actualizado.')
-                return redirect('calculadora_costos')
+                c_val = float(costo_unitario)
+                if c_val < 0:
+                    messages.error(request, 'El costo no puede ser negativo.')
+                else:
+                    services.actualizar_insumo(
+                        pk=pk,
+                        nombre=nombre[:100],
+                        costo_unitario=c_val
+                    )
+                    messages.success(request, f'Insumo "{nombre}" actualizado.')
+                    return redirect('calculadora_costos')
             except ValueError:
                 messages.error(request, 'Costo unitario inválido.')
         else:
-            messages.error(request, 'El nombre y costo son obligatorios.')
+            messages.error(request, 'El nombre y el costo son obligatorios.')
 
     return render(request, 'calculadora/form_insumo.html', {
         'negocio': negocio,
@@ -356,6 +485,7 @@ def editar_insumo(request, pk):
     })
 
 
+@tienda_requerida
 def eliminar_insumo(request, pk):
     negocio, negocios = _contexto_base(request)
     insumo = get_object_or_404(services.Insumo, pk=pk)
@@ -388,8 +518,7 @@ def tienda_publica(request, slug):
     if tipo:
         productos = productos.filter(tipo=tipo)
 
-    from .models import Producto as ProdModel
-    tipos = ProdModel.TIPO_CHOICES
+    tipos = negocio.categorias_producto.all()
 
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
@@ -435,9 +564,9 @@ def checkout_publico(request, slug):
         return redirect('tienda_publica', slug=slug)
 
     if request.method == 'POST':
-        nombre = request.POST.get('nombre', '').strip()
-        telefono = request.POST.get('telefono', '').strip()
-        direccion = request.POST.get('direccion', '').strip()
+        nombre = request.POST.get('nombre', '').strip()[:100]
+        telefono = request.POST.get('telefono', '').strip()[:30]
+        direccion = request.POST.get('direccion', '').strip()[:255]
         
         if nombre and telefono:
             pedido = services.crear_pedido_cliente(
@@ -466,6 +595,7 @@ def exito_publico(request, slug, pedido_id):
 
 # ── Gestión de Pedidos (Administrador) ────────────────────────────────────
 
+@tienda_requerida
 def lista_pedidos(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
@@ -482,6 +612,7 @@ def lista_pedidos(request):
         'pedidos_pendientes_count': pedidos_pendientes_count,
     })
 
+@tienda_requerida
 def aceptar_pedido(request, pk):
     _negocio, _negocios = _contexto_base(request)
     if request.method == 'POST':
@@ -491,6 +622,7 @@ def aceptar_pedido(request, pk):
             messages.error(request, 'No se pudo aceptar el pedido (tal vez ya no está pendiente).')
     return redirect('lista_pedidos')
 
+@tienda_requerida
 def eliminar_pedido(request, pk):
     _negocio, _negocios = _contexto_base(request)
     if request.method == 'POST':
@@ -502,13 +634,14 @@ def eliminar_pedido(request, pk):
 
 # ── Notas ──────────────────────────────────────────────────────────────────
 
+@tienda_requerida
 def lista_notas(request):
     negocio, negocios = _contexto_base(request)
     if negocio is None:
         return redirect('lista_productos')
         
     if request.method == 'POST':
-        texto = request.POST.get('texto', '').strip()
+        texto = request.POST.get('texto', '').strip()[:1000]
         if texto:
             Nota.objects.create(negocio=negocio, texto=texto)
             messages.success(request, 'Nota agregada exitosamente.')
@@ -521,6 +654,7 @@ def lista_notas(request):
         'carrito_count': len(services.get_carrito(request.session)),
     })
 
+@tienda_requerida
 def eliminar_nota(request, pk):
     negocio, _ = _contexto_base(request)
     nota = get_object_or_404(Nota, pk=pk, negocio=negocio)
@@ -530,6 +664,7 @@ def eliminar_nota(request, pk):
     return redirect('lista_notas')
 
 
+@tienda_requerida
 def cambiar_tipo_venta(request, pk):
     """Permite cambiar el tipo de venta (pagada/credito) vía AJAX."""
     if request.method == 'POST':
@@ -555,3 +690,214 @@ def cambiar_tipo_venta(request, pk):
             return JsonResponse({'error': str(e)}, status=500)
             
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+
+# ── Autenticación y Cuentas ───────────────────────────────────────────────
+
+def user_login(request):
+    if request.user.is_authenticated:
+        return redirect('inicio')
+        
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            messages.success(request, f'¡Hola de nuevo, {user.username}!')
+            return redirect('inicio')
+        else:
+            messages.error(request, 'Usuario o contraseña incorrectos.')
+    else:
+        form = AuthenticationForm()
+        
+    return render(request, 'auth/login.html', {'form': form})
+
+def user_register(request):
+    if request.user.is_authenticated:
+        return redirect('inicio')
+        
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, '¡Cuenta creada con éxito! Vamos a configurar tu tienda.')
+            return redirect('crear_tienda_inicial')
+        else:
+            for field in form:
+                for error in field.errors:
+                    messages.error(request, error)
+            for error in form.non_field_errors():
+                messages.error(request, error)
+    else:
+        form = UserCreationForm()
+        
+    return render(request, 'auth/registro.html', {'form': form})
+
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def user_logout(request):
+    logout(request)
+    messages.info(request, 'Sesión terminada.')
+    return redirect('login')
+
+@login_required
+def crear_tienda_inicial(request):
+    """Vista de onboarding obligatorio si el usuario no tiene tiendas."""
+    if request.user.negocios.exists():
+        return redirect('inicio')
+        
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()[:100]
+        if nombre:
+            import re
+            slug = re.sub(r'[^a-z0-9]', '', nombre.lower())
+            base_slug = slug
+            counter = 1
+            while Negocio.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+                
+            negocio = Negocio.objects.create(
+                nombre=nombre,
+                slug=slug,
+                propietario=request.user,
+                color_primario='#ec4899',
+                color_secundario='#be185d'
+            )
+            # Add default categories
+            for t_code, t_name in [('accesorios', 'Accesorios'), ('papeleria', 'Papelería'), ('bazar', 'Bazar')]:
+                CategoriaProducto.objects.create(negocio=negocio, nombre=t_name)
+                
+            messages.success(request, f'¡Tu tienda "{nombre}" fue creada correctamente!')
+            # Set default session
+            request.session['negocio_slug'] = negocio.slug
+            return redirect('inicio')
+        else:
+            messages.error(request, 'Debes ingresar un nombre para tu tienda.')
+            
+    return render(request, 'auth/crear_tienda.html')
+
+
+# ── Configuración ─────────────────────────────────────────────────────────
+
+@tienda_requerida
+def configuracion_tienda(request):
+    negocio, negocios = _contexto_base(request)
+    
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()[:100]
+        descripcion = request.POST.get('descripcion', '').strip()[:500]
+        emoji = request.POST.get('emoji', '🛍️').strip()[:10]
+        if nombre:
+            negocio.nombre = nombre
+            negocio.descripcion = descripcion
+            negocio.emoji = emoji
+            negocio.save()
+            messages.success(request, 'Información de la tienda actualizada.')
+            return redirect('configuracion_tienda')
+        else:
+            messages.error(request, 'El nombre no puede estar vacío.')
+            
+    return render(request, 'config/tienda.html', {
+        'negocio': negocio,
+        'negocios': negocios,
+    })
+
+@tienda_requerida
+def configuracion_categorias(request):
+    negocio, negocios = _contexto_base(request)
+    categorias = negocio.categorias_producto.all()
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'add':
+            nombre = request.POST.get('nombre', '').strip()[:50]
+            if nombre:
+                CategoriaProducto.objects.get_or_create(negocio=negocio, nombre=nombre)
+                messages.success(request, f'Categoría "{nombre}" agregada.')
+            else:
+                messages.error(request, 'Ingresa un nombre válido.')
+        elif action == 'delete':
+            cat_id = request.POST.get('categoria_id')
+            try:
+                cat = CategoriaProducto.objects.get(pk=cat_id, negocio=negocio)
+                cat.delete()
+                messages.success(request, 'Categoría eliminada.')
+            except CategoriaProducto.DoesNotExist:
+                messages.error(request, 'Error al borrar la categoría (o no existe).')
+        return redirect('configuracion_categorias')
+
+    return render(request, 'config/categorias.html', {
+        'negocio': negocio,
+        'negocios': negocios,
+        'categorias': categorias,
+    })
+
+@tienda_requerida
+def configuracion_usuarios(request):
+    negocio, negocios = _contexto_base(request)
+    users_list = []
+    
+    if request.user.is_superuser:
+        users_list = User.objects.all().prefetch_related('negocios')
+        
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        # 1. El propio usuario cambia sus datos
+        if action == 'update_self':
+            new_username = request.POST.get('username', '').strip()[:150]
+            new_email = request.POST.get('email', '').strip()[:254]
+            
+            if new_username:
+                if User.objects.filter(username=new_username).exclude(pk=request.user.pk).exists():
+                    messages.error(request, 'Este nombre de usuario ya está en uso.')
+                else:
+                    request.user.username = new_username
+                    request.user.email = new_email
+                    request.user.save()
+                    messages.success(request, '¡Tus datos han sido actualizados!')
+            else:
+                messages.error(request, 'El nombre de usuario no puede estar vacío.')
+            return redirect('configuracion_usuarios')
+
+        # 2. El superusuario cambia datos o clave de otros
+        if request.user.is_superuser:
+            user_id = request.POST.get('user_id')
+            try:
+                target_user = User.objects.get(pk=user_id)
+                
+                if action == 'change_password':
+                    new_pass = request.POST.get('new_password', '').strip()
+                    if new_pass:
+                        target_user.set_password(new_pass)
+                        target_user.save()
+                        messages.success(request, f'¡Contraseña actualizada para @{target_user.username}!')
+                    else:
+                        messages.error(request, 'La clave no puede estar vacía.')
+                        
+                elif action == 'admin_update_profile':
+                    adm_username = request.POST.get('username', '').strip()[:150]
+                    adm_email = request.POST.get('email', '').strip()[:254]
+                    if adm_username:
+                        if User.objects.filter(username=adm_username).exclude(pk=target_user.pk).exists():
+                            messages.error(request, f'El nombre @{adm_username} ya está en uso por otra cuenta.')
+                        else:
+                            target_user.username = adm_username
+                            target_user.email = adm_email
+                            target_user.save()
+                            messages.success(request, f'Perfil de @{target_user.username} actualizado correctamente.')
+                    else:
+                        messages.error(request, 'El nombre de usuario no puede estar vacío.')
+                        
+            except User.DoesNotExist:
+                messages.error(request, 'Usuario no encontrado.')
+            return redirect('configuracion_usuarios')
+    
+    return render(request, 'config/usuarios.html', {
+        'negocio': negocio,
+        'negocios': negocios,
+        'users_list': users_list,
+    })

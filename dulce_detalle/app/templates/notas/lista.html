@@ -24,7 +24,7 @@
       <form method="post" action="{% url 'lista_notas' %}">
         {% csrf_token %}
         <div class="mb-4">
-          <textarea name="texto" rows="6" required placeholder="Escribe tu nota aquí..."
+          <textarea name="texto" rows="6" required placeholder="Escribe tu nota aquí..." maxlength="1000"
                     class="w-full bg-pink-50 border border-card-border rounded-xl px-4 py-3 text-content-value placeholder-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 transition-all resize-none"></textarea>
         </div>
         <button type="submit" class="w-full bg-pink-500 hover:bg-pink-400 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-md">

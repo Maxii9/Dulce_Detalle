@@ -16,9 +16,24 @@ urlpatterns = [
     path('carrito/agregar/<int:pk>/', views.carrito_agregar, name='carrito_agregar'),
     path('carrito/quitar/<int:pk>/', views.carrito_quitar, name='carrito_quitar'),
     path('carrito/limpiar/', views.carrito_limpiar, name='carrito_limpiar'),
-    # Ventas
+    path('carrito_libre/agregar/', views.carrito_libre_agregar_view, name='carrito_libre_agregar'),
+    path('carrito_libre/quitar/<str:id_libre>/', views.carrito_libre_quitar_view, name='carrito_libre_quitar'),
+    
+    # ── Autenticación y Cuentas ──
+    path('login/', views.user_login, name='login'),
+    path('registro/', views.user_register, name='registro'),
+    path('logout/', views.user_logout, name='logout'),
+    path('tienda/nueva/', views.crear_tienda_inicial, name='crear_tienda_inicial'),
+    
+    # ── Configuración ──
+    path('configurar/tienda/', views.configuracion_tienda, name='configuracion_tienda'),
+    path('configurar/productos/', views.configuracion_categorias, name='configuracion_categorias'),
+    path('configurar/usuarios/', views.configuracion_usuarios, name='configuracion_usuarios'),
+
+    # ── Ventas ──
     path('ventas/', views.lista_ventas, name='lista_ventas'),
     path('ventas/nueva/', views.nueva_venta, name='nueva_venta'),
+    path('ventas/eliminar-masivo/', views.ventas_bulk_eliminar, name='ventas_bulk_eliminar'),
     path('ventas/<int:pk>/cambiar-tipo/', views.cambiar_tipo_venta, name='cambiar_tipo_venta'),
     path('estadisticas/', views.estadisticas_ventas, name='estadisticas_ventas'),
     # Calculadora de Costos

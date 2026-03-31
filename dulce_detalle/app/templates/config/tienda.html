@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Configuración de la Tienda{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-2xl font-bold text-content-title mb-6 flex items-center gap-2">
+    <span>⚙️</span> Información del Negocio
+  </h1>
+  <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6">
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-bold text-content-subtitle mb-2">Nombre público <span class="text-red-500">*</span></label>
+        <input type="text" name="nombre" value="{{ negocio.nombre }}" required maxlength="100" class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-content-subtitle mb-2">Emoji de la tienda</label>
+        <input type="text" name="emoji" value="{{ negocio.emoji }}" maxlength="10" class="w-full sm:w-20 text-2xl border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus text-center">
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-content-subtitle mb-2">Descripción (Opcional)</label>
+        <textarea name="descripcion" rows="3" maxlength="500" class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">{{ negocio.descripcion }}</textarea>
+      </div>
+      <button type="submit" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Guardar Cambios</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

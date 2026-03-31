@@ -87,12 +87,28 @@
   </div>
 </form>
 
+<!-- Formulario masivo -->
+<form method="post" action="{% url 'ventas_bulk_eliminar' %}" id="bulkDeleteForm" onsubmit="return confirm('¿Seguro que deseas eliminar estas ventas de forma permanente?');">
+  {% csrf_token %}
+  
+  <div id="bulk-actions" class="mb-4 flex items-center justify-between" style="display: none;">
+    <span class="text-sm font-semibold text-content-title bg-white border border-card-border px-4 py-2 rounded-xl shadow-sm">
+      <span id="selected-count" class="text-red-500 font-bold">0</span> ventas seleccionadas
+    </span>
+    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow transition-all flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      Eliminar Seleccionados
+    </button>
+  </div>
+
 <!-- Tabla de Ventas -->
 <div class="bg-card-bg rounded-2xl border border-card-border overflow-hidden shadow-xl">
   <table class="w-full">
     <thead>
       <tr class="border-b border-card-border text-xs uppercase tracking-wider text-content-label bg-card-bg-alt">
-        <th class="w-10 px-4 py-4"></th>
+        <th class="w-12 px-4 py-4 text-center cursor-pointer" title="Seleccionar todo" onclick="document.getElementById('selectAll').click()">
+          <input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer pointer-events-none" onclick="toggleAll(this); event.stopPropagation()">
+        </th>
         <th class="text-left px-2 py-4">Venta</th>
         <th class="text-left px-4 py-4">Fecha</th>
         <th class="text-left px-4 py-4">Tipo</th>
@@ -104,11 +120,14 @@
     <tbody class="divide-y divide-card-border">
       {% for venta in ventas %}
       <tr class="hover:bg-card-row-hover transition-colors group cursor-pointer" onclick="document.getElementById('detalle-{{ venta.pk }}').classList.toggle('hidden')">
-        <td class="px-4 py-4 text-center text-content-muted group-hover:text-nav-active-text transition-colors">
-          <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        <td class="px-4 py-4 text-center" onclick="event.stopPropagation()">
+          <input type="checkbox" name="venta_ids" value="{{ venta.pk }}" class="venta-checkbox w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer transition-all" onclick="updateBulkUI()">
         </td>
         <td class="px-2 py-4">
-          <span class="font-bold text-content-value">#{{ venta.pk }}</span>
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-content-muted group-hover:text-nav-active-text transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            <span class="font-bold text-content-value">#{{ venta.pk }}</span>
+          </div>
         </td>
         <td class="px-4 py-4 text-content-value">
           {{ venta.fecha|date:"d M Y" }}
@@ -147,14 +166,16 @@
               <div class="flex items-center justify-between bg-card-item-bg p-3 rounded-xl border border-card-item-border">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center border border-card-border overflow-hidden">
-                    {% if item.producto.imagen %}
+                    {% if not item.producto %}
+                      <span class="text-pink-400">✨</span>
+                    {% elif item.producto.imagen %}
                       <img src="{{ item.producto.imagen.url }}" class="w-full h-full object-cover">
                     {% else %}
                       <span class="text-pink-300">🛒</span>
                     {% endif %}
                   </div>
                   <div>
-                    <p class="text-sm font-semibold text-content-value">{{ item.producto.nombre }}</p>
+                    <p class="text-sm font-semibold text-content-value">{% if item.producto %}{{ item.producto.nombre }}{% else %}{{ item.nombre_libre }}{% endif %}</p>
                     <p class="text-xs text-content-subtitle">{{ item.cantidad }} x ${{ item.precio_unitario }} (Costo c/u: ${{ item.costo_unitario }})</p>
                   </div>
                 </div>
@@ -172,7 +193,34 @@
     </tbody>
   </table>
 </div>
+</form>
 {% endif %}
+
+<!-- Scripts -->
+<script>
+  function toggleAll(source) {
+    const checkboxes = document.querySelectorAll('.venta-checkbox');
+    checkboxes.forEach(cb => cb.checked = source.checked);
+    updateBulkUI();
+  }
+
+  function updateBulkUI() {
+    const checkboxes = document.querySelectorAll('.venta-checkbox:checked');
+    const bulkDiv = document.getElementById('bulk-actions');
+    const countSpan = document.getElementById('selected-count');
+    
+    if (checkboxes.length > 0) {
+      countSpan.textContent = checkboxes.length;
+      bulkDiv.style.display = 'flex';
+    } else {
+      bulkDiv.style.display = 'none';
+    }
+  }
+
+  document.getElementById('selectAll').addEventListener('click', function(e) {
+    toggleAll(this);
+  });
+</script>
 
 {% csrf_token %}
 <script>

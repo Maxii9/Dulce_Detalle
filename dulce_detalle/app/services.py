@@ -168,8 +168,32 @@ def carrito_quitar(session: dict, producto_pk: int) -> None:
 def carrito_limpiar(session: dict) -> None:
     """Vacía el carrito completo."""
     session['carrito'] = {}
+    session['carrito_libre'] = []
     session.modified = True
 
+def get_carrito_libre(session: dict) -> list[dict]:
+    """Retorna la lista de ítems libres"""
+    return session.get('carrito_libre', [])
+
+def carrito_libre_agregar(session: dict, nombre: str, precio: float, costo: float, cantidad: int) -> None:
+    carrito = get_carrito_libre(session)
+    import uuid
+    id_libre = str(uuid.uuid4())
+    carrito.append({
+        'id_libre': id_libre,
+        'nombre': nombre,
+        'precio': precio,
+        'costo': costo,
+        'cantidad': cantidad
+    })
+    session['carrito_libre'] = carrito
+    session.modified = True
+
+def carrito_libre_quitar(session: dict, id_libre: str) -> None:
+    carrito = get_carrito_libre(session)
+    carrito = [item for item in carrito if item['id_libre'] != id_libre]
+    session['carrito_libre'] = carrito
+    session.modified = True
 
 def get_carrito_detalle(session: dict) -> list[dict]:
     """
@@ -182,9 +206,29 @@ def get_carrito_detalle(session: dict) -> list[dict]:
         try:
             producto = Producto.objects.get(pk=int(pk_str))
             subtotal = Decimal(str(producto.precio)) * cantidad
-            items.append({'producto': producto, 'cantidad': cantidad, 'subtotal': subtotal})
+            items.append({
+                'producto': producto, 
+                'cantidad': cantidad, 
+                'subtotal': subtotal,
+                'es_libre': False,
+                'id_str': str(producto.pk),
+            })
         except Producto.DoesNotExist:
             pass
+            
+    carrito_libre = get_carrito_libre(session)
+    for lib in carrito_libre:
+        subtotal = Decimal(str(lib['precio'])) * int(lib['cantidad'])
+        items.append({
+            'producto': None,
+            'nombre_libre': lib['nombre'],
+            'precio_libre': Decimal(str(lib['precio'])),
+            'costo_libre': Decimal(str(lib['costo'])),
+            'cantidad': lib['cantidad'],
+            'subtotal': subtotal,
+            'es_libre': True,
+            'id_str': lib['id_libre'],
+        })
     return items
 
 
@@ -203,9 +247,9 @@ def get_ventas(negocio_slug: str):
 def crear_venta(negocio: Negocio, fecha, tipo: str, metodo_pago: str, items_data: list, observacion: str = '') -> Venta:
     """
     Crea una venta con sus items.
-    items_data: lista de dicts {producto, cantidad}
+    items_data: lista de dicts (puede contener productos reales o libres)
     """
-    total = sum(Decimal(str(item['producto'].precio)) * item['cantidad'] for item in items_data)
+    total = sum(item['subtotal'] for item in items_data)
     venta = Venta.objects.create(
         negocio=negocio,
         fecha=fecha,
@@ -215,18 +259,41 @@ def crear_venta(negocio: Negocio, fecha, tipo: str, metodo_pago: str, items_data
         observacion=observacion,
     )
     for item in items_data:
-        ItemVenta.objects.create(
-            venta=venta,
-            producto=item['producto'],
-            cantidad=item['cantidad'],
-            precio_unitario=item['producto'].precio,
-            costo_unitario=item['producto'].costo,
-        )
-        # Reducir stock
-        prod = item['producto']
-        prod.stock -= item['cantidad']
-        prod.save()
+        if item.get('es_libre'):
+            ItemVenta.objects.create(
+                venta=venta,
+                producto=None,
+                nombre_libre=item['nombre_libre'],
+                cantidad=item['cantidad'],
+                precio_unitario=item['precio_libre'],
+                costo_unitario=item['costo_libre'],
+            )
+        else:
+            ItemVenta.objects.create(
+                venta=venta,
+                producto=item['producto'],
+                cantidad=item['cantidad'],
+                precio_unitario=item['producto'].precio,
+                costo_unitario=item['producto'].costo,
+            )
+            # Reducir stock
+            prod = item['producto']
+            prod.stock -= item['cantidad']
+            prod.save()
     return venta
+
+
+def eliminar_ventas(venta_ids: list) -> int:
+    """
+    Elimina múltiples ventas por sus IDs.
+    No restituye el stock (los productos vendidos simplemente se eliminan del historial de ventas).
+    """
+    ventas = Venta.objects.filter(pk__in=venta_ids)
+    count = 0
+    for venta in ventas:
+        venta.delete()
+        count += 1
+    return count
 
 
 def get_resumen_estadisticas(negocio_slug: str) -> dict:

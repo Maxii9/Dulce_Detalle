@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios del Equipo{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <h1 class="text-2xl font-bold text-content-title mb-6 flex items-center gap-2">
+    <span>👥</span> Mi Cuenta y Equipo
+  </h1>
+  <div class="space-y-6">
+    <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6">
+      <h3 class="text-sm font-bold text-content-subtitle mb-4">Mi Información Personal</h3>
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_self">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase">Nombre de Usuario</label>
+            <input type="text" name="username" value="{{ request.user.username }}" required maxlength="150"
+                   class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-content-value focus:ring-2 focus:ring-pink-400 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase">Email</label>
+            <input type="email" name="email" value="{{ request.user.email }}" maxlength="254"
+                   class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-content-value focus:ring-2 focus:ring-pink-400 focus:outline-none">
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-2">
+          <span class="inline-block px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase">
+            {% if request.user.is_superuser %}Superusuario / ROOT{% else %}Administrador de Tienda{% endif %}
+          </span>
+          <button type="submit" class="bg-pink-500 hover:bg-pink-400 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all shadow-md">
+            Guardar Cambios
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {% if request.user.is_superuser and users_list %}
+    <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border overflow-hidden">
+      <div class="p-6 border-b border-card-border bg-gray-50/50">
+        <h3 class="font-bold text-content-title">Gestión de Usuarios</h3>
+        <p class="text-content-subtitle text-xs">Modifica datos o contraseñas de cualquier cuenta registrada.</p>
+      </div>
+      <ul class="divide-y divide-card-border">
+        {% for u in users_list %}
+        <li class="p-6 transition-colors">
+          <div class="flex flex-col gap-6">
+            <!-- Fila 1: Info Base y Tiendas -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-bold text-content-value text-xl">@{{ u.username }}</span>
+                  {% if u.is_superuser %}<span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200 font-bold uppercase">ROOT</span>{% endif %}
+                </div>
+                <p class="text-content-subtitle text-sm mb-3">{{ u.email|default:"Sin email registrado" }}</p>
+                <div class="flex flex-wrap gap-1.5 mt-2">
+                  {% for n in u.negocios.all %}
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-xs font-bold uppercase shadow-sm">
+                    {{ n.emoji }} {{ n.nombre }}
+                  </span>
+                  {% empty %}
+                  <span class="text-content-muted text-xs italic">Este usuario aún no tiene tiendas</span>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Fila 2: Formularios de Gestión -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <!-- Datos Perfil -->
+              <div class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-3 px-1">Editar Perfil</h4>
+                <form method="post" class="flex flex-col sm:flex-row items-end gap-3">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="admin_update_profile">
+                  <input type="hidden" name="user_id" value="{{ u.id }}">
+                  <div class="w-full sm:w-1/3">
+                    <label class="block text-[9px] font-bold text-gray-500 mb-1 ml-1">Username</label>
+                    <input type="text" name="username" value="{{ u.username }}" required maxlength="150"
+                           class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-400 focus:outline-none bg-white">
+                  </div>
+                  <div class="w-full sm:flex-1">
+                    <label class="block text-[9px] font-bold text-gray-500 mb-1 ml-1">Email</label>
+                    <input type="email" name="email" value="{{ u.email }}" maxlength="254"
+                           class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-400 focus:outline-none bg-white">
+                  </div>
+                  <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all h-[38px] shadow-sm">
+                     Actualizar
+                  </button>
+                </form>
+              </div>
+
+              <!-- Cambio de Clave -->
+              <div class="bg-gray-100/30 p-4 rounded-2xl border border-gray-100">
+                <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-3 px-1">Seguridad</h4>
+                <form method="post" class="flex items-end gap-3">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="change_password">
+                  <input type="hidden" name="user_id" value="{{ u.id }}">
+                  <div class="flex-1">
+                    <label class="block text-[9px] font-bold text-gray-500 mb-1 ml-1">Nueva Contraseña</label>
+                    <input type="password" name="new_password" placeholder="••••••••" required 
+                           class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 focus:outline-none bg-white font-mono">
+                  </div>
+                  <button type="submit" class="bg-gray-800 hover:bg-black text-white text-xs font-bold px-4 py-2 rounded-xl transition-all h-[38px] shadow-sm">
+                     Pisar Clave
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
