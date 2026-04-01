@@ -120,12 +120,15 @@
 
 <body class="bg-page-bg text-page-text min-h-screen flex">
 
+  <!-- Backdrop para celular -->
+  <div id="mobile-sidebar-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden transition-opacity duration-300 opacity-0"></div>
+
   <!-- ══════════════════════════════════════════════════════ -->
   <!-- SIDEBAR IZQUIERDO                                      -->
   <!-- ══════════════════════════════════════════════════════ -->
   {% if negocio %}
-  <aside
-    class="w-64 flex-shrink-0 border-r border-sidebar-border bg-sidebar-bg flex flex-col sticky top-0 h-screen overflow-y-auto hidden md:flex">
+  <aside id="main-sidebar"
+    class="fixed inset-y-0 left-0 z-50 w-64 flex-shrink-0 border-r border-sidebar-border bg-sidebar-bg flex flex-col h-screen overflow-y-auto transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen md:sticky md:top-0 md:flex">
 
     <!-- Cabecera del sidebar -->
     <div class="p-6 border-b border-sidebar-border">
@@ -261,8 +264,15 @@
     <nav class="border-b border-sidebar-border bg-sidebar-bg backdrop-blur-md sticky top-0 z-40">
       <div class="px-6 py-3 flex items-center justify-between">
 
-        <!-- Título (mobile) -->
-        <div class="flex items-center md:hidden">
+        <!-- Título (mobile) con Hamburguesa -->
+        <div class="flex items-center gap-3 md:hidden">
+          {% if negocio %}
+          <button onclick="toggleMobileMenu()" class="p-2 -ml-2 text-sidebar-text hover:bg-nav-hover-bg rounded-lg transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          {% endif %}
           <span class="text-lg font-bold text-sidebar-title">
             {% if negocio %}{{ negocio.nombre }}{% else %}Mi Tienda{% endif %}
           </span>
@@ -319,6 +329,32 @@
 
   </div>
 
-</body>
+  <script>
+    function toggleMobileMenu() {
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('mobile-sidebar-overlay');
+        
+        if (!sidebar || !overlay) return;
 
+        const isOpen = sidebar.classList.contains('translate-x-0');
+
+        if (isOpen) {
+            // Cerrar
+            sidebar.classList.remove('translate-x-0');
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        } else {
+            // Abrir
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                overlay.classList.remove('opacity-0');
+                overlay.classList.add('opacity-100');
+            }, 10);
+        }
+    }
+  </script>
+</body>
 </html>

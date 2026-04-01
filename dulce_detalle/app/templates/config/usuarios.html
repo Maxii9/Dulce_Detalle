@@ -54,9 +54,18 @@
                 <p class="text-content-subtitle text-sm mb-3">{{ u.email|default:"Sin email registrado" }}</p>
                 <div class="flex flex-wrap gap-1.5 mt-2">
                   {% for n in u.negocios.all %}
-                  <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-xs font-bold uppercase shadow-sm">
-                    {{ n.emoji }} {{ n.nombre }}
-                  </span>
+                  <div class="inline-flex items-center bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-xs font-bold uppercase shadow-sm overflow-hidden">
+                    <span class="px-3 py-1">{{ n.emoji }} {{ n.nombre }}</span>
+                    <form method="post" class="h-full border-l border-purple-200" onsubmit="return confirm('¿Eliminar la tienda {{ n.nombre }}? Todos sus datos se perderán.')">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="delete_negocio">
+                      <input type="hidden" name="user_id" value="{{ u.id }}">
+                      <input type="hidden" name="negocio_id" value="{{ n.id }}">
+                      <button type="submit" class="px-2 py-1 bg-purple-100 hover:bg-red-500 hover:text-white transition-colors h-full" title="Eliminar Tienda">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                      </button>
+                    </form>
+                  </div>
                   {% empty %}
                   <span class="text-content-muted text-xs italic">Este usuario aún no tiene tiendas</span>
                   {% endfor %}
@@ -107,6 +116,21 @@
                 </form>
               </div>
             </div>
+
+            <!-- Botón de eliminación definitiva -->
+            {% if u.id != request.user.id %}
+            <div class="pt-2 flex justify-end">
+              <form method="post" onsubmit="return confirm('¿ESTÁS SEGURO? Se borrará el usuario @{{ u.username }} y TODAS sus tiendas asociadas definitivamente.')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_user">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <button type="submit" class="text-[10px] font-bold text-gray-400 hover:text-red-600 flex items-center gap-1 transition-colors uppercase tracking-wider">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  Eliminar cuenta permanentemente
+                </button>
+              </form>
+            </div>
+            {% endif %}
           </div>
         </li>
         {% endfor %}

@@ -891,6 +891,26 @@ def configuracion_usuarios(request):
                             messages.success(request, f'Perfil de @{target_user.username} actualizado correctamente.')
                     else:
                         messages.error(request, 'El nombre de usuario no puede estar vacío.')
+
+                elif action == 'delete_user':
+                    if target_user.pk == request.user.pk:
+                        messages.error(request, 'No puedes eliminarte a ti mismo.')
+                    else:
+                        u_name = target_user.username
+                        target_user.delete()
+                        messages.success(request, f'Usuario @{u_name} y sus datos han sido eliminados.')
+                        return redirect('configuracion_usuarios')
+
+                elif action == 'delete_negocio':
+                    neg_id = request.POST.get('negocio_id')
+                    try:
+                        n_to_del = Negocio.objects.get(pk=neg_id)
+                        n_name = n_to_del.nombre
+                        n_to_del.delete()
+                        messages.success(request, f'Tienda "{n_name}" eliminada correctamente.')
+                    except Negocio.DoesNotExist:
+                        messages.error(request, 'Tienda no encontrada.')
+                    return redirect('configuracion_usuarios')
                         
             except User.DoesNotExist:
                 messages.error(request, 'Usuario no encontrado.')
