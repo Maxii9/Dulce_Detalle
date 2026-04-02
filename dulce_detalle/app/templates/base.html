@@ -243,7 +243,9 @@
         <div id="config-menu" class="hidden mt-1 space-y-1 pl-12 pr-4 pb-2">
           <a href="{% url 'configuracion_tienda' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Mi Tienda</a>
           <a href="{% url 'configuracion_categorias' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Tipos de Producto</a>
-          <a href="{% url 'configuracion_usuarios' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Cuenta y Equipo</a>
+          <a href="{% url 'configuracion_usuarios' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">
+            {% if request.user.is_superuser %}Gestión Global (Usuarios/Tiendas){% else %}Mi Cuenta y Equipo{% endif %}
+          </a>
           <a href="{% url 'logout' %}" class="block py-2.5 text-sm font-bold text-red-500 hover:text-red-600 transition-colors mt-2">Cerrar Sesión</a>
         </div>
       </div>

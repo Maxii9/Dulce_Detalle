@@ -29,7 +29,12 @@ def _contexto_base(request):
     if not request.user.is_authenticated:
         return None, []
     
-    negocios = list(request.user.negocios.all())
+    if request.user.is_superuser:
+        # Superusers can see and switch to any store in the system
+        negocios = list(Negocio.objects.all())
+    else:
+        # Regular users only see their own stores
+        negocios = list(request.user.negocios.all())
         
     negocio_slug = request.session.get('negocio_slug')
     negocio = None
