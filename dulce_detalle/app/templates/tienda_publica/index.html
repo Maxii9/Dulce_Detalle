@@ -82,7 +82,11 @@
       <p class="text-lg font-extrabold text-gray-900 mt-auto">$ {{ producto.precio }}</p>
       
       <div class="mt-4">
-        {% if producto.stock > 0 %}
+        {% if es_propietario %}
+        <button disabled class="w-full py-2.5 bg-indigo-50 text-indigo-500 border border-indigo-200 font-medium rounded-xl cursor-not-allowed text-sm">
+          Modo Vista Previa
+        </button>
+        {% elif producto.stock > 0 %}
           {% if en_carrito >= producto.stock %}
           <button disabled class="w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm">
             Máx. en carrito ({{ en_carrito }})

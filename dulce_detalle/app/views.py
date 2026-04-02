@@ -536,6 +536,8 @@ def tienda_publica(request, slug):
         for p in productos
     ]
 
+    es_propietario = request.user.is_authenticated and (request.user.is_superuser or request.user == negocio.propietario)
+
     return render(request, 'tienda_publica/index.html', {
         'negocio': negocio,
         'productos_con_cant': productos_con_cant,
@@ -544,10 +546,17 @@ def tienda_publica(request, slug):
         'tipos': tipos,
         'carrito_count': carrito_count,
         'top_vendidos': top_vendidos,
+        'es_propietario': es_propietario,
     })
 
 def agregar_carrito_publico(request, slug, pk):
     producto = get_object_or_404(services.Producto, pk=pk, negocio__slug=slug)
+    negocio = producto.negocio
+    
+    if request.user.is_authenticated and (request.user.is_superuser or request.user == negocio.propietario):
+        messages.error(request, 'Modo Vista Previa: No puedes añadir productos a tu propio carrito.')
+        return redirect('tienda_publica', slug=slug)
+        
     carrito = request.session.get('carrito_publico', {})
     cantidad_actual = carrito.get(str(pk), 0)
     if cantidad_actual >= producto.stock:
@@ -562,6 +571,12 @@ def quitar_carrito_publico(request, slug, pk):
 
 def checkout_publico(request, slug):
     negocio = get_object_or_404(services.Negocio, slug=slug)
+    
+    es_propietario = request.user.is_authenticated and (request.user.is_superuser or request.user == negocio.propietario)
+    if es_propietario:
+        messages.error(request, 'Modo Vista Previa: No puedes generar pedidos de prueba en tu propia tienda.')
+        return redirect('tienda_publica', slug=slug)
+
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     total = services.carrito_publico_total(request.session, slug)
 
