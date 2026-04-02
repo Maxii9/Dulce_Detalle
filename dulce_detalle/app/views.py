@@ -400,7 +400,7 @@ def ventas_bulk_eliminar(request, slug):
         except ValueError:
             messages.error(request, 'Error al procesar la solicitud.')
             
-    return redirect('lista_ventas')
+    return redirect('lista_ventas', slug=slug)
 
 
 @tienda_requerida
@@ -899,7 +899,7 @@ def configuracion_usuarios(request, slug):
                     messages.success(request, '¡Tus datos han sido actualizados!')
             else:
                 messages.error(request, 'El nombre de usuario no puede estar vacío.')
-            return redirect('configuracion_usuarios')
+            return redirect('configuracion_usuarios', slug=slug)
 
         # 2. El superusuario cambia datos o clave de otros
         if request.user.is_superuser:
@@ -952,7 +952,7 @@ def configuracion_usuarios(request, slug):
                         
             except User.DoesNotExist:
                 messages.error(request, 'Usuario no encontrado.')
-            return redirect('configuracion_usuarios')
+            return redirect('configuracion_usuarios', slug=slug)
     
     return render(request, 'config/usuarios.html', {
         'negocio': negocio,

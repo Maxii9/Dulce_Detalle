@@ -13,11 +13,11 @@ urlpatterns = [
     path('registro/', views.user_register, name='registro'),
     path('logout/', views.user_logout, name='logout'),
     path('onboarding/', views.crear_tienda_inicial, name='crear_tienda_inicial'),
+    path('cambiar-tienda/<str:slug>/', views.cambiar_negocio, name='cambiar_negocio'),
 
     # ── Gestión del Negocio (Dueño) ──
     path('<str:slug>/gestion/', include([
         path('', views.lista_productos, name='lista_productos'),
-        path('cambiar/', views.cambiar_negocio, name='cambiar_negocio'),
         
         # Productos
         path('productos/', views.lista_productos, name='lista_productos'),
