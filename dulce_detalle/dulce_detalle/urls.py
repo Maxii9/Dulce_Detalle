@@ -14,6 +14,7 @@ urlpatterns = [
     path('logout/', views.user_logout, name='logout'),
     path('onboarding/', views.crear_tienda_inicial, name='crear_tienda_inicial'),
     path('cambiar-tienda/<str:slug>/', views.cambiar_negocio, name='cambiar_negocio'),
+    path('mis-productos/', views.inicio, name='lista_productos_global'),
 
     # ── Gestión del Negocio (Dueño) ──
     path('<str:slug>/gestion/', include([
