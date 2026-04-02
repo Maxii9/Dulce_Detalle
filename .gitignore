@@ -18,9 +18,12 @@ local_settings.py
 db.sqlite3
 media/
 
-# VS Code
-.vscode/
-
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Environment variables
+.env
+
+# Collected static files for production
+static/
