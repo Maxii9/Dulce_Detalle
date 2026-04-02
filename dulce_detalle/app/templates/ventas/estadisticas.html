@@ -6,7 +6,7 @@
 
 <!-- Breadcrumb -->
 <div class="flex items-center gap-2 text-sm text-content-label mb-6">
-  <a href="{% url 'lista_productos' %}" class="hover:text-emerald-400 transition-all">Productos</a>
+  <a href="{% url 'lista_productos' slug=negocio.slug %}" class="hover:text-emerald-400 transition-all">Productos</a>
   <span>/</span>
   <span class="text-content-value">Estadísticas</span>
 </div>
@@ -21,7 +21,7 @@
     <p class="text-content-subtitle mt-1">Resumen de rendimiento de {{ negocio.nombre }}</p>
   </div>
   <div>
-    <a href="{% url 'nueva_venta' %}"
+    <a href="{% url 'nueva_venta' slug=negocio.slug %}"
       class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg text-sm flex items-center gap-2 inline-flex">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />

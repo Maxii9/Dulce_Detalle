@@ -139,7 +139,7 @@
     <nav class="flex-1 p-4 space-y-1">
 
       <!-- Productos -->
-      <a href="{% url 'lista_productos' %}"
+      <a href="{% url 'lista_productos' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'producto' in current_view or 'inicio' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,7 +150,7 @@
       </a>
 
       <!-- Ventas -->
-      <a href="{% url 'lista_ventas' %}"
+      <a href="{% url 'lista_ventas' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'venta' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,7 +161,7 @@
       </a>
 
       <!-- Pedidos -->
-      <a href="{% url 'lista_pedidos' %}"
+      <a href="{% url 'lista_pedidos' slug=negocio.slug %}"
         class="flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'pedidos' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <div class="flex items-center gap-3">
@@ -177,7 +177,7 @@
       </a>
 
       <!-- Estadísticas -->
-      <a href="{% url 'estadisticas_ventas' %}"
+      <a href="{% url 'estadisticas_ventas' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'estadisticas' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,7 +188,7 @@
       </a>
 
       <!-- Calculadora -->
-      <a href="{% url 'calculadora_costos' %}"
+      <a href="{% url 'calculadora_costos' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'calculadora' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,7 +199,7 @@
       </a>
 
       <!-- Notas -->
-      <a href="{% url 'lista_notas' %}"
+      <a href="{% url 'lista_notas' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'nota' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +220,7 @@
 
       <!-- Carrito -->
       <div class="pt-4 mt-3 border-t border-sidebar-border">
-        <a href="{% url 'nueva_venta' %}"
+        <a href="{% url 'nueva_venta' slug=negocio.slug %}"
           class="flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all bg-emerald-600/20 text-emerald-600 border border-emerald-500/30 hover:bg-emerald-600/30">
           <div class="flex items-center gap-3">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,9 +250,9 @@
           <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </button>
         <div id="config-menu" class="hidden mt-1 space-y-1 pl-12 pr-4 pb-2">
-          <a href="{% url 'configuracion_tienda' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Mi Tienda</a>
-          <a href="{% url 'configuracion_categorias' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Tipos de Producto</a>
-          <a href="{% url 'configuracion_usuarios' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">
+          <a href="{% url 'configuracion_tienda' slug=negocio.slug %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Mi Tienda</a>
+          <a href="{% url 'configuracion_categorias' slug=negocio.slug %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Tipos de Producto</a>
+          <a href="{% url 'configuracion_usuarios' slug=negocio.slug %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">
             {% if request.user.is_superuser %}Gestión Global (Usuarios/Tiendas){% else %}Mi Cuenta y Equipo{% endif %}
           </a>
           <a href="{% url 'logout' %}" class="block py-2.5 text-sm font-bold text-red-500 hover:text-red-600 transition-colors mt-2">Cerrar Sesión</a>
@@ -292,7 +292,7 @@
         <!-- Logo (desktop, solo sin negocio) -->
         <div class="hidden md:block">
           {% if not negocio %}
-          <a href="{% url 'lista_productos' %}" class="flex items-center gap-2">
+          <a href="{% url 'lista_productos_global' %}" class="flex items-center gap-2">
             <span class="text-xl font-bold text-sidebar-title">Mi Tienda</span>
           </a>
           {% endif %}

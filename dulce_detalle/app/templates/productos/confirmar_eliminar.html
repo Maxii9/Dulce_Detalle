@@ -37,7 +37,7 @@
           Sí, eliminar
         </button>
       </form>
-      <a href="{% url 'lista_productos' %}"
+      <a href="{% url 'lista_productos' slug=negocio.slug %}"
          class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold
                 rounded-xl transition-all text-center">
         Cancelar

@@ -79,21 +79,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'dulce_detalle.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL', f"mysql://root:{os.environ.get('DB_PASSWORD', 'admin')}@localhost:3306/TiendaBD"),
+        default=os.environ.get('DATABASE_URL', "postgres://postgres:admin@localhost:5432/TiendaBD"),
         conn_max_age=600
     )
 }
-
-# Fix for MySQL on Python 3.12+ (if using MySQL locally)
-if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
-    import pymysql
-    pymysql.install_as_MySQLdb()
-
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

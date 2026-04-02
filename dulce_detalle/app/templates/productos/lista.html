@@ -23,7 +23,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
       </svg>
       {% if query %}
-      <a href="{% url 'lista_productos' %}" class="absolute right-3 text-gray-500 hover:text-red-400 p-1">
+      <a href="{% url 'lista_productos' slug=negocio.slug %}" class="absolute right-3 text-gray-500 hover:text-red-400 p-1">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
@@ -47,7 +47,7 @@
 
 <!-- Filtros de Categoría -->
 <div class="mb-6 flex flex-wrap gap-2">
-  <a href="{% url 'lista_productos' %}{% if query %}?q={{ query }}{% endif %}"
+  <a href="{% url 'lista_productos' slug=negocio.slug %}{% if query %}?q={{ query }}{% endif %}"
      class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
             {% if not tipo_activo %}bg-filter-active-bg text-filter-active-text border-filter-active-border{% else %}bg-filter-idle-bg text-filter-idle-text border-filter-idle-border hover:bg-filter-hover-bg{% endif %}">
     Todos
@@ -70,7 +70,7 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4">
 
   <!-- Tarjeta: Crear producto -->
-  <a href="{% url 'crear_producto' %}"
+  <a href="{% url 'crear_producto' slug=negocio.slug %}"
      class="group flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border-2 border-dashed border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-all min-h-[200px] cursor-pointer shadow-sm hover:shadow-md">
     <div class="w-12 h-12 rounded-full border-2 border-gray-300 group-hover:border-purple-400 flex items-center justify-center transition-all">
       <svg class="w-6 h-6 text-gray-400 group-hover:text-purple-500 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,7 +86,7 @@
 
     <!-- Botones de acción (esquina superior) -->
     <div class="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-      <a href="{% url 'editar_producto' producto.pk %}"
+      <a href="{% url 'editar_producto' slug=negocio.slug pk=producto.pk %}"
          class="w-7 h-7 rounded-full bg-white/90 backdrop-blur shadow flex items-center justify-center hover:bg-blue-100 transition-all"
          title="Editar">
         <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,7 +94,7 @@
                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
         </svg>
       </a>
-      <a href="{% url 'eliminar_producto' producto.pk %}"
+      <a href="{% url 'eliminar_producto' slug=negocio.slug pk=producto.pk %}"
          class="w-7 h-7 rounded-full bg-white/90 backdrop-blur shadow flex items-center justify-center hover:bg-red-100 transition-all"
          title="Eliminar">
         <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@
             </svg>
           </span>
           {% else %}
-          <a href="{% url 'carrito_agregar' producto.pk %}"
+          <a href="{% url 'carrito_agregar' slug=negocio.slug pk=producto.pk %}"
              class="p-1.5 bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all"
              title="Añadir al carrito">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,7 +176,7 @@
 <div class="mt-8 flex flex-col items-center justify-center py-16 gap-4 text-center">
   <span class="text-6xl opacity-30">📦</span>
   <p class="text-gray-500 text-lg">No hay productos todavía.</p>
-  <a href="{% url 'crear_producto' %}"
+  <a href="{% url 'crear_producto' slug=negocio.slug %}"
      class="mt-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg">
     Agregar el primero
   </a>
@@ -208,7 +208,7 @@
             </div>
             <div class="text-right flex-shrink-0">
               <p class="text-sm font-bold text-content-accent">${{ item.subtotal }}</p>
-              <a href="{% url 'carrito_quitar' item.producto.pk %}" class="text-xs text-red-400 hover:text-red-600 mt-1 inline-block">Quitar</a>
+              <a href="{% url 'carrito_quitar' slug=negocio.slug pk=item.producto.pk %}" class="text-xs text-red-400 hover:text-red-600 mt-1 inline-block">Quitar</a>
             </div>
           </div>
           {% endfor %}
@@ -222,10 +222,10 @@
         </div>
 
         <div class="flex flex-col gap-2">
-          <a href="{% url 'nueva_venta' %}" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-center rounded-xl font-semibold transition-all shadow-lg text-sm">
+          <a href="{% url 'nueva_venta' slug=negocio.slug %}" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-center rounded-xl font-semibold transition-all shadow-lg text-sm">
             Cobrar Orden
           </a>
-          <a href="{% url 'carrito_limpiar' %}" class="w-full py-2 bg-white hover:bg-red-50 text-content-muted hover:text-red-500 text-center rounded-xl font-medium transition-all text-sm border border-card-border hover:border-red-300">
+          <a href="{% url 'carrito_limpiar' slug=negocio.slug %}" class="w-full py-2 bg-white hover:bg-red-50 text-content-muted hover:text-red-500 text-center rounded-xl font-medium transition-all text-sm border border-card-border hover:border-red-300">
             Vaciar Carrito
           </a>
         </div>

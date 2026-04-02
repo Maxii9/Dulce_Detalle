@@ -6,7 +6,7 @@
 
 <!-- Breadcrumb -->
 <div class="flex items-center gap-2 text-sm text-content-label mb-6">
-  <a href="{% url 'lista_productos' %}" class="hover:text-emerald-400 transition-all">Productos</a>
+  <a href="{% url 'lista_productos' slug=negocio.slug %}" class="hover:text-emerald-400 transition-all">Productos</a>
   <span>/</span>
   <span class="text-content-value">Ventas</span>
 </div>
@@ -21,7 +21,7 @@
     <p class="text-content-subtitle mt-1">Revisá todas las ventas registradas de {{ negocio.nombre }}</p>
   </div>
   <div class="w-full sm:w-auto">
-    <a href="{% url 'nueva_venta' %}"
+    <a href="{% url 'nueva_venta' slug=negocio.slug %}"
        class="flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-emerald-900/40 border border-emerald-500/50 w-full sm:w-auto">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -82,13 +82,13 @@
       Filtrar
     </button>
     {% if filtro_fecha or filtro_metodo or filtro_tipo %}
-    <a href="{% url 'lista_ventas' %}" class="text-content-label hover:text-content-value px-3 py-2 text-sm font-medium transition-colors">Limpiar</a>
+    <a href="{% url 'lista_ventas' slug=negocio.slug %}" class="text-content-label hover:text-content-value px-3 py-2 text-sm font-medium transition-colors">Limpiar</a>
     {% endif %}
   </div>
 </form>
 
 <!-- Formulario masivo -->
-<form method="post" action="{% url 'ventas_bulk_eliminar' %}" id="bulkDeleteForm" onsubmit="return confirm('¿Seguro que deseas eliminar estas ventas de forma permanente?');">
+<form method="post" action="{% url 'ventas_bulk_eliminar' slug=negocio.slug %}" id="bulkDeleteForm" onsubmit="return confirm('¿Seguro que deseas eliminar estas ventas de forma permanente?');">
   {% csrf_token %}
   
   <div id="bulk-actions" class="mb-4 flex items-center justify-between" style="display: none;">
@@ -232,7 +232,7 @@ window.cambiarTipoVenta = async function(pk, tipoActual) {
 
     try {
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const res = await fetch(`/ventas/${pk}/cambiar-tipo/`, {
+        const res = await fetch(`/{% if negocio %}{{ negocio.slug }}{% else %}{{ slug }}{% endif %}/gestion/ventas/${pk}/cambiar-tipo/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

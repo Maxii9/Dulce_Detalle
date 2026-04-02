@@ -24,44 +24,62 @@ def tienda_requerida(view_func):
         return view_func(request, *args, **kwargs)
     return _wrapped_view
 
-def _contexto_base(request):
-    """Contexto compartido con datos del negocio activo para el usuario."""
+def _contexto_base(request, slug=None):
+    """
+    Contexto compartido con datos del negocio activo para el usuario.
+    Si se provee slug, se prioriza ese negocio (verificando pertenencia).
+    """
     if not request.user.is_authenticated:
         return None, []
     
     if request.user.is_superuser:
-        # Superusers can see and switch to any store in the system
+        # Superusuarios ven todo
         negocios = list(Negocio.objects.all())
     else:
-        # Regular users only see their own stores
+        # Usuarios normales ven sus tiendas
         negocios = list(request.user.negocios.all())
         
-    negocio_slug = request.session.get('negocio_slug')
     negocio = None
-    if negocio_slug:
-        negocio = next((n for n in negocios if n.slug == negocio_slug), None)
-    if not negocio and negocios:
-        negocio = negocios[0]
-        request.session['negocio_slug'] = negocio.slug
+    if slug:
+        negocio = next((n for n in negocios if n.slug == slug), None)
+        if negocio:
+            request.session['negocio_slug'] = negocio.slug
+
+    if not negocio:
+        negocio_slug = request.session.get('negocio_slug')
+        if negocio_slug:
+            negocio = next((n for n in negocios if n.slug == negocio_slug), None)
+        if not negocio and negocios:
+            negocio = negocios[0]
+            request.session['negocio_slug'] = negocio.slug
+            
     return negocio, negocios
 
 
 @tienda_requerida
 def inicio(request):
-    return redirect('lista_productos')
+    negocio, negocios = _contexto_base(request)
+    if negocio:
+        return redirect('lista_productos', slug=negocio.slug)
+    return redirect('crear_tienda_inicial')
 
 
 @tienda_requerida
 def cambiar_negocio(request, slug):
-    """Guarda el negocio activo en la sesión."""
+    """Guarda el negocio activo en la sesión y redirige a su gestión."""
     negocio = get_object_or_404(services.Negocio, slug=slug)
+    # Verificar que el usuario tenga permiso sobre este negocio
+    if not request.user.is_superuser and negocio.propietario != request.user:
+        messages.error(request, 'No tienes permiso para acceder a este negocio.')
+        return redirect('inicio')
+        
     request.session['negocio_slug'] = negocio.slug
-    return redirect('lista_productos')
+    return redirect('lista_productos', slug=slug)
 
 
 @tienda_requerida
-def lista_productos(request):
-    negocio, negocios = _contexto_base(request)
+def lista_productos(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
         return render(request, 'productos/sin_negocio.html', {'negocios': negocios})
     productos = services.get_productos(negocio.slug)
@@ -102,10 +120,10 @@ def lista_productos(request):
 
 
 @tienda_requerida
-def crear_producto(request):
-    negocio, negocios = _contexto_base(request)
+def crear_producto(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
 
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
@@ -135,7 +153,7 @@ def crear_producto(request):
                         tipo=tipo[:50],
                     )
                     messages.success(request, f'Producto "{nombre}" creado exitosamente.')
-                    return redirect('lista_productos')
+                    return redirect('lista_productos', slug=slug)
             except ValueError:
                 messages.error(request, 'Los valores numéricos ingresados no son válidos.')
         else:
@@ -151,8 +169,8 @@ def crear_producto(request):
 
 
 @tienda_requerida
-def editar_producto(request, pk):
-    negocio, negocios = _contexto_base(request)
+def editar_producto(request, slug, pk):
+    negocio, negocios = _contexto_base(request, slug)
     producto = get_object_or_404(services.Producto, pk=pk)
 
     if request.method == 'POST':
@@ -183,7 +201,7 @@ def editar_producto(request, pk):
                         tipo=tipo[:50],
                     )
                     messages.success(request, f'Producto "{nombre}" actualizado.')
-                    return redirect('lista_productos')
+                    return redirect('lista_productos', slug=slug)
             except ValueError:
                 messages.error(request, 'Los valores numéricos ingresados no son válidos.')
         else:
@@ -199,15 +217,15 @@ def editar_producto(request, pk):
 
 
 @tienda_requerida
-def eliminar_producto(request, pk):
-    negocio, negocios = _contexto_base(request)
+def eliminar_producto(request, slug, pk):
+    negocio, negocios = _contexto_base(request, slug)
     producto = get_object_or_404(services.Producto, pk=pk)
 
     if request.method == 'POST':
         nombre = producto.nombre
         services.eliminar_producto(pk)
         messages.success(request, f'Producto "{nombre}" eliminado.')
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
 
     return render(request, 'productos/confirmar_eliminar.html', {
         'negocio': negocio,
@@ -219,37 +237,37 @@ def eliminar_producto(request, pk):
 # ── Carrito ────────────────────────────────────────────────────────────────
 
 @tienda_requerida
-def carrito_agregar(request, pk):
+def carrito_agregar(request, slug, pk):
     """Agrega un producto al carrito solo si hay stock disponible."""
-    producto = get_object_or_404(services.Producto, pk=pk)
+    producto = get_object_or_404(services.Producto, pk=pk, negocio__slug=slug)
     carrito = request.session.get('carrito', {})
     cantidad_actual = carrito.get(str(pk), 0)
     if cantidad_actual >= producto.stock:
         messages.warning(request, f'Stock máximo alcanzado para "{producto.nombre}" ({producto.stock} disp.).')
     else:
         services.carrito_agregar(request.session, pk)
-    return redirect('lista_productos')
+    return redirect('lista_productos', slug=slug)
 
 
 @tienda_requerida
-def carrito_quitar(request, pk):
+def carrito_quitar(request, slug, pk):
     """Quita un producto del carrito y vuelve a la página anterior."""
     services.carrito_quitar(request.session, pk)
     referer = request.META.get('HTTP_REFERER')
     if referer:
         return redirect(referer)
-    return redirect('nueva_venta')
+    return redirect('nueva_venta', slug=slug)
 
 
 @tienda_requerida
-def carrito_limpiar(request):
+def carrito_limpiar(request, slug):
     """Vacía el carrito."""
     services.carrito_limpiar(request.session)
-    return redirect('lista_productos')
+    return redirect('lista_productos', slug=slug)
 
 
 @tienda_requerida
-def carrito_libre_agregar_view(request):
+def carrito_libre_agregar_view(request, slug):
     """Agrega un producto no registrado al carrito."""
     if request.method == 'POST':
         nombre = request.POST.get('nombre_libre', '').strip()
@@ -276,23 +294,23 @@ def carrito_libre_agregar_view(request):
         except ValueError:
             messages.error(request, 'Asegúrate de ingresar números válidos en precio, costo y cantidad.')
             
-    return redirect('nueva_venta')
+    return redirect('nueva_venta', slug=slug)
 
 
 @tienda_requerida
-def carrito_libre_quitar_view(request, id_libre):
+def carrito_libre_quitar_view(request, slug, id_libre):
     """Quita un producto libre del carrito."""
     services.carrito_libre_quitar(request.session, id_libre)
-    return redirect('nueva_venta')
+    return redirect('nueva_venta', slug=slug)
 
 
 # ── Ventas ─────────────────────────────────────────────────────────────────
 
 @tienda_requerida
-def lista_ventas(request):
-    negocio, negocios = _contexto_base(request)
+def lista_ventas(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
     ventas = services.get_ventas(negocio.slug)
 
     # Filtros
@@ -319,10 +337,10 @@ def lista_ventas(request):
 
 
 @tienda_requerida
-def nueva_venta(request):
-    negocio, negocios = _contexto_base(request)
+def nueva_venta(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
 
     carrito_items = services.get_carrito_detalle(request.session)
     total = services.carrito_total(request.session)
@@ -330,7 +348,7 @@ def nueva_venta(request):
     if request.method == 'POST':
         if not carrito_items:
             messages.error(request, 'El carrito está vacío.')
-            return redirect('lista_productos')
+            return redirect('lista_productos', slug=slug)
 
         fecha = request.POST.get('fecha', str(timezone.localdate()))
         tipo = request.POST.get('tipo', 'pagada')
@@ -347,7 +365,7 @@ def nueva_venta(request):
         )
         services.carrito_limpiar(request.session)
         messages.success(request, f'Venta #{venta.pk} registrada por ${venta.total}.')
-        return redirect('lista_ventas')
+        return redirect('lista_ventas', slug=slug)
 
     return render(request, 'ventas/crear.html', {
         'negocio': negocio,
@@ -360,17 +378,17 @@ def nueva_venta(request):
 
 
 @tienda_requerida
-def ventas_bulk_eliminar(request):
+def ventas_bulk_eliminar(request, slug):
     """Elimina las ventas seleccionadas y restaura el stock asociado."""
     if request.method == 'POST':
-        negocio, _ = _contexto_base(request)
+        negocio, _ = _contexto_base(request, slug)
         if not negocio:
-            return redirect('lista_productos')
+            return redirect('lista_productos', slug=slug)
             
         venta_ids = request.POST.getlist('venta_ids')
         if not venta_ids:
             messages.warning(request, 'No seleccionaste ninguna venta para eliminar.')
-            return redirect('lista_ventas')
+            return redirect('lista_ventas', slug=slug)
             
         try:
             ids_enteros = [int(vid) for vid in venta_ids]
@@ -386,10 +404,10 @@ def ventas_bulk_eliminar(request):
 
 
 @tienda_requerida
-def estadisticas_ventas(request):
-    negocio, negocios = _contexto_base(request)
+def estadisticas_ventas(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
 
     stats = services.get_resumen_estadisticas(negocio.slug)
 
@@ -404,10 +422,10 @@ def estadisticas_ventas(request):
 # ── Calculadora de Costos ──────────────────────────────────────────────────
 
 @tienda_requerida
-def calculadora_costos(request):
-    negocio, negocios = _contexto_base(request)
+def calculadora_costos(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
     
     insumos = services.get_insumos(negocio.slug)
     
@@ -420,10 +438,10 @@ def calculadora_costos(request):
 
 
 @tienda_requerida
-def crear_insumo(request):
-    negocio, negocios = _contexto_base(request)
+def crear_insumo(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('calculadora_costos')
+        return redirect('calculadora_costos', slug=slug)
 
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
@@ -440,7 +458,7 @@ def crear_insumo(request):
                         costo_unitario=c_val
                     )
                     messages.success(request, f'Insumo "{nombre}" creado exitosamente.')
-                    return redirect('calculadora_costos')
+                    return redirect('calculadora_costos', slug=slug)
             except ValueError:
                 messages.error(request, 'Costo unitario inválido.')
         else:
@@ -456,8 +474,8 @@ def crear_insumo(request):
 
 
 @tienda_requerida
-def editar_insumo(request, pk):
-    negocio, negocios = _contexto_base(request)
+def editar_insumo(request, slug, pk):
+    negocio, negocios = _contexto_base(request, slug)
     insumo = get_object_or_404(services.Insumo, pk=pk)
 
     if request.method == 'POST':
@@ -475,7 +493,7 @@ def editar_insumo(request, pk):
                         costo_unitario=c_val
                     )
                     messages.success(request, f'Insumo "{nombre}" actualizado.')
-                    return redirect('calculadora_costos')
+                    return redirect('calculadora_costos', slug=slug)
             except ValueError:
                 messages.error(request, 'Costo unitario inválido.')
         else:
@@ -491,15 +509,15 @@ def editar_insumo(request, pk):
 
 
 @tienda_requerida
-def eliminar_insumo(request, pk):
-    negocio, negocios = _contexto_base(request)
+def eliminar_insumo(request, slug, pk):
+    negocio, negocios = _contexto_base(request, slug)
     insumo = get_object_or_404(services.Insumo, pk=pk)
 
     if request.method == 'POST':
         nombre = insumo.nombre
         services.eliminar_insumo(pk)
         messages.success(request, f'Insumo "{nombre}" eliminado.')
-        return redirect('calculadora_costos')
+        return redirect('calculadora_costos', slug=slug)
 
     return render(request, 'calculadora/confirmar_eliminar_insumo.html', {
         'negocio': negocio,
@@ -523,7 +541,7 @@ def tienda_publica(request, slug):
     if tipo:
         productos = productos.filter(tipo=tipo)
 
-    tipos = negocio.categorias_producto.all()
+    tipos = services.Producto.TIPO_CHOICES
 
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
@@ -616,10 +634,10 @@ def exito_publico(request, slug, pedido_id):
 # ── Gestión de Pedidos (Administrador) ────────────────────────────────────
 
 @tienda_requerida
-def lista_pedidos(request):
-    negocio, negocios = _contexto_base(request)
+def lista_pedidos(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
     
     pedidos = services.get_pedidos(negocio.slug)
     pedidos_pendientes_count = services.get_pedidos_pendientes_count(negocio.slug)
@@ -633,39 +651,39 @@ def lista_pedidos(request):
     })
 
 @tienda_requerida
-def aceptar_pedido(request, pk):
-    _negocio, _negocios = _contexto_base(request)
+def aceptar_pedido(request, slug, pk):
+    _negocio, _negocios = _contexto_base(request, slug)
     if request.method == 'POST':
         if services.aceptar_pedido(pk):
             messages.success(request, 'Pedido aceptado y convertido en venta.')
         else:
             messages.error(request, 'No se pudo aceptar el pedido (tal vez ya no está pendiente).')
-    return redirect('lista_pedidos')
+    return redirect('lista_pedidos', slug=slug)
 
 @tienda_requerida
-def eliminar_pedido(request, pk):
-    _negocio, _negocios = _contexto_base(request)
+def eliminar_pedido(request, slug, pk):
+    _negocio, _negocios = _contexto_base(request, slug)
     if request.method == 'POST':
         if services.eliminar_pedido(pk):
             messages.success(request, 'Pedido eliminado/rechazado.')
         else:
             messages.error(request, 'No se encontró el pedido.')
-    return redirect('lista_pedidos')
+    return redirect('lista_pedidos', slug=slug)
 
 # ── Notas ──────────────────────────────────────────────────────────────────
 
 @tienda_requerida
-def lista_notas(request):
-    negocio, negocios = _contexto_base(request)
+def lista_notas(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     if negocio is None:
-        return redirect('lista_productos')
+        return redirect('lista_productos', slug=slug)
         
     if request.method == 'POST':
         texto = request.POST.get('texto', '').strip()[:1000]
         if texto:
             Nota.objects.create(negocio=negocio, texto=texto)
             messages.success(request, 'Nota agregada exitosamente.')
-        return redirect('lista_notas')
+        return redirect('lista_notas', slug=slug)
     notas = Nota.objects.filter(negocio=negocio)
     return render(request, 'notas/lista.html', {
         'negocio': negocio,
@@ -675,20 +693,20 @@ def lista_notas(request):
     })
 
 @tienda_requerida
-def eliminar_nota(request, pk):
-    negocio, _ = _contexto_base(request)
+def eliminar_nota(request, slug, pk):
+    negocio, _ = _contexto_base(request, slug)
     nota = get_object_or_404(Nota, pk=pk, negocio=negocio)
     if request.method == 'POST':
         nota.delete()
         messages.success(request, 'Nota eliminada.')
-    return redirect('lista_notas')
+    return redirect('lista_notas', slug=slug)
 
 
 @tienda_requerida
-def cambiar_tipo_venta(request, pk):
+def cambiar_tipo_venta(request, slug, pk):
     """Permite cambiar el tipo de venta (pagada/credito) vía AJAX."""
     if request.method == 'POST':
-        negocio, _ = _contexto_base(request)
+        negocio, _ = _contexto_base(request, slug)
         if negocio is None:
             return JsonResponse({'error': 'No autorizado'}, status=403)
             
@@ -803,8 +821,8 @@ def crear_tienda_inicial(request):
 # ── Configuración ─────────────────────────────────────────────────────────
 
 @tienda_requerida
-def configuracion_tienda(request):
-    negocio, negocios = _contexto_base(request)
+def configuracion_tienda(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()[:100]
@@ -816,7 +834,7 @@ def configuracion_tienda(request):
             negocio.emoji = emoji
             negocio.save()
             messages.success(request, 'Información de la tienda actualizada.')
-            return redirect('configuracion_tienda')
+            return redirect('configuracion_tienda', slug=slug)
         else:
             messages.error(request, 'El nombre no puede estar vacío.')
             
@@ -826,8 +844,8 @@ def configuracion_tienda(request):
     })
 
 @tienda_requerida
-def configuracion_categorias(request):
-    negocio, negocios = _contexto_base(request)
+def configuracion_categorias(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     categorias = negocio.categorias_producto.all()
     
     if request.method == 'POST':
@@ -847,7 +865,7 @@ def configuracion_categorias(request):
                 messages.success(request, 'Categoría eliminada.')
             except CategoriaProducto.DoesNotExist:
                 messages.error(request, 'Error al borrar la categoría (o no existe).')
-        return redirect('configuracion_categorias')
+        return redirect('configuracion_categorias', slug=slug)
 
     return render(request, 'config/categorias.html', {
         'negocio': negocio,
@@ -856,8 +874,8 @@ def configuracion_categorias(request):
     })
 
 @tienda_requerida
-def configuracion_usuarios(request):
-    negocio, negocios = _contexto_base(request)
+def configuracion_usuarios(request, slug):
+    negocio, negocios = _contexto_base(request, slug)
     users_list = []
     
     if request.user.is_superuser:
@@ -919,7 +937,7 @@ def configuracion_usuarios(request):
                         u_name = target_user.username
                         target_user.delete()
                         messages.success(request, f'Usuario @{u_name} y sus datos han sido eliminados.')
-                        return redirect('configuracion_usuarios')
+                        return redirect('configuracion_usuarios', slug=slug)
 
                 elif action == 'delete_negocio':
                     neg_id = request.POST.get('negocio_id')
@@ -930,7 +948,7 @@ def configuracion_usuarios(request):
                         messages.success(request, f'Tienda "{n_name}" eliminada correctamente.')
                     except Negocio.DoesNotExist:
                         messages.error(request, 'Tienda no encontrada.')
-                    return redirect('configuracion_usuarios')
+                    return redirect('configuracion_usuarios', slug=slug)
                         
             except User.DoesNotExist:
                 messages.error(request, 'Usuario no encontrado.')
