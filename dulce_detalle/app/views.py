@@ -558,15 +558,25 @@ def tienda_publica(request, slug):
     negocio = get_object_or_404(services.Negocio, slug=slug)
     # Solo mostrar productos con stock disponible
     productos = services.get_productos(slug).filter(stock__gt=0)
-    
+
     query = request.GET.get('q', '').strip()
     tipo = request.GET.get('tipo', '').strip()
+
     if query:
         productos = productos.filter(nombre__icontains=query)
     if tipo:
         productos = productos.filter(tipo=tipo)
 
-    tipos = services.Producto.TIPO_CHOICES
+    # Solo mostrar los tipos que tienen al menos 1 producto con stock
+    tipos_con_stock = (
+        services.get_productos(slug)
+        .filter(stock__gt=0)
+        .values_list('tipo', flat=True)
+        .distinct()
+    )
+    todos_tipos = dict(services.Producto.TIPO_CHOICES)
+    tipos = [(v, todos_tipos[v]) for v in tipos_con_stock if v in todos_tipos]
+    tipos.sort(key=lambda x: x[1])  # ordenar alfabéticamente por etiqueta
 
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
