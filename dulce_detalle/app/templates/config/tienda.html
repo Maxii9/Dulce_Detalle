@@ -5,23 +5,142 @@
   <h1 class="text-2xl font-bold text-content-title mb-6 flex items-center gap-2">
     <span>⚙️</span> Información del Negocio
   </h1>
-  <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6">
+  <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6 space-y-8">
     <form method="post" class="space-y-5">
       {% csrf_token %}
       <div>
         <label class="block text-sm font-bold text-content-subtitle mb-2">Nombre público <span class="text-red-500">*</span></label>
-        <input type="text" name="nombre" value="{{ negocio.nombre }}" required maxlength="100" class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">
+        <input type="text" name="nombre" value="{{ negocio.nombre }}" required maxlength="100"
+          class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">
       </div>
       <div>
         <label class="block text-sm font-bold text-content-subtitle mb-2">Emoji de la tienda</label>
-        <input type="text" name="emoji" value="{{ negocio.emoji }}" maxlength="10" class="w-full sm:w-20 text-2xl border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus text-center">
+        <input type="text" name="emoji" value="{{ negocio.emoji }}" maxlength="10"
+          class="w-full sm:w-20 text-2xl border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus text-center">
       </div>
       <div>
         <label class="block text-sm font-bold text-content-subtitle mb-2">Descripción (Opcional)</label>
-        <textarea name="descripcion" rows="3" maxlength="500" class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">{{ negocio.descripcion }}</textarea>
+        <textarea name="descripcion" rows="3" maxlength="500"
+          class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">{{ negocio.descripcion }}</textarea>
       </div>
-      <button type="submit" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Guardar Cambios</button>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- PALETA DE COLORES                                       -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div class="border-t border-card-border pt-5">
+        <h2 class="text-base font-bold text-content-title mb-1">🎨 Paleta de colores</h2>
+        <p class="text-xs text-content-subtitle mb-4">Personalizá los colores de tu tienda. Los cambios se aplican en el panel y en tu tienda pública.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Color Primario</label>
+            <div class="flex items-center gap-3">
+              <input type="color" name="color_primario" id="color_primario"
+                value="{{ negocio.color_primario }}"
+                class="w-12 h-12 rounded-xl border border-input-border cursor-pointer p-1">
+              <div>
+                <input type="text" id="color_primario_hex" value="{{ negocio.color_primario }}"
+                  maxlength="7" placeholder="#ec4899"
+                  class="border border-input-border rounded-lg px-3 py-2 text-sm w-28 text-input-text focus:outline-none focus:ring-1 focus:ring-input-focus font-mono">
+                <p class="text-xs text-content-subtitle mt-1">Principal (sidebar, botones)</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Color Secundario</label>
+            <div class="flex items-center gap-3">
+              <input type="color" name="color_secundario" id="color_secundario"
+                value="{{ negocio.color_secundario }}"
+                class="w-12 h-12 rounded-xl border border-input-border cursor-pointer p-1">
+              <div>
+                <input type="text" id="color_secundario_hex" value="{{ negocio.color_secundario }}"
+                  maxlength="7" placeholder="#be185d"
+                  class="border border-input-border rounded-lg px-3 py-2 text-sm w-28 text-input-text focus:outline-none focus:ring-1 focus:ring-input-focus font-mono">
+                <p class="text-xs text-content-subtitle mt-1">Acento (textos activos)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Vista Previa -->
+        <div class="mt-5 p-4 rounded-xl border border-card-border bg-gray-50">
+          <p class="text-xs text-content-subtitle mb-3 font-semibold uppercase tracking-wider">Vista previa</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <span id="preview_badge"
+              style="background-color: {{ negocio.color_primario }}; color: white;"
+              class="px-4 py-2 rounded-full text-sm font-bold transition-all">Botón principal</span>
+            <span id="preview_text"
+              style="color: {{ negocio.color_secundario }};"
+              class="text-sm font-semibold">Texto acento</span>
+            <span id="preview_outline"
+              style="border: 2px solid {{ negocio.color_primario }}; color: {{ negocio.color_primario }};"
+              class="px-4 py-2 rounded-full text-sm font-bold bg-white">Outlined</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit"
+        class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+        Guardar Cambios
+      </button>
     </form>
   </div>
 </div>
+
+<script>
+  // Sincroniza input[type=color] <-> input[type=text]
+  function syncColor(colorInputId, hexInputId, previewIds) {
+    const colorInput = document.getElementById(colorInputId);
+    const hexInput = document.getElementById(hexInputId);
+
+    colorInput.addEventListener('input', function () {
+      hexInput.value = this.value;
+      updatePreviews(this.value, previewIds);
+    });
+
+    hexInput.addEventListener('input', function () {
+      if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+        colorInput.value = this.value;
+        updatePreviews(this.value, previewIds);
+      }
+    });
+  }
+
+  function updatePreviews(color, type) {
+    const badge = document.getElementById('preview_badge');
+    const text = document.getElementById('preview_text');
+    const outline = document.getElementById('preview_outline');
+    if (type === 'primary') {
+      badge.style.backgroundColor = color;
+      outline.style.borderColor = color;
+      outline.style.color = color;
+    } else {
+      text.style.color = color;
+    }
+  }
+
+  const colorP = document.getElementById('color_primario');
+  const hexP = document.getElementById('color_primario_hex');
+  colorP.addEventListener('input', function () {
+    hexP.value = this.value;
+    updatePreviews(this.value, 'primary');
+  });
+  hexP.addEventListener('input', function () {
+    if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+      colorP.value = this.value;
+      updatePreviews(this.value, 'primary');
+    }
+  });
+
+  const colorS = document.getElementById('color_secundario');
+  const hexS = document.getElementById('color_secundario_hex');
+  colorS.addEventListener('input', function () {
+    hexS.value = this.value;
+    updatePreviews(this.value, 'secondary');
+  });
+  hexS.addEventListener('input', function () {
+    if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+      colorS.value = this.value;
+      updatePreviews(this.value, 'secondary');
+    }
+  });
+</script>
 {% endblock %}

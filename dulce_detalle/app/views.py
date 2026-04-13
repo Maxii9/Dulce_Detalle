@@ -8,8 +8,33 @@ from .models import Nota
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django import forms
 from app.models import Negocio, CategoriaProducto
 import functools
+
+
+class RegistroConEmailForm(UserCreationForm):
+    email = forms.EmailField(
+        required=True,
+        label='Correo electrónico',
+        widget=forms.EmailInput(attrs={'placeholder': 'tu@email.com'})
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password1', 'password2')
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        if commit:
+            user.save()
+        return user
 
 def tienda_requerida(view_func):
     @functools.wraps(view_func)
@@ -755,7 +780,7 @@ def user_register(request):
         return redirect('inicio')
         
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = RegistroConEmailForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
@@ -768,7 +793,7 @@ def user_register(request):
             for error in form.non_field_errors():
                 messages.error(request, error)
     else:
-        form = UserCreationForm()
+        form = RegistroConEmailForm()
         
     return render(request, 'auth/registro.html', {'form': form})
 
@@ -780,6 +805,27 @@ def user_logout(request):
     messages.info(request, 'Sesión terminada.')
     return redirect('login')
 
+
+def password_reset_request(request):
+    """Vista personalizada de solicitud de recuperación de contraseña."""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        users = User.objects.filter(email__iexact=email)
+        if users.exists():
+            for user in users:
+                subject = 'Recuperación de contraseña — Mi Tienda'
+                email_body = render_to_string('auth/password_reset_email.html', {
+                    'user': user,
+                    'domain': request.get_host(),
+                    'protocol': 'https' if request.is_secure() else 'http',
+                    'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+                    'token': default_token_generator.make_token(user),
+                })
+                send_mail(subject, email_body, None, [user.email], fail_silently=False)
+        # Siempre redirigir (no revelar si el email existe)
+        return redirect('password_reset_done')
+    return render(request, 'auth/password_reset.html')
+
 @login_required
 def crear_tienda_inicial(request):
     """Vista de onboarding obligatorio si el usuario no tiene tiendas."""
@@ -790,8 +836,11 @@ def crear_tienda_inicial(request):
         nombre = request.POST.get('nombre', '').strip()[:100]
         if nombre:
             import re
-            slug = re.sub(r'[^a-z0-9]', '', nombre.lower())
-            base_slug = slug
+            slug = re.sub(r'[^a-z0-9]', '-', nombre.lower()).strip('-')
+            if not slug:
+                slug = 'tienda'
+            base_slug = slug[:15]
+            slug = base_slug
             counter = 1
             while Negocio.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
@@ -818,6 +867,58 @@ def crear_tienda_inicial(request):
     return render(request, 'auth/crear_tienda.html')
 
 
+@login_required
+def crear_tienda_adicional(request):
+    """Permite al usuario crear una segunda tienda (máximo 2 por usuario)."""
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    num_tiendas = request.user.negocios.count()
+    if num_tiendas >= 2 and not request.user.is_superuser:
+        messages.error(request, 'Solo podés tener un máximo de 2 tiendas por cuenta.')
+        return redirect('inicio')
+
+    if not request.user.negocios.exists():
+        return redirect('crear_tienda_inicial')
+
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()[:100]
+        if nombre:
+            import re
+            slug = re.sub(r'[^a-z0-9]', '-', nombre.lower()).strip('-')
+            if not slug:
+                slug = 'tienda'
+            base_slug = slug[:15]
+            slug = base_slug
+            counter = 1
+            while Negocio.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            negocio = Negocio.objects.create(
+                nombre=nombre,
+                slug=slug,
+                propietario=request.user,
+                color_primario='#ec4899',
+                color_secundario='#be185d'
+            )
+            for t_code, t_name in [('accesorios', 'Accesorios'), ('papeleria', 'Papelería'), ('bazar', 'Bazar')]:
+                CategoriaProducto.objects.create(negocio=negocio, nombre=t_name)
+
+            messages.success(request, f'¡Tu segunda tienda "{nombre}" fue creada correctamente!')
+            request.session['negocio_slug'] = negocio.slug
+            return redirect('inicio')
+        else:
+            messages.error(request, 'Debes ingresar un nombre para tu tienda.')
+
+    primer_negocio = request.user.negocios.first()
+    return render(request, 'auth/crear_tienda_adicional.html', {
+        'negocio': primer_negocio,
+        'negocios': list(request.user.negocios.all()),
+    })
+
+
+
 # ── Configuración ─────────────────────────────────────────────────────────
 
 @tienda_requerida
@@ -828,10 +929,14 @@ def configuracion_tienda(request, slug):
         nombre = request.POST.get('nombre', '').strip()[:100]
         descripcion = request.POST.get('descripcion', '').strip()[:500]
         emoji = request.POST.get('emoji', '🛍️').strip()[:10]
+        color_primario = request.POST.get('color_primario', '#ec4899').strip()[:7]
+        color_secundario = request.POST.get('color_secundario', '#be185d').strip()[:7]
         if nombre:
             negocio.nombre = nombre
             negocio.descripcion = descripcion
             negocio.emoji = emoji
+            negocio.color_primario = color_primario
+            negocio.color_secundario = color_secundario
             negocio.save()
             messages.success(request, 'Información de la tienda actualizada.')
             return redirect('configuracion_tienda', slug=slug)

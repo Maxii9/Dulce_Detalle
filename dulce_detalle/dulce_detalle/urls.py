@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth import views as auth_views
 from app import views
 
 urlpatterns = [
@@ -13,8 +14,18 @@ urlpatterns = [
     path('registro/', views.user_register, name='registro'),
     path('logout/', views.user_logout, name='logout'),
     path('onboarding/', views.crear_tienda_inicial, name='crear_tienda_inicial'),
+    path('nueva-tienda/', views.crear_tienda_adicional, name='crear_tienda_adicional'),
     path('cambiar-tienda/<str:slug>/', views.cambiar_negocio, name='cambiar_negocio'),
     path('mis-productos/', views.inicio, name='lista_productos_global'),
+
+    # ── Recuperación de Contraseña ──
+    path('password-reset/', views.password_reset_request, name='password_reset'),
+    path('password-reset/enviado/', auth_views.PasswordResetDoneView.as_view(
+        template_name='auth/password_reset_done.html'), name='password_reset_done'),
+    path('password-reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='auth/password_reset_confirm.html'), name='password_reset_confirm'),
+    path('password-reset/completado/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='auth/password_reset_complete.html'), name='password_reset_complete'),
 
     # ── Gestión del Negocio (Dueño) ──
     path('<str:slug>/gestion/', include([
