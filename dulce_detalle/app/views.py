@@ -821,8 +821,14 @@ def password_reset_request(request):
                     'uid': urlsafe_base64_encode(force_bytes(user.pk)),
                     'token': default_token_generator.make_token(user),
                 })
-                send_mail(subject, email_body, None, [user.email], fail_silently=False)
-        # Siempre redirigir (no revelar si el email existe)
+                try:
+                    send_mail(subject, email_body, None, [user.email], fail_silently=False)
+                except Exception as e:
+                    # Loguear el error sin exponer al usuario ni bloquear el worker
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Error enviando email de recuperación a {user.email}: {e}')
+        # Siempre redirigir (no revelar si el email existe ni si hubo error)
         return redirect('password_reset_done')
     return render(request, 'auth/password_reset.html')
 
