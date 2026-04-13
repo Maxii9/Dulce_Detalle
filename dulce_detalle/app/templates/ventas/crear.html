@@ -203,21 +203,21 @@
         <h3 class="text-xl font-bold text-content-title flex items-center gap-2">
           <span>🛒</span> Resumen de la orden
         </h3>
-        <span class="bg-pink-100 text-pink-600 text-xs font-bold px-2.5 py-1 rounded-full">{{ carrito_count }} items</span>
+        <span class="bg-nav-active-bg text-nav-active-text text-xs font-bold px-2.5 py-1 rounded-full">{{ carrito_count }} items</span>
       </div>
       
       <div class="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
         {% if carrito_items %}
           <div class="space-y-3 mb-4">
             {% for item in carrito_items %}
-            <div class="flex gap-3 items-start p-3 bg-pink-50 rounded-xl border border-card-border hover:border-pink-300 transition-all">
+            <div class="flex gap-3 items-start p-3 bg-card-bg-alt rounded-xl border border-card-border hover:border-sidebar-text transition-all">
               <div class="w-12 h-12 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-card-border flex items-center justify-center">
                 {% if item.es_libre %}
-                  <span class="text-xl text-pink-400">✨</span>
+                  <span class="text-xl text-sidebar-text">✨</span>
                 {% elif item.producto.imagen %}
                   <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}" class="w-full h-full object-cover">
                 {% else %}
-                  <span class="text-xl text-pink-300">📦</span>
+                  <span class="text-xl text-content-subtitle">📦</span>
                 {% endif %}
               </div>
               <div class="flex-1 min-w-0">

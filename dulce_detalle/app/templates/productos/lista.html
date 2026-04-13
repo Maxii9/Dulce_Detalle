@@ -194,12 +194,12 @@
       {% if carrito_items %}
         <div class="space-y-3 mb-6 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
           {% for item in carrito_items %}
-          <div class="flex gap-3 items-start p-3 bg-pink-50 rounded-xl border border-card-border">
+          <div class="flex gap-3 items-start p-3 bg-card-bg-alt rounded-xl border border-card-border">
             <div class="w-12 h-12 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-card-border">
               {% if item.producto.imagen %}
                 <img src="{{ item.producto.imagen.url }}" class="w-full h-full object-cover">
               {% else %}
-                <div class="w-full h-full flex items-center justify-center text-pink-300 text-xs">📦</div>
+                <div class="w-full h-full flex items-center justify-center text-content-subtitle text-xs">📦</div>
               {% endif %}
             </div>
             <div class="flex-1 min-w-0">

@@ -62,7 +62,7 @@
     <div class="flex gap-2">
       <button type="submit" name="tipo" value=""
         class="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-semibold border transition-all
-          {% if not filtro_tipo %}bg-pink-500 text-white border-pink-500{% else %}bg-input-bg text-input-text border-input-border hover:border-pink-400{% endif %}">
+          {% if not filtro_tipo %}bg-sidebar-text text-white border-sidebar-text{% else %}bg-input-bg text-input-text border-input-border hover:border-sidebar-text{% endif %}">
         Todos
       </button>
       <button type="submit" name="tipo" value="pagada"
@@ -78,7 +78,7 @@
     </div>
   </div>
   <div class="flex items-center gap-2 w-full sm:w-auto">
-    <button type="submit" class="flex-1 sm:flex-none bg-pink-500 hover:bg-pink-400 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+    <button type="submit" class="flex-1 sm:flex-none bg-sidebar-text hover:opacity-80 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
       Filtrar
     </button>
     {% if filtro_fecha or filtro_metodo or filtro_tipo %}
@@ -165,13 +165,13 @@
               {% for item in venta.items.all %}
               <div class="flex items-center justify-between bg-card-item-bg p-3 rounded-xl border border-card-item-border">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center border border-card-border overflow-hidden">
+                  <div class="w-10 h-10 rounded-lg bg-card-bg-alt flex items-center justify-center border border-card-border overflow-hidden">
                     {% if not item.producto %}
-                      <span class="text-pink-400">✨</span>
+                      <span class="text-sidebar-text">✨</span>
                     {% elif item.producto.imagen %}
                       <img src="{{ item.producto.imagen.url }}" class="w-full h-full object-cover">
                     {% else %}
-                      <span class="text-pink-300">🛒</span>
+                      <span class="text-content-subtitle">🛒</span>
                     {% endif %}
                   </div>
                   <div>
