@@ -123,7 +123,7 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'static'
 
 # serving static files with WhiteNoise
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# (Se configura abajo en STORAGES para Django 5+)
 
 # Media files (uploads)
 MEDIA_URL = '/media/'
@@ -142,11 +142,17 @@ _cloudinary_configured = all([
     os.environ.get('CLOUDINARY_API_KEY'),
     os.environ.get('CLOUDINARY_API_SECRET'),
 ])
-DEFAULT_FILE_STORAGE = (
-    'cloudinary_storage.storage.MediaCloudinaryStorage'
-    if _cloudinary_configured
-    else 'django.core.files.storage.FileSystemStorage'
-)
+# Variables removidas en Django 5.1, ahora se usa el bloque STORAGES:
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage" 
+                   if _cloudinary_configured 
+                   else "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
