@@ -44,11 +44,11 @@ def get_producto(pk: int) -> Producto | None:
         return None
 
 
-def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, tipo: str = 'otros') -> Producto:
+def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None) -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
     return Producto.objects.create(
         negocio=negocio,
-        tipo=tipo,
+        categoria_id=categoria_id,
         nombre=nombre,
         precio=precio,
         costo=costo,
@@ -58,12 +58,12 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
     )
 
 
-def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, tipo: str = 'otros') -> Producto | None:
+def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None) -> Producto | None:
     """Actualiza un producto existente. Retorna el producto actualizado o None."""
     producto = get_producto(pk)
     if producto is None:
         return None
-    producto.tipo = tipo
+    producto.categoria_id = categoria_id
     producto.nombre = nombre
     producto.precio = precio
     producto.costo = costo
@@ -398,6 +398,7 @@ def crear_pedido_cliente(negocio: Negocio, nombre: str, telefono: str, direccion
         ItemPedido.objects.create(
             pedido=pedido,
             producto=item['producto'],
+            nombre_producto=item['producto'].nombre,
             cantidad=item['cantidad'],
             precio_unitario=item['producto'].precio
         )

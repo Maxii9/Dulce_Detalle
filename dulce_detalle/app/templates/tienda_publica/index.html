@@ -37,9 +37,9 @@
       🛍️ Todos
     </a>
     {% for valor, etiqueta in tipos %}
-    <a href="?tipo={{ valor }}{% if query %}&q={{ query }}{% endif %}"
+    <a href="?categoria={{ valor|stringformat:'s' }}{% if query %}&q={{ query }}{% endif %}"
        class="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all
-              {% if tipo_activo == valor %}bg-gray-900 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+              {% if tipo_activo == valor|stringformat:'s' %}bg-gray-900 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
       {{ etiqueta }}
     </a>
     {% endfor %}
@@ -80,8 +80,8 @@
 
     <div class="p-4 flex flex-col flex-1">
       <!-- Badge de tipo/categoría -->
-      <span class="inline-block self-start px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 mb-1">
-        {{ producto.get_tipo_display }}
+      <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-700 tracking-wide mb-1">
+        {{ producto.categoria.nombre|default:"Sin categoría"|upper }}
       </span>
       <p class="text-xs text-gray-500 leading-snug line-clamp-2">{{ producto.nombre }}</p>
       <p class="text-lg font-extrabold text-gray-900 mt-auto">$ {{ producto.precio }}</p>

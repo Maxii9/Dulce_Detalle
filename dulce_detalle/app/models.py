@@ -37,18 +37,8 @@ class CategoriaProducto(models.Model):
 
 
 class Producto(models.Model):
-    TIPO_CHOICES = [
-        ('medias', 'Medias'),
-        ('accesorios', 'Accesorios'),
-        ('bazar', 'Bazar'),
-        ('maquillaje', 'Maquillaje'),
-        ('aromas', 'Aromas'),
-        ('papeleria', 'Papelería'),
-        ('unas', 'Uñas'),
-        ('otros', 'Otros'),
-    ]
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='productos')
-    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='otros')
+    categoria = models.ForeignKey(CategoriaProducto, on_delete=models.PROTECT, related_name='productos', null=True, blank=True)
     nombre = models.CharField(max_length=100)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     costo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -149,7 +139,8 @@ class Pedido(models.Model):
 
 class ItemPedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='items')
-    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='items_pedido')
+    producto = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True, related_name='items_pedido')
+    nombre_producto = models.CharField(max_length=150, null=True, blank=True)  # Guardar el nombre en caso de que el producto sea eliminado
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
@@ -158,7 +149,8 @@ class ItemPedido(models.Model):
         return self.cantidad * self.precio_unitario
 
     def __str__(self):
-        return f"{self.cantidad}x {self.producto.nombre}"
+        nombre = self.producto.nombre if self.producto else self.nombre_producto
+        return f"{self.cantidad}x {nombre}"
 
 class Nota(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='notas')

@@ -27,7 +27,7 @@
         {% for cat in categorias %}
         <li class="p-4 flex justify-between items-center hover:bg-card-row-hover transition-colors">
           <span class="font-semibold text-content-value">{{ cat.nombre }}</span>
-          <form method="post" onsubmit="return confirm('¿Seguro quieres borrar esto? Los productos preexistentes mantendrán el nombre de The tipo en texto plano, pero ya no aparecerá como opción para nuevos productos.')">
+          <form method="post" onsubmit="return confirm('¿Seguro quieres borrar este tipo? Si hay productos vinculados a este tipo, el sistema no te dejará eliminarlo. Debes eliminar o reasignar los productos primero.')">
             {% csrf_token %}
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="categoria_id" value="{{ cat.id }}">

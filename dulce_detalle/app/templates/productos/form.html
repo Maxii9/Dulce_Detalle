@@ -74,14 +74,14 @@
       <div>
         <label for="tipo" class="block text-sm font-semibold text-gray-300 mb-2">Categoría</label>
         <div class="relative">
-          <select name="tipo" id="tipo"
+          <select name="categoria_id" id="tipo"
                   class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
                          focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
                          transition-all appearance-none cursor-pointer">
             {% for cat in categorias %}
-              <option value="{{ cat.nombre }}" {% if producto.tipo == cat.nombre %}selected{% endif %}>{{ cat.nombre }}</option>
+              <option value="{{ cat.pk }}" {% if producto.categoria_id == cat.pk %}selected{% endif %}>{{ cat.nombre }}</option>
             {% empty %}
-              <option value="General" selected>General</option>
+              <option value="" selected>Sin categorías cargadas</option>
             {% endfor %}
           </select>
           <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">

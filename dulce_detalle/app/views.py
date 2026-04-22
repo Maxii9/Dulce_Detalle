@@ -110,11 +110,11 @@ def lista_productos(request, slug):
     productos = services.get_productos(negocio.slug)
     
     query = request.GET.get('q', '').strip()
-    tipo = request.GET.get('tipo', '').strip()
+    tipo = request.GET.get('categoria', '').strip()
     if query:
         productos = productos.filter(nombre__icontains=query)
     if tipo:
-        productos = productos.filter(tipo=tipo)
+        productos = productos.filter(categoria_id=tipo)
         
     carrito_items = services.get_carrito_detalle(request.session)
     total = services.carrito_total(request.session)
@@ -156,7 +156,7 @@ def crear_producto(request, slug):
         costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
-        tipo = request.POST.get('tipo', 'otros')
+        categoria_id = request.POST.get('categoria_id')
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
@@ -175,7 +175,7 @@ def crear_producto(request, slug):
                         descripcion=descripcion[:500],
                         stock=s_val,
                         imagen=imagen,
-                        tipo=tipo[:50],
+                        categoria_id=categoria_id,
                     )
                     messages.success(request, f'Producto "{nombre}" creado exitosamente.')
                     return redirect('lista_productos', slug=slug)
@@ -204,7 +204,7 @@ def editar_producto(request, slug, pk):
         costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
-        tipo = request.POST.get('tipo', 'otros')
+        categoria_id = request.POST.get('categoria_id')
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
@@ -223,7 +223,7 @@ def editar_producto(request, slug, pk):
                         descripcion=descripcion[:500],
                         stock=s_val,
                         imagen=imagen,
-                        tipo=tipo[:50],
+                        categoria_id=categoria_id,
                     )
                     messages.success(request, f'Producto "{nombre}" actualizado.')
                     return redirect('lista_productos', slug=slug)
@@ -560,24 +560,23 @@ def tienda_publica(request, slug):
     productos = services.get_productos(slug).filter(stock__gt=0)
 
     query = request.GET.get('q', '').strip()
-    tipo = request.GET.get('tipo', '').strip()
+    categoria_id = request.GET.get('categoria', '').strip()
 
     if query:
         productos = productos.filter(nombre__icontains=query)
-    if tipo:
-        productos = productos.filter(tipo=tipo)
+    if categoria_id:
+        productos = productos.filter(categoria_id=categoria_id)
 
     # Solo mostrar los tipos que tienen al menos 1 producto con stock
-    # Los tipos son texto libre (nombres de CategoriaProducto), no TIPO_CHOICES fijos
-    tipos_con_stock = (
+    categorias_con_stock_ids = (
         services.get_productos(slug)
         .filter(stock__gt=0)
-        .exclude(tipo='')
-        .values_list('tipo', flat=True)
+        .exclude(categoria__isnull=True)
+        .values_list('categoria_id', flat=True)
         .distinct()
-        .order_by('tipo')
     )
-    tipos = [(v, v) for v in tipos_con_stock if v]
+    from app.models import CategoriaProducto
+    tipos = [(cat.pk, cat.nombre) for cat in CategoriaProducto.objects.filter(pk__in=categorias_con_stock_ids).order_by('nombre')]
 
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
@@ -596,7 +595,7 @@ def tienda_publica(request, slug):
         'negocio': negocio,
         'productos_con_cant': productos_con_cant,
         'query': query,
-        'tipo_activo': tipo,
+        'tipo_activo': categoria_id,
         'tipos': tipos,
         'carrito_count': carrito_count,
         'top_vendidos': top_vendidos,
@@ -987,6 +986,8 @@ def configuracion_categorias(request, slug):
                 messages.success(request, 'Categoría eliminada.')
             except CategoriaProducto.DoesNotExist:
                 messages.error(request, 'Error al borrar la categoría (o no existe).')
+            except django.db.models.deletion.ProtectedError:
+                messages.error(request, 'No podés eliminar este tipo porque hay productos que lo están usando. Eliminá o reasigná los productos primero.')
         return redirect('configuracion_categorias', slug=slug)
 
     return render(request, 'config/categorias.html', {
