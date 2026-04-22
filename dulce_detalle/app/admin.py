@@ -10,10 +10,24 @@ from .models import (
 
 @admin.register(Negocio)
 class NegocioAdmin(admin.ModelAdmin):
-    list_display  = ('nombre', 'slug', 'propietario', 'pedidos_pendientes_count')
-    search_fields = ('nombre', 'slug', 'propietario__username')
-    list_filter   = ('propietario',)
-    readonly_fields = ('slug',)
+    list_display   = ('nombre', 'slug', 'propietario', 'pedidos_pendientes_count')
+    search_fields  = ('nombre', 'slug', 'propietario__username')
+    list_filter    = ('propietario',)
+    readonly_fields = ('slug',)  # El slug se genera automáticamente al guardar
+
+    def save_model(self, request, obj, form, change):
+        """Genera el slug desde el nombre si no tiene uno todavía."""
+        if not obj.slug:
+            import re
+            base = re.sub(r'[^a-z0-9]', '-', obj.nombre.lower()).strip('-') or 'tienda'
+            slug = base[:28]
+            counter = 1
+            from app.models import Negocio as N
+            while N.objects.filter(slug=slug).exclude(pk=obj.pk).exists():
+                slug = f"{base[:25]}-{counter}"
+                counter += 1
+            obj.slug = slug
+        super().save_model(request, obj, form, change)
 
 
 # ── Categorías ────────────────────────────────────────────────────────────
