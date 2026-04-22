@@ -17,6 +17,7 @@ from django import forms
 from app.models import Negocio, CategoriaProducto
 import functools
 import django
+from django.db import models as db_models
 
 
 class RegistroConEmailForm(UserCreationForm):
