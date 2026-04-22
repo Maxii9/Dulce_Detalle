@@ -101,7 +101,7 @@
           <div class="relative">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">$</span>
             <input type="number" name="precio" id="precio" required step="0.01" min="0"
-                   value="{{ producto.precio|default:'' }}"
+                   value="{{ producto.precio|unlocalize|default:'' }}"
                    placeholder="0.00"
                    class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-8 pr-4 py-3 text-white
                           placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500
@@ -114,7 +114,7 @@
           <div class="relative">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">$</span>
             <input type="number" name="costo" id="costo" step="0.01" min="0"
-                   value="{{ producto.costo|default:'0' }}"
+                   value="{{ producto.costo|unlocalize|default:'0' }}"
                    placeholder="0.00"
                    class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-8 pr-4 py-3 text-white
                           placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500
