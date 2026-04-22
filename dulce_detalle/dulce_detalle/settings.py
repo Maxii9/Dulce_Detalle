@@ -33,7 +33,16 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+_allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
+if _allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',')]
+else:
+    # En desarrollo sin var de entorno, permitir localhost
+    # En producción (DEBUG=False), Render inyecta RENDER_EXTERNAL_HOSTNAME
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    _render_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    if _render_hostname:
+        ALLOWED_HOSTS.append(_render_hostname)
 
 
 # Application definition
@@ -165,12 +174,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
+    # NO activar SECURE_SSL_REDIRECT: Render ya fuerza HTTPS en su proxy.
+    # Activarlo en Django causaría un loop de redirección (400 Bad Request).
     SECURE_HSTS_SECONDS = 31536000  # 1 año
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
-    # Render (y la mayoría de proxies) pasa el protocolo real en este header
+    # Render pasa el protocolo real en este header
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Email configuration (for password reset)
