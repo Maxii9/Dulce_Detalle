@@ -16,6 +16,7 @@ from django.utils.encoding import force_bytes
 from django import forms
 from app.models import Negocio, CategoriaProducto
 import functools
+import django
 
 
 class RegistroConEmailForm(UserCreationForm):
@@ -196,7 +197,7 @@ def crear_producto(request, slug):
 @tienda_requerida
 def editar_producto(request, slug, pk):
     negocio, negocios = _contexto_base(request, slug)
-    producto = get_object_or_404(services.Producto, pk=pk)
+    producto = get_object_or_404(services.Producto, pk=pk, negocio=negocio)
 
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
@@ -244,7 +245,7 @@ def editar_producto(request, slug, pk):
 @tienda_requerida
 def eliminar_producto(request, slug, pk):
     negocio, negocios = _contexto_base(request, slug)
-    producto = get_object_or_404(services.Producto, pk=pk)
+    producto = get_object_or_404(services.Producto, pk=pk, negocio=negocio)
 
     if request.method == 'POST':
         nombre = producto.nombre
@@ -687,9 +688,12 @@ def lista_pedidos(request, slug):
 
 @tienda_requerida
 def aceptar_pedido(request, slug, pk):
-    _negocio, _negocios = _contexto_base(request, slug)
+    negocio, _negocios = _contexto_base(request, slug)
+    if negocio is None:
+        return redirect('lista_pedidos', slug=slug)
     if request.method == 'POST':
-        if services.aceptar_pedido(pk):
+        pedido = get_object_or_404(services.Pedido, pk=pk, negocio=negocio)
+        if services.aceptar_pedido(pedido.pk):
             messages.success(request, 'Pedido aceptado y convertido en venta.')
         else:
             messages.error(request, 'No se pudo aceptar el pedido (tal vez ya no está pendiente).')
@@ -697,12 +701,13 @@ def aceptar_pedido(request, slug, pk):
 
 @tienda_requerida
 def eliminar_pedido(request, slug, pk):
-    _negocio, _negocios = _contexto_base(request, slug)
+    negocio, _negocios = _contexto_base(request, slug)
+    if negocio is None:
+        return redirect('lista_pedidos', slug=slug)
     if request.method == 'POST':
-        if services.eliminar_pedido(pk):
-            messages.success(request, 'Pedido eliminado/rechazado.')
-        else:
-            messages.error(request, 'No se encontró el pedido.')
+        pedido = get_object_or_404(services.Pedido, pk=pk, negocio=negocio)
+        pedido.delete()
+        messages.success(request, 'Pedido eliminado/rechazado.')
     return redirect('lista_pedidos', slug=slug)
 
 # ── Notas ──────────────────────────────────────────────────────────────────
