@@ -7,12 +7,9 @@ from app import views
 
 urlpatterns = [
     # ── Panel Admin de Django ──
-    # SEGURIDAD: La URL /admin/ es conocida por bots y scanners.
-    # Opciones para endurecerla antes de ir a producción masiva:
-    #   a) Cambiar la ruta: path('mi-panel-secreto/', admin.site.urls)
-    #   b) Bloquear por IP en Render (Environment > IP Allowlist)
-    #   c) Restringir con middleware que compruebe IP o header secreto
-    path('admin/', admin.site.urls),
+    # URL renombrada de /admin/ a /gestion-privada/ para reducir
+    # el riesgo de ataques automatizados de bots que escanean /admin/.
+    path('gestion-privada/', admin.site.urls),
     path('', views.inicio, name='inicio'),
     
     # ── Autenticación y Cuentas (Globales) ──
