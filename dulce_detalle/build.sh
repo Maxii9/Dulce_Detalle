@@ -7,20 +7,20 @@ pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate
 
-# Create or update superuser
+# Crea el superusuario SOLO si no existe todavía.
+# NUNCA sobreescribe la contraseña de un usuario existente.
 if [ "$DJANGO_SUPERUSER_USERNAME" ]; then
   python manage.py shell <<EOF
 from django.contrib.auth.models import User
 import os
 username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
 password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
-email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
-user, created = User.objects.get_or_create(username=username)
-user.email = email
-user.set_password(password)
-user.is_superuser = True
-user.is_staff = True
-user.save()
-print(f'Superuser {"created" if created else "updated"} successfully.')
+email    = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
+
+if not User.objects.filter(username=username).exists():
+    User.objects.create_superuser(username=username, email=email, password=password)
+    print(f'Superuser "{username}" creado correctamente.')
+else:
+    print(f'Superuser "{username}" ya existe — no se modifica la contraseña.')
 EOF
 fi
