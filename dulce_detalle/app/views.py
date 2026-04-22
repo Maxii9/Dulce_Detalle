@@ -280,10 +280,13 @@ def carrito_agregar(request, slug, pk):
 
 @tienda_requerida
 def carrito_quitar(request, slug, pk):
-    """Quita un producto del carrito y vuelve a la página anterior."""
+    """Quita un producto del carrito y redirige de forma segura."""
     services.carrito_quitar(request.session, pk)
-    referer = request.META.get('HTTP_REFERER')
-    if referer:
+    # Usamos el Referer solo si apunta a una URL dentro del mismo sitio
+    # (evita Open Redirect si el header fue manipulado externamente)
+    referer = request.META.get('HTTP_REFERER', '')
+    host = request.get_host()
+    if referer and (referer.startswith(f'https://{host}') or referer.startswith(f'http://{host}')):
         return redirect(referer)
     return redirect('nueva_venta', slug=slug)
 
@@ -408,27 +411,31 @@ def nueva_venta(request, slug):
 
 @tienda_requerida
 def ventas_bulk_eliminar(request, slug):
-    """Elimina las ventas seleccionadas y restaura el stock asociado."""
+    """Elimina ventas seleccionadas, solo las del negocio del usuario."""
     if request.method == 'POST':
         negocio, _ = _contexto_base(request, slug)
         if not negocio:
             return redirect('lista_productos', slug=slug)
-            
+
         venta_ids = request.POST.getlist('venta_ids')
         if not venta_ids:
             messages.warning(request, 'No seleccionaste ninguna venta para eliminar.')
             return redirect('lista_ventas', slug=slug)
-            
+
         try:
             ids_enteros = [int(vid) for vid in venta_ids]
-            count = services.eliminar_ventas(ids_enteros)
+            # Filtramos SOLO las ventas que pertenecen a este negocio
+            from app.models import Venta
+            ventas_a_eliminar = Venta.objects.filter(pk__in=ids_enteros, negocio=negocio)
+            count = ventas_a_eliminar.count()
+            ventas_a_eliminar.delete()
             if count > 0:
                 messages.success(request, f'Se eliminaron {count} venta(s) exitosamente.')
             else:
                 messages.warning(request, 'Las ventas indicadas no existen o ya fueron eliminadas.')
         except ValueError:
             messages.error(request, 'Error al procesar la solicitud.')
-            
+
     return redirect('lista_ventas', slug=slug)
 
 
@@ -505,7 +512,7 @@ def crear_insumo(request, slug):
 @tienda_requerida
 def editar_insumo(request, slug, pk):
     negocio, negocios = _contexto_base(request, slug)
-    insumo = get_object_or_404(services.Insumo, pk=pk)
+    insumo = get_object_or_404(services.Insumo, pk=pk, negocio=negocio)
 
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
@@ -540,7 +547,7 @@ def editar_insumo(request, slug, pk):
 @tienda_requerida
 def eliminar_insumo(request, slug, pk):
     negocio, negocios = _contexto_base(request, slug)
-    insumo = get_object_or_404(services.Insumo, pk=pk)
+    insumo = get_object_or_404(services.Insumo, pk=pk, negocio=negocio)
 
     if request.method == 'POST':
         nombre = insumo.nombre

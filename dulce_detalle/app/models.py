@@ -4,12 +4,8 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class Negocio(models.Model):
-    propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='negocios', null=True, blank=True)
-    TIPOS = [
-        ('bijouteria', 'Bijoutería'),
-        ('dulceria', 'Dulcería'),
-    ]
-    slug = models.CharField(max_length=20, unique=True, choices=TIPOS)
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='negocios')
+    slug = models.CharField(max_length=30, unique=True)  # Generado dinámicamente desde el nombre
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     color_primario = models.CharField(max_length=7, default='#6d28d9')
