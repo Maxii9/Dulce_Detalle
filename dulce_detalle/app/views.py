@@ -157,7 +157,8 @@ def crear_producto(request, slug):
         costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
-        categoria_id = request.POST.get('categoria_id')
+        categoria_id_raw = request.POST.get('categoria_id', '').strip()
+        categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
@@ -205,7 +206,8 @@ def editar_producto(request, slug, pk):
         costo = request.POST.get('costo', '0')
         descripcion = request.POST.get('descripcion', '').strip()
         stock = request.POST.get('stock', '0')
-        categoria_id = request.POST.get('categoria_id')
+        categoria_id_raw = request.POST.get('categoria_id', '').strip()
+        categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
         imagen = request.FILES.get('imagen')
         if nombre and precio:
             try:
