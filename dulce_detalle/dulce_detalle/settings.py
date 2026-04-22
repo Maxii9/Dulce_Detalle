@@ -170,6 +170,8 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
+    # Render (y la mayoría de proxies) pasa el protocolo real en este header
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Email configuration (for password reset)
 # Local: set EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend in .env
