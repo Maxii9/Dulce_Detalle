@@ -5,6 +5,14 @@ set -o errexit
 pip install -r requirements.txt
 
 python manage.py collectstatic --no-input
+
+# Limpia la BD si FLUSH_DB=true (solo usar una vez, luego quitar la variable)
+if [ "$FLUSH_DB" = "true" ]; then
+  echo "⚠️  FLUSH_DB=true — Borrando todos los datos..."
+  python manage.py flush --no-input
+  echo "✅ Base de datos limpiada."
+fi
+
 python manage.py migrate
 
 # Crea el superusuario SOLO si no existe todavía.
