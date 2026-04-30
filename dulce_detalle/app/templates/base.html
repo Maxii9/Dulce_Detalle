@@ -309,23 +309,49 @@
           {% endif %}
         </div>
 
-        <!-- Switcher de negocios -->
-        <div class="flex items-center gap-2 ml-auto">
-          <span class="text-xs text-footer-text uppercase tracking-wider mr-2 hidden sm:block">Cambiar de tienda:</span>
-          {% for n in negocios %}
-          <a href="{% url 'cambiar_negocio' n.slug %}"
-            class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all
-                    {% if negocio and negocio.slug == n.slug %}bg-switcher-active text-white{% else %}bg-switcher-inactive text-switcher-text-in hover:text-nav-hover-text{% endif %}">
-            {{ n.nombre }}
-          </a>
-          {% endfor %}
-          {% if request.user.is_authenticated and negocios|length < 2 and not request.user.is_superuser %}
-          <a href="{% url 'crear_tienda_adicional' %}"
-            title="Agregar segunda tienda"
-            class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all bg-white border border-dashed border-sidebar-border text-sidebar-text hover:bg-nav-hover-bg hover:border-switcher-active">
-            + Nueva
-          </a>
+        <!-- Botón Compartir Tienda + Switcher de negocios -->
+        <div class="flex items-center gap-3 ml-auto">
+
+          {% if negocio %}
+          <!-- Botón compartir -->
+          <div class="relative">
+            <button id="btn-compartir"
+              onclick="copiarLinkTienda()"
+              title="Copiar link de tu tienda para compartir con clientes"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all bg-switcher-active text-white hover:opacity-90 shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <span id="btn-compartir-texto">Compartir tienda</span>
+            </button>
+            <!-- Tooltip copiado -->
+            <div id="tooltip-copiado"
+              class="absolute right-0 top-9 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 whitespace-nowrap z-50">
+              ✅ ¡Link copiado!
+            </div>
+          </div>
           {% endif %}
+
+          <!-- Switcher de negocios -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-footer-text uppercase tracking-wider mr-1 hidden sm:block">Tienda:</span>
+            {% for n in negocios %}
+            <a href="{% url 'cambiar_negocio' n.slug %}"
+              class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all
+                      {% if negocio and negocio.slug == n.slug %}bg-switcher-active text-white{% else %}bg-switcher-inactive text-switcher-text-in hover:text-nav-hover-text{% endif %}">
+              {{ n.nombre }}
+            </a>
+            {% endfor %}
+            {% if request.user.is_authenticated and negocios|length < 2 and not request.user.is_superuser %}
+            <a href="{% url 'crear_tienda_adicional' %}"
+              title="Agregar segunda tienda"
+              class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all bg-white border border-dashed border-sidebar-border text-sidebar-text hover:bg-nav-hover-bg hover:border-switcher-active">
+              + Nueva
+            </a>
+            {% endif %}
+          </div>
+
         </div>
 
       </div>
@@ -383,6 +409,27 @@
                 overlay.classList.add('opacity-100');
             }, 10);
         }
+    }
+
+    function copiarLinkTienda() {
+      const linkTienda = '{{ request.scheme }}://{{ request.get_host }}{% url "tienda_publica" negocio.slug %}';
+      navigator.clipboard.writeText(linkTienda).then(() => {
+        const tooltip = document.getElementById('tooltip-copiado');
+        const texto   = document.getElementById('btn-compartir-texto');
+        // Mostrar feedback
+        tooltip.classList.remove('opacity-0');
+        tooltip.classList.add('opacity-100');
+        texto.textContent = '¡Copiado!';
+        // Ocultar después de 2 segundos
+        setTimeout(() => {
+          tooltip.classList.remove('opacity-100');
+          tooltip.classList.add('opacity-0');
+          texto.textContent = 'Compartir tienda';
+        }, 2000);
+      }).catch(() => {
+        // Fallback si clipboard no está disponible
+        prompt('Copiá este link para compartir tu tienda:', linkTienda);
+      });
     }
   </script>
 </body>
