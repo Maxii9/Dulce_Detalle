@@ -30,7 +30,11 @@ urlpatterns = [
     path('password-reset/completado/', auth_views.PasswordResetCompleteView.as_view(
         template_name='auth/password_reset_complete.html'), name='password_reset_complete'),
 
+    # ── Páginas Estáticas ──
+    path('privacidad/', views.politica_privacidad, name='politica_privacidad'),
+
     # ── Gestión del Negocio (Dueño) ──
+    path('<str:slug>/inactiva/', views.tienda_inactiva, name='tienda_inactiva'),
     path('<str:slug>/gestion/', include([
         path('', views.lista_productos, name='lista_productos'),
         

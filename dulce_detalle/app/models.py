@@ -11,6 +11,8 @@ class Negocio(models.Model):
     color_primario = models.CharField(max_length=7, default='#6d28d9')
     color_secundario = models.CharField(max_length=7, default='#7c3aed')
     emoji = models.CharField(max_length=5, default='🛍️')
+    activa = models.BooleanField(default=False, verbose_name='Tienda activa',
+                                 help_text='Activá la tienda una vez que el cliente realizó el pago.')
 
     def __str__(self):
         return self.nombre

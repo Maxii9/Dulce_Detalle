@@ -48,6 +48,12 @@ def tienda_requerida(view_func):
         if not request.user.negocios.exists():
             return redirect('crear_tienda_inicial')
             
+        # Verificar si la tienda está activa
+        slug = kwargs.get('slug')
+        negocio, _ = _contexto_base(request, slug)
+        if negocio and not negocio.activa and not request.user.is_superuser:
+            return redirect('tienda_inactiva', slug=negocio.slug)
+            
         return view_func(request, *args, **kwargs)
     return _wrapped_view
 
@@ -567,6 +573,11 @@ def eliminar_insumo(request, slug, pk):
 
 def tienda_publica(request, slug):
     negocio = get_object_or_404(services.Negocio, slug=slug)
+    
+    if not negocio.activa:
+        from django.http import Http404
+        raise Http404("Esta tienda no se encuentra activa en este momento.")
+
     # Solo mostrar productos con stock disponible
     productos = services.get_productos(slug).filter(stock__gt=0)
 
@@ -978,6 +989,19 @@ def configuracion_tienda(request, slug):
         'negocio': negocio,
         'negocios': negocios,
     })
+
+def tienda_inactiva(request, slug):
+    negocio = get_object_or_404(services.Negocio, slug=slug)
+    # Si de casualidad ya está activa, mandarlo a su panel
+    if negocio.activa:
+        return redirect('lista_productos', slug=slug)
+    
+    return render(request, 'config/tienda_inactiva.html', {
+        'negocio': negocio,
+    })
+
+def politica_privacidad(request):
+    return render(request, 'politica_privacidad.html')
 
 @tienda_requerida
 def configuracion_categorias(request, slug):

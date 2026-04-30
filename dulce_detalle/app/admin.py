@@ -10,9 +10,10 @@ from .models import (
 
 @admin.register(Negocio)
 class NegocioAdmin(admin.ModelAdmin):
-    list_display   = ('nombre', 'slug', 'propietario', 'pedidos_pendientes_count')
+    list_display   = ('nombre', 'slug', 'propietario', 'activa', 'pedidos_pendientes_count')
     search_fields  = ('nombre', 'slug', 'propietario__username')
-    list_filter    = ('propietario',)
+    list_filter    = ('activa', 'propietario',)
+    list_editable  = ('activa',)
     readonly_fields = ('slug',)  # El slug se genera automáticamente al guardar
 
     def save_model(self, request, obj, form, change):
