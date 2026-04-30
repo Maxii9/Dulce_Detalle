@@ -411,6 +411,7 @@
         }
     }
 
+    {% if negocio %}
     function copiarLinkTienda() {
       const linkTienda = '{{ request.scheme }}://{{ request.get_host }}{% url "tienda_publica" negocio.slug %}';
       navigator.clipboard.writeText(linkTienda).then(() => {
@@ -431,6 +432,7 @@
         prompt('Copiá este link para compartir tu tienda:', linkTienda);
       });
     }
+    {% endif %}
   </script>
 </body>
 </html>
