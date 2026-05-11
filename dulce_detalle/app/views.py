@@ -352,26 +352,32 @@ def lista_ventas(request, slug):
     ventas = services.get_ventas(negocio.slug)
 
     # Filtros
-    fecha  = request.GET.get('fecha', '')
-    metodo = request.GET.get('metodo', '')
-    tipo   = request.GET.get('tipo', '')
+    fecha     = request.GET.get('fecha', '')
+    metodo    = request.GET.get('metodo', '')
+    tipo      = request.GET.get('tipo', '')
+    movimiento = request.GET.get('movimiento', '')  # 'venta' | 'compra_stock' | ''
 
+    if movimiento:
+        ventas = ventas.filter(tipo_movimiento=movimiento)
     if fecha:
         ventas = ventas.filter(fecha=fecha)
     if metodo:
         ventas = ventas.filter(metodo_pago=metodo)
     if tipo:
-        ventas = ventas.filter(tipo=tipo)
+        # tipo (pagada/credito) solo aplica a ventas normales
+        ventas = ventas.filter(tipo=tipo, tipo_movimiento='venta')
 
     return render(request, 'ventas/lista.html', {
-        'negocio':       negocio,
-        'negocios':      negocios,
-        'ventas':        ventas,
-        'filtro_fecha':  fecha,
-        'filtro_metodo': metodo,
-        'filtro_tipo':   tipo,
-        'carrito_count': len(services.get_carrito(request.session)),
+        'negocio':          negocio,
+        'negocios':         negocios,
+        'ventas':           ventas,
+        'filtro_fecha':     fecha,
+        'filtro_metodo':    metodo,
+        'filtro_tipo':      tipo,
+        'filtro_movimiento': movimiento,
+        'carrito_count':    len(services.get_carrito(request.session)),
     })
+
 
 
 @tienda_requerida
@@ -573,10 +579,15 @@ def eliminar_insumo(request, slug, pk):
 
 def tienda_publica(request, slug):
     negocio = get_object_or_404(services.Negocio, slug=slug)
-    
-    if not negocio.activa:
-        from django.http import Http404
-        raise Http404("Esta tienda no se encuentra activa en este momento.")
+
+    # Verificar si el visitante es el propietario o superusuario (modo preview)
+    es_propietario = request.user.is_authenticated and (
+        request.user.is_superuser or request.user == negocio.propietario
+    )
+
+    if not negocio.activa and not es_propietario:
+        # Clientes: redirigir a página de tienda inactiva
+        return redirect('tienda_inactiva', slug=slug)
 
     # Solo mostrar productos con stock disponible
     productos = services.get_productos(slug).filter(stock__gt=0)
@@ -610,8 +621,6 @@ def tienda_publica(request, slug):
         (p, carrito_cantidades.get(p.pk, 0))
         for p in productos
     ]
-
-    es_propietario = request.user.is_authenticated and (request.user.is_superuser or request.user == negocio.propietario)
 
     return render(request, 'tienda_publica/index.html', {
         'negocio': negocio,

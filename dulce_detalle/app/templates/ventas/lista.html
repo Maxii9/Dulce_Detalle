@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Historial de Ventas — {{ negocio.nombre }}{% endblock %}
+{% block title %}Movimientos — {{ negocio.nombre }}{% endblock %}
 
 {% block content %}
 
@@ -8,17 +8,17 @@
 <div class="flex items-center gap-2 text-sm text-content-label mb-6">
   <a href="{% url 'lista_productos' slug=negocio.slug %}" class="hover:text-emerald-400 transition-all">Productos</a>
   <span>/</span>
-  <span class="text-content-value">Ventas</span>
+  <span class="text-content-value">Movimientos</span>
 </div>
 
 <!-- Encabezado -->
 <div class="mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
   <div class="text-center sm:text-left">
     <h1 class="text-3xl font-bold text-content-title flex items-center justify-center sm:justify-start gap-3">
-      <span class="text-2xl">💰</span>
-      Historial de Ventas
+      <span class="text-2xl">💹</span>
+      Movimientos
     </h1>
-    <p class="text-content-subtitle mt-1">Revisá todas las ventas registradas de {{ negocio.nombre }}</p>
+    <p class="text-content-subtitle mt-1">Historial de ventas y compras de stock — {{ negocio.nombre }}</p>
   </div>
   <div class="w-full sm:w-auto">
     <a href="{% url 'nueva_venta' slug=negocio.slug %}"
@@ -33,18 +33,42 @@
 
 {% if not ventas %}
 <div class="bg-card-bg rounded-2xl border border-card-border p-16 text-center shadow-xl">
-  <span class="text-6xl opacity-30">🧾</span>
-  <h2 class="text-xl font-semibold text-content-title mt-4">Aún no hay ventas registradas</h2>
-  <p class="text-content-subtitle mt-2">Agregá productos al carrito y generá tu primera venta.</p>
+  <span class="text-6xl opacity-30">💹</span>
+  <h2 class="text-xl font-semibold text-content-title mt-4">Aún no hay movimientos registrados</h2>
+  <p class="text-content-subtitle mt-2">Registrá ventas o actualizá el stock de productos para ver movimientos aquí.</p>
 </div>
 {% else %}
 
 <!-- Filtros -->
 <form method="get" class="mb-6 flex flex-wrap items-end gap-4 bg-form-bg p-4 rounded-xl border border-form-border">
+  <!-- Tipo de movimiento (nuevo) -->
+  <div class="w-full">
+    <label class="block text-xs text-content-label mb-1">Tipo de movimiento</label>
+    <div class="flex flex-wrap gap-2">
+      <a href="?fecha={{ filtro_fecha }}&metodo={{ filtro_metodo }}&tipo={{ filtro_tipo }}&movimiento="
+        class="px-4 py-2 rounded-lg text-sm font-semibold border transition-all
+          {% if not filtro_movimiento %}bg-sidebar-text text-white border-sidebar-text{% else %}bg-input-bg text-input-text border-input-border hover:border-sidebar-text{% endif %}">
+        Todos
+      </a>
+      <a href="?fecha={{ filtro_fecha }}&metodo={{ filtro_metodo }}&tipo={{ filtro_tipo }}&movimiento=venta"
+        class="px-4 py-2 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5
+          {% if filtro_movimiento == 'venta' %}bg-emerald-500 text-white border-emerald-500{% else %}bg-input-bg text-input-text border-input-border hover:border-emerald-400{% endif %}">
+        💰 Ventas
+      </a>
+      <a href="?fecha={{ filtro_fecha }}&metodo={{ filtro_metodo }}&tipo=&movimiento=compra_stock"
+        class="px-4 py-2 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5
+          {% if filtro_movimiento == 'compra_stock' %}bg-red-500 text-white border-red-500{% else %}bg-input-bg text-input-text border-input-border hover:border-red-400{% endif %}">
+        📦 Compras de stock
+      </a>
+    </div>
+  </div>
+
   <div class="w-full sm:w-auto">
     <label class="block text-xs text-content-label mb-1">Fecha exacta</label>
     <input type="date" name="fecha" value="{{ filtro_fecha }}" class="w-full bg-input-bg border border-input-border text-sm text-input-text rounded-lg px-3 py-2 focus:outline-none focus:border-input-focus transition-all">
   </div>
+
+  {% if filtro_movimiento != 'compra_stock' %}
   <div class="w-full sm:w-auto">
     <label class="block text-xs text-content-label mb-1">Método de pago</label>
     <select name="metodo" class="w-full bg-input-bg border border-input-border text-sm text-input-text rounded-lg px-3 py-2 focus:outline-none focus:border-input-focus transition-all">
@@ -54,9 +78,11 @@
       <option value="transferencia" {% if filtro_metodo == 'transferencia' %}selected{% endif %}>Transferencia</option>
       <option value="mercadopago" {% if filtro_metodo == 'mercadopago' %}selected{% endif %}>Mercado Pago</option>
       <option value="qr" {% if filtro_metodo == 'qr' %}selected{% endif %}>QR</option>
+      <option value="egreso" {% if filtro_metodo == 'egreso' %}selected{% endif %}>Egreso directo</option>
       <option value="otro" {% if filtro_metodo == 'otro' %}selected{% endif %}>Otro</option>
     </select>
   </div>
+
   <div class="w-full sm:w-auto">
     <label class="block text-xs text-content-label mb-1">Estado de pago</label>
     <div class="flex gap-2">
@@ -77,23 +103,28 @@
       </button>
     </div>
   </div>
+  {% endif %}
+
+  <!-- Hidden fields para mantener movimiento al filtrar -->
+  <input type="hidden" name="movimiento" value="{{ filtro_movimiento }}">
+
   <div class="flex items-center gap-2 w-full sm:w-auto">
     <button type="submit" class="flex-1 sm:flex-none bg-sidebar-text hover:opacity-80 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
       Filtrar
     </button>
-    {% if filtro_fecha or filtro_metodo or filtro_tipo %}
+    {% if filtro_fecha or filtro_metodo or filtro_tipo or filtro_movimiento %}
     <a href="{% url 'lista_ventas' slug=negocio.slug %}" class="text-content-label hover:text-content-value px-3 py-2 text-sm font-medium transition-colors">Limpiar</a>
     {% endif %}
   </div>
 </form>
 
 <!-- Formulario masivo -->
-<form method="post" action="{% url 'ventas_bulk_eliminar' slug=negocio.slug %}" id="bulkDeleteForm" onsubmit="return confirm('¿Seguro que deseas eliminar estas ventas de forma permanente?');">
+<form method="post" action="{% url 'ventas_bulk_eliminar' slug=negocio.slug %}" id="bulkDeleteForm" onsubmit="return confirm('¿Seguro que deseas eliminar estos movimientos de forma permanente?');">
   {% csrf_token %}
   
   <div id="bulk-actions" class="mb-4 flex items-center justify-between" style="display: none;">
     <span class="text-sm font-semibold text-content-title bg-white border border-card-border px-4 py-2 rounded-xl shadow-sm">
-      <span id="selected-count" class="text-red-500 font-bold">0</span> ventas seleccionadas
+      <span id="selected-count" class="text-red-500 font-bold">0</span> movimientos seleccionados
     </span>
     <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow transition-all flex items-center gap-2">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -101,7 +132,7 @@
     </button>
   </div>
 
-<!-- Tabla de Ventas (con scroll horizontal) -->
+<!-- Tabla de Movimientos -->
 <div class="bg-card-bg rounded-2xl border border-card-border overflow-x-auto shadow-xl">
   <table class="w-full min-w-[700px]">
     <thead>
@@ -109,16 +140,65 @@
         <th class="w-12 px-4 py-4 text-center cursor-pointer" title="Seleccionar todo" onclick="document.getElementById('selectAll').click()">
           <input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer pointer-events-none" onclick="toggleAll(this); event.stopPropagation()">
         </th>
-        <th class="text-left px-2 py-4">Venta</th>
-        <th class="text-left px-4 py-4">Fecha</th>
+        <th class="text-left px-2 py-4">#</th>
         <th class="text-left px-4 py-4">Tipo</th>
-        <th class="text-left px-4 py-4">Método</th>
-        <th class="text-right px-4 py-4">Ganancia Total</th>
-        <th class="text-right px-6 py-4">Total Cobrado</th>
+        <th class="text-left px-4 py-4">Fecha</th>
+        <th class="text-left px-4 py-4">Método / Origen</th>
+        <th class="text-right px-4 py-4">Impacto $</th>
+        <th class="text-right px-6 py-4">Total</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-card-border">
       {% for venta in ventas %}
+      {% if venta.tipo_movimiento == 'compra_stock' %}
+      <!-- ── FILA COMPRA DE STOCK (egreso / rojo) ── -->
+      <tr class="hover:bg-red-50 transition-colors group cursor-pointer border-l-4 border-l-red-400"
+          onclick="document.getElementById('detalle-{{ venta.pk }}').classList.toggle('hidden')">
+        <td class="px-4 py-4 text-center" onclick="event.stopPropagation()">
+          <input type="checkbox" name="venta_ids" value="{{ venta.pk }}" class="venta-checkbox w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer transition-all" onclick="updateBulkUI()">
+        </td>
+        <td class="px-2 py-4">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            <span class="font-bold text-red-500">#{{ venta.pk }}</span>
+          </div>
+        </td>
+        <td class="px-4 py-4">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-700 border border-red-300">
+            📦 Compra stock
+          </span>
+        </td>
+        <td class="px-4 py-4 text-content-value">
+          {{ venta.fecha|date:"d M Y" }}
+        </td>
+        <td class="px-4 py-4 text-content-value text-sm">
+          Egreso directo
+        </td>
+        <td class="px-4 py-4 text-right">
+          <span class="font-bold text-red-500 text-sm">-$ {{ venta.total|stringformat:".2f"|slice:"1:" }}</span>
+        </td>
+        <td class="px-6 py-4 text-right">
+          <span class="font-bold text-red-600 text-lg">-${{ venta.total|stringformat:".2f"|slice:"1:" }}</span>
+        </td>
+      </tr>
+      <!-- Fila expandible compra -->
+      <tr id="detalle-{{ venta.pk }}" class="hidden bg-red-50 border-b border-red-100 transition-all">
+        <td colspan="7" class="p-0">
+          <div class="px-10 py-5">
+            {% if venta.observacion %}
+            <div class="mb-3 bg-white border border-red-200 rounded-xl p-4">
+              <h4 class="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <span>📦</span> Detalle de compra
+              </h4>
+              <p class="text-sm text-content-value whitespace-pre-line">{{ venta.observacion }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+
+      {% else %}
+      <!-- ── FILA VENTA NORMAL ── -->
       <tr class="hover:bg-card-row-hover transition-colors group cursor-pointer" onclick="document.getElementById('detalle-{{ venta.pk }}').classList.toggle('hidden')">
         <td class="px-4 py-4 text-center" onclick="event.stopPropagation()">
           <input type="checkbox" name="venta_ids" value="{{ venta.pk }}" class="venta-checkbox w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer transition-all" onclick="updateBulkUI()">
@@ -129,13 +209,13 @@
             <span class="font-bold text-content-value">#{{ venta.pk }}</span>
           </div>
         </td>
-        <td class="px-4 py-4 text-content-value">
-          {{ venta.fecha|date:"d M Y" }}
-        </td>
         <td class="px-4 py-4" onclick="event.stopPropagation(); window.cambiarTipoVenta({{ venta.pk }}, '{{ venta.tipo }}')">
           <span id="badge-tipo-{{ venta.pk }}" class="cursor-pointer hover:opacity-80 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold {% if venta.tipo == 'pagada' %}bg-emerald-100 text-emerald-700 border border-emerald-300{% else %}bg-amber-100 text-amber-700 border border-amber-300{% endif %}">
-            {% if venta.tipo == 'pagada' %}Pagada{% else %}A crédito{% endif %}
+            💰 {% if venta.tipo == 'pagada' %}Pagada{% else %}A crédito{% endif %}
           </span>
+        </td>
+        <td class="px-4 py-4 text-content-value">
+          {{ venta.fecha|date:"d M Y" }}
         </td>
         <td class="px-4 py-4 text-content-value text-sm capitalize">
           {{ venta.get_metodo_pago_display }}
@@ -148,7 +228,7 @@
         </td>
       </tr>
       
-      <!-- Fila Expandible (Oculta por defecto) -->
+      <!-- Fila Expandible venta normal -->
       <tr id="detalle-{{ venta.pk }}" class="hidden bg-card-expanded border-b border-card-border transition-all">
         <td colspan="7" class="p-0">
           <div class="px-10 py-5">
@@ -189,6 +269,7 @@
           </div>
         </td>
       </tr>
+      {% endif %}
       {% endfor %}
     </tbody>
   </table>
@@ -247,7 +328,7 @@ window.cambiarTipoVenta = async function(pk, tipoActual) {
             tdElement.setAttribute('onclick', `event.stopPropagation(); window.cambiarTipoVenta(${pk}, '${data.nuevo_tipo}')`);
             
             const badge = document.getElementById(`badge-tipo-${pk}`);
-            badge.innerText = data.display;
+            badge.innerText = (data.nuevo_tipo === 'pagada' ? '💰 ' : '⧗ ') + data.display;
             
             if (data.nuevo_tipo === 'pagada') {
                 badge.className = 'cursor-pointer hover:opacity-80 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-300';

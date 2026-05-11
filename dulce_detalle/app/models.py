@@ -64,7 +64,12 @@ class Venta(models.Model):
         ('transferencia', 'Transferencia bancaria'),
         ('mercadopago', 'Mercado Pago'),
         ('qr', 'QR'),
+        ('egreso', 'Egreso directo'),
         ('otro', 'Otro'),
+    ]
+    TIPO_MOVIMIENTO_CHOICES = [
+        ('venta', 'Venta'),
+        ('compra_stock', 'Compra de stock'),
     ]
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='ventas')
     fecha = models.DateField()
@@ -72,6 +77,12 @@ class Venta(models.Model):
     metodo_pago = models.CharField(max_length=20, choices=METODO_CHOICES, default='efectivo')
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     observacion = models.TextField(blank=True, null=True)
+    tipo_movimiento = models.CharField(
+        max_length=15,
+        choices=TIPO_MOVIMIENTO_CHOICES,
+        default='venta',
+        verbose_name='Tipo de movimiento'
+    )
     creado = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

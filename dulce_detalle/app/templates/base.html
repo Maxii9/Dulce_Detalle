@@ -160,7 +160,7 @@
         Productos
       </a>
 
-      <!-- Ventas -->
+      <!-- Movimientos -->
       <a href="{% url 'lista_ventas' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'venta' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
@@ -168,7 +168,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
-        Ventas
+        Movimientos
       </a>
 
       <!-- Pedidos -->

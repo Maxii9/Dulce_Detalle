@@ -59,10 +59,13 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
 
 
 def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None) -> Producto | None:
-    """Actualiza un producto existente. Retorna el producto actualizado o None."""
+    """Actualiza un producto existente. Si el stock aumenta, registra un movimiento de compra."""
     producto = get_producto(pk)
     if producto is None:
         return None
+
+    stock_anterior = producto.stock  # Guardar antes de actualizar
+
     producto.categoria_id = categoria_id
     producto.nombre = nombre
     producto.precio = precio
@@ -72,7 +75,24 @@ def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str 
     if imagen:
         producto.imagen = imagen
     producto.save()
+
+    # Registrar movimiento de compra si el stock aumentó
+    delta = stock - stock_anterior
+    if delta > 0:
+        from django.utils import timezone
+        total_egreso = Decimal(str(costo)) * delta
+        Venta.objects.create(
+            negocio=producto.negocio,
+            fecha=timezone.localdate(),
+            tipo='pagada',
+            metodo_pago='egreso',
+            total=-total_egreso,
+            tipo_movimiento='compra_stock',
+            observacion=f'Reposición de stock: +{delta} unidad(es) de "{nombre}"',
+        )
+
     return producto
+
 
 
 def eliminar_producto(pk: int) -> bool:
