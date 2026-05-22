@@ -7,7 +7,7 @@
     <h1 class="text-3xl font-bold text-gray-900">Catálogo de Productos</h1>
     <p class="text-gray-500 mt-1">{{ negocio.descripcion }}</p>
   </div>
-  
+
   <form method="get" class="relative flex items-center w-full sm:w-auto">
     {% if tipo_activo %}
       <input type="hidden" name="tipo" value="{{ tipo_activo }}">
@@ -49,9 +49,11 @@
 
 <!-- Grilla de productos -->
 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
-  
+
   {% for producto, en_carrito in productos_con_cant %}
   <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col group border border-gray-100">
+
+    <!-- Zona imagen -->
     <div class="w-full aspect-[4/5] overflow-hidden bg-gray-50 relative">
       {% if producto.pk in top_vendidos %}
         <div class="absolute top-2 left-2 z-20">
@@ -67,19 +69,19 @@
       {% endif %}
 
       {% if producto.imagen %}
+        {# Botón con todos los datos como atributos — sin depender del DOM #}
         <button type="button"
+          class="w-full h-full block focus:outline-none cursor-zoom-in producto-btn"
           data-pk="{{ producto.pk }}"
-          onclick="abrirLightbox(this)"
-          class="w-full h-full block focus:outline-none cursor-zoom-in"
-          title="Ver detalle">
+          data-nombre="{{ producto.nombre }}"
+          data-desc="{{ producto.descripcion|default:'' }}"
+          data-precio="{{ producto.precio }}"
+          title="Ver fotos del producto">
           <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
-               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
-          <!-- Indicador de múltiples fotos -->
-          {% with total_imgs=galeria_map|dictsort:"0" %}
-          {% endwith %}
+               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"/>
         </button>
-        <!-- Badge de galería si tiene más de 1 imagen -->
-        <div class="absolute bottom-2 right-2 z-20" id="badge-{{ producto.pk }}"></div>
+        {# Badge de cantidad de fotos — se rellena por JS #}
+        <span class="galeria-badge absolute bottom-2 right-2 z-20" data-pk="{{ producto.pk }}"></span>
       {% else %}
         <div class="w-full h-full flex items-center justify-center text-gray-300">
           <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,6 +91,7 @@
       {% endif %}
     </div>
 
+    <!-- Info -->
     <div class="p-4 flex flex-col flex-1">
       <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-700 tracking-wide mb-1">
         {{ producto.categoria.nombre|default:"Sin categoría"|upper }}
@@ -98,7 +101,7 @@
         <p class="text-xs text-gray-400 leading-snug line-clamp-2 mt-0.5">{{ producto.descripcion }}</p>
       {% endif %}
       <p class="text-lg font-extrabold text-gray-900 mt-auto pt-2">$ {{ producto.precio }}</p>
-      
+
       <div class="mt-3">
         {% if es_propietario %}
         <button disabled class="w-full py-2.5 bg-indigo-50 text-indigo-500 border border-indigo-200 font-medium rounded-xl cursor-not-allowed text-sm">
@@ -132,201 +135,225 @@
 
 </div>
 
-<!-- ── GALERÍA DATA (JSON) ─────────────────────────────────────────── -->
-<script id="galeria-data" type="application/json">
-{{ galeria_json }}
-</script>
+{# ── Datos de galería en JSON — |safe evita el escape HTML ── #}
+<script id="galeria-data" type="application/json">{{ galeria_json|safe }}</script>
 
-<!-- ── LIGHTBOX MODAL CAROUSEL ────────────────────────────────────── -->
+{# ── LIGHTBOX MODAL CAROUSEL ── #}
 <div id="lightbox-overlay"
-     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-md p-3 sm:p-6">
+     class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-md"
+     style="display:none">
 
-  <!-- Card central — más grande -->
+  {# Backdrop clickeable para cerrar #}
+  <div class="absolute inset-0" id="lightbox-backdrop"></div>
+
+  {# Card centrada #}
   <div id="lightbox-card"
-       class="relative bg-white rounded-3xl shadow-2xl overflow-hidden w-full flex flex-col"
-       style="max-width:800px; max-height:95vh">
+       class="absolute inset-4 sm:inset-8 md:inset-12 lg:inset-16 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+       style="max-width:860px; margin:auto">
 
-    <!-- Botón cerrar -->
+    {# Botón cerrar #}
     <button id="lightbox-close"
-            class="absolute top-3 right-3 z-20 w-10 h-10 flex items-center justify-center bg-black/40 hover:bg-black/70 text-white rounded-full transition-all">
+            class="absolute top-3 right-3 z-30 w-10 h-10 flex items-center justify-center bg-black/40 hover:bg-black/70 text-white rounded-full transition-all">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
       </svg>
     </button>
 
-    <!-- ── CAROUSEL DE IMÁGENES ── -->
-    <div class="relative bg-black overflow-hidden" style="max-height:65vh; min-height:200px">
-      <!-- Contenedor de imágenes -->
-      <div id="carousel-track" class="flex transition-transform duration-300 ease-in-out h-full">
-        <!-- imágenes inyectadas por JS -->
+    {# Zona imagen: toma el espacio disponible #}
+    <div class="relative bg-gray-100 overflow-hidden flex-1" style="min-height:0">
+
+      {# Track de slides #}
+      <div id="carousel-track"
+           class="flex h-full transition-transform duration-300 ease-in-out"
+           style="will-change:transform">
       </div>
 
-      <!-- Flecha izquierda -->
+      {# Flecha izquierda #}
       <button id="btn-prev"
-              class="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center
-                     bg-black/50 hover:bg-black/80 text-white rounded-full transition-all hidden">
+              class="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11
+                     bg-black/50 hover:bg-black/80 text-white rounded-full
+                     flex items-center justify-center transition-all">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
 
-      <!-- Flecha derecha -->
+      {# Flecha derecha #}
       <button id="btn-next"
-              class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center
-                     bg-black/50 hover:bg-black/80 text-white rounded-full transition-all hidden">
+              class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11
+                     bg-black/50 hover:bg-black/80 text-white rounded-full
+                     flex items-center justify-center transition-all">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
         </svg>
       </button>
 
-      <!-- Dots de navegación -->
-      <div id="carousel-dots" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10"></div>
+      {# Contador fotos #}
+      <div id="foto-counter"
+           class="absolute top-3 left-3 z-10 bg-black/50 text-white text-xs font-bold px-3 py-1 rounded-full">
+        1 / 1
+      </div>
+
+      {# Dots #}
+      <div id="carousel-dots"
+           class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+      </div>
     </div>
 
-    <!-- Info del producto -->
-    <div class="p-5 sm:p-7 overflow-y-auto">
-      <h2 id="lightbox-nombre" class="text-xl sm:text-2xl font-bold text-gray-900 mb-1"></h2>
-      <p id="lightbox-desc" class="text-sm text-gray-500 mb-4 leading-relaxed whitespace-pre-line"></p>
-      <p id="lightbox-precio" class="text-3xl font-extrabold text-gray-900"></p>
+    {# Info del producto — altura fija #}
+    <div class="px-6 py-5 border-t border-gray-100 flex-shrink-0">
+      <h2 id="lb-nombre" class="text-xl font-bold text-gray-900 leading-tight"></h2>
+      <p id="lb-desc" class="text-sm text-gray-500 mt-1 leading-relaxed max-h-20 overflow-y-auto"></p>
+      <p id="lb-precio" class="text-2xl font-extrabold text-gray-900 mt-3"></p>
     </div>
   </div>
 </div>
 
-<script>
-// ── Galería data desde Django ──
-let galeriaData = {};
-try {
-  galeriaData = JSON.parse(document.getElementById('galeria-data').textContent);
-} catch(e) {}
+<style>
+#lightbox-overlay { align-items: center; justify-content: center; }
+#lightbox-card { top:50%; left:50%; transform:translate(-50%,-50%); position:absolute; }
+@media (max-width:640px) {
+  #lightbox-card { inset:12px; top:auto; left:auto; transform:none; position:absolute; max-width:none; }
+}
+</style>
 
-// Agregar badges de "N fotos" en tarjetas con galería
-document.addEventListener('DOMContentLoaded', function() {
-  Object.entries(galeriaData).forEach(([pk, urls]) => {
-    if (urls.length > 1) {
-      const badge = document.getElementById('badge-' + pk);
-      if (badge) {
-        badge.innerHTML = `<span class="bg-black/60 text-white text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">📷 ${urls.length}</span>`;
-      }
+<script>
+(function () {
+  'use strict';
+
+  /* ── 1. Leer galería desde JSON embebido ── */
+  var galeriaData = {};
+  try {
+    galeriaData = JSON.parse(document.getElementById('galeria-data').textContent);
+  } catch (e) {
+    console.error('galeria-data JSON error:', e);
+  }
+
+  /* ── 2. Agregar badges en tarjetas con varias fotos ── */
+  document.querySelectorAll('.galeria-badge').forEach(function (el) {
+    var pk = el.dataset.pk;
+    var imgs = galeriaData[pk];
+    if (imgs && imgs.length > 1) {
+      el.innerHTML = '<span style="background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;backdrop-filter:blur(4px)">📷 ' + imgs.length + '</span>';
     }
   });
-});
 
-// ── Lightbox State ──
-let currentImages = [];
-let currentIndex = 0;
+  /* ── 3. Lightbox state ── */
+  var currentImages = [];
+  var currentIndex = 0;
 
-const overlay = document.getElementById('lightbox-overlay');
-const card = document.getElementById('lightbox-card');
-const track = document.getElementById('carousel-track');
-const dotsContainer = document.getElementById('carousel-dots');
-const btnPrev = document.getElementById('btn-prev');
-const btnNext = document.getElementById('btn-next');
+  var overlay  = document.getElementById('lightbox-overlay');
+  var backdrop = document.getElementById('lightbox-backdrop');
+  var track    = document.getElementById('carousel-track');
+  var dots     = document.getElementById('carousel-dots');
+  var counter  = document.getElementById('foto-counter');
+  var btnPrev  = document.getElementById('btn-prev');
+  var btnNext  = document.getElementById('btn-next');
 
-function abrirLightbox(btn) {
-  const pk = btn.dataset.pk;
-  currentImages = galeriaData[pk] || [];
-  if (currentImages.length === 0) return;
+  /* ── 4. Abrir lightbox al hacer clic en cualquier botón de producto ── */
+  document.querySelectorAll('.producto-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pk    = btn.dataset.pk;
+      var imgs  = galeriaData[pk];
 
-  // Info del producto
-  const card2 = btn.closest('[data-pk]') || btn;
-  const contenido = btn.closest('.flex.flex-col');
-  const nombre = contenido ? contenido.querySelector('p.font-semibold, p.text-xs.text-gray-800')?.textContent?.trim() || '' : '';
-  const desc = contenido ? contenido.querySelector('p.text-gray-400')?.textContent?.trim() || '' : '';
-  const precio = contenido ? contenido.querySelector('p.font-extrabold')?.textContent?.trim() || '' : '';
+      if (!imgs || imgs.length === 0) {
+        /* fallback: usar la imagen del <img> del botón */
+        var img = btn.querySelector('img');
+        imgs = img ? [img.src] : [];
+      }
 
-  document.getElementById('lightbox-nombre').textContent = btn.closest('.flex.flex-col')
-    ? btn.closest('.group').querySelector('p.font-semibold, p.text-xs.text-gray-800')?.textContent?.trim() || ''
-    : '';
+      currentImages = imgs;
+      currentIndex  = 0;
 
-  // Re-buscar los datos desde el DOM padre
-  const grupoPadre = btn.closest('.group');
-  if (grupoPadre) {
-    const nomEl = grupoPadre.querySelector('.text-xs.text-gray-800');
-    const descEl = grupoPadre.querySelector('.text-xs.text-gray-400');
-    const precioEl = grupoPadre.querySelector('.font-extrabold.text-gray-900');
-    document.getElementById('lightbox-nombre').textContent = nomEl?.textContent?.trim() || '';
-    document.getElementById('lightbox-desc').textContent = descEl?.textContent?.trim() || '';
-    document.getElementById('lightbox-precio').textContent = precioEl?.textContent?.trim() || '';
-  }
+      /* Datos del producto */
+      document.getElementById('lb-nombre').textContent = btn.dataset.nombre  || '';
+      document.getElementById('lb-desc').textContent   = btn.dataset.desc    || '';
+      document.getElementById('lb-precio').textContent = btn.dataset.precio ? '$ ' + btn.dataset.precio : '';
 
-  currentIndex = 0;
-  renderCarousel();
-
-  overlay.classList.remove('hidden');
-  overlay.classList.add('flex');
-  document.body.style.overflow = 'hidden';
-}
-
-function renderCarousel() {
-  // Limpiar track
-  track.innerHTML = '';
-  dotsContainer.innerHTML = '';
-
-  currentImages.forEach((url, i) => {
-    // Slide
-    const slide = document.createElement('div');
-    slide.className = 'flex-shrink-0 w-full flex items-center justify-center';
-    slide.style.cssText = 'min-height:200px; max-height:65vh';
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = 'Foto ' + (i + 1);
-    img.className = 'max-w-full max-h-full object-contain';
-    img.style.maxHeight = '65vh';
-    slide.appendChild(img);
-    track.appendChild(slide);
-
-    // Dot
-    const dot = document.createElement('button');
-    dot.className = 'w-2 h-2 rounded-full transition-all ' + (i === 0 ? 'bg-white scale-125' : 'bg-white/40');
-    dot.onclick = () => goTo(i);
-    dotsContainer.appendChild(dot);
+      renderCarousel();
+      abrirOverlay();
+    });
   });
 
-  // Mostrar/ocultar flechas
-  const multi = currentImages.length > 1;
-  btnPrev.classList.toggle('hidden', !multi);
-  btnNext.classList.toggle('hidden', !multi);
-  dotsContainer.classList.toggle('hidden', !multi);
+  /* ── 5. Renderizar carousel ── */
+  function renderCarousel() {
+    track.innerHTML = '';
+    dots.innerHTML  = '';
 
-  goTo(0);
-}
+    currentImages.forEach(function (url, i) {
+      /* Slide */
+      var slide = document.createElement('div');
+      slide.style.cssText = 'flex-shrink:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#111';
+      var img = document.createElement('img');
+      img.src = url;
+      img.alt = 'Foto ' + (i + 1);
+      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+      slide.appendChild(img);
+      track.appendChild(slide);
 
-function goTo(index) {
-  currentIndex = Math.max(0, Math.min(index, currentImages.length - 1));
-  track.style.transform = `translateX(-${currentIndex * 100}%)`;
-  // Actualizar dots
-  dotsContainer.querySelectorAll('button').forEach((d, i) => {
-    d.className = 'w-2 h-2 rounded-full transition-all ' + (i === currentIndex ? 'bg-white scale-125' : 'bg-white/40');
-  });
-}
+      /* Dot */
+      var dot = document.createElement('button');
+      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;border:none;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.4)';
+      dot.addEventListener('click', function () { goTo(i); });
+      dots.appendChild(dot);
+    });
 
-btnPrev.addEventListener('click', () => goTo(currentIndex - 1));
-btnNext.addEventListener('click', () => goTo(currentIndex + 1));
+    /* Mostrar/ocultar controles */
+    var multi = currentImages.length > 1;
+    btnPrev.style.display  = multi ? 'flex' : 'none';
+    btnNext.style.display  = multi ? 'flex' : 'none';
+    dots.style.display     = multi ? 'flex' : 'none';
+    counter.style.display  = multi ? 'block' : 'none';
 
-// Swipe táctil
-let touchStartX = 0;
-track.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
-track.addEventListener('touchend', e => {
-  const delta = touchStartX - e.changedTouches[0].clientX;
-  if (Math.abs(delta) > 50) goTo(currentIndex + (delta > 0 ? 1 : -1));
-});
-
-function cerrarLightbox() {
-  overlay.classList.add('hidden');
-  overlay.classList.remove('flex');
-  document.body.style.overflow = '';
-}
-
-document.getElementById('lightbox-close').addEventListener('click', cerrarLightbox);
-overlay.addEventListener('click', function(e) {
-  if (!card.contains(e.target)) cerrarLightbox();
-});
-document.addEventListener('keydown', function(e) {
-  if (!overlay.classList.contains('hidden')) {
-    if (e.key === 'Escape') cerrarLightbox();
-    if (e.key === 'ArrowRight') goTo(currentIndex + 1);
-    if (e.key === 'ArrowLeft') goTo(currentIndex - 1);
+    goTo(0);
   }
-});
+
+  function goTo(idx) {
+    if (currentImages.length === 0) return;
+    currentIndex = Math.max(0, Math.min(idx, currentImages.length - 1));
+    track.style.transform = 'translateX(-' + (currentIndex * 100) + '%)';
+    /* Actualizar dots */
+    dots.querySelectorAll('button').forEach(function (d, i) {
+      d.style.background = i === currentIndex ? '#fff' : 'rgba(255,255,255,.4)';
+      d.style.transform  = i === currentIndex ? 'scale(1.3)' : 'scale(1)';
+    });
+    /* Contador */
+    counter.textContent = (currentIndex + 1) + ' / ' + currentImages.length;
+  }
+
+  btnPrev.addEventListener('click', function () { goTo(currentIndex - 1); });
+  btnNext.addEventListener('click', function () { goTo(currentIndex + 1); });
+
+  /* Swipe táctil */
+  var touchX = 0;
+  track.addEventListener('touchstart', function (e) { touchX = e.touches[0].clientX; }, { passive: true });
+  track.addEventListener('touchend', function (e) {
+    var delta = touchX - e.changedTouches[0].clientX;
+    if (Math.abs(delta) > 40) goTo(currentIndex + (delta > 0 ? 1 : -1));
+  });
+
+  /* ── 6. Abrir / Cerrar overlay ── */
+  function abrirOverlay() {
+    overlay.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function cerrarOverlay() {
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('lightbox-close').addEventListener('click', cerrarOverlay);
+  backdrop.addEventListener('click', cerrarOverlay);
+
+  document.addEventListener('keydown', function (e) {
+    if (overlay.style.display !== 'none') {
+      if (e.key === 'Escape')      cerrarOverlay();
+      if (e.key === 'ArrowRight')  goTo(currentIndex + 1);
+      if (e.key === 'ArrowLeft')   goTo(currentIndex - 1);
+    }
+  });
+
+})();
 </script>
 {% endblock %}
