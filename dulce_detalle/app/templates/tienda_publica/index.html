@@ -146,21 +146,21 @@
   {# Backdrop clickeable para cerrar #}
   <div class="absolute inset-0" id="lightbox-backdrop"></div>
 
-  {# Card centrada #}
+  {# Card centrada - angosta y premium #}
   <div id="lightbox-card"
-       class="absolute inset-4 sm:inset-8 md:inset-12 lg:inset-16 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
-       style="max-width:860px; margin:auto">
+       class="absolute bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col w-full"
+       style="max-width: 440px; margin: auto; border: 1px solid #f1f5f9;">
 
-    {# Botón cerrar #}
+    {# Botón cerrar - Transúcido y premium #}
     <button id="lightbox-close"
-            class="absolute top-3 right-3 z-30 w-10 h-10 flex items-center justify-center bg-black/40 hover:bg-black/70 text-white rounded-full transition-all">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="absolute top-4 right-4 z-30 w-9 h-9 flex items-center justify-center bg-white/80 hover:bg-white text-gray-800 rounded-full border border-gray-200/50 shadow-md backdrop-blur-sm transition-all active:scale-95">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
       </svg>
     </button>
 
-    {# Zona imagen: toma el espacio disponible #}
-    <div class="relative bg-gray-100 overflow-hidden flex-1" style="min-height:0">
+    {# Zona imagen: Aspecto cuadrado, sin fondo negro, sin bordes #}
+    <div class="relative bg-white overflow-hidden w-full aspect-square flex-shrink-0" style="min-height:0">
 
       {# Track de slides #}
       <div id="carousel-track"
@@ -168,43 +168,46 @@
            style="will-change:transform">
       </div>
 
-      {# Flecha izquierda #}
+      {# Flecha izquierda - Premium blanca #}
       <button id="btn-prev"
-              class="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11
-                     bg-black/50 hover:bg-black/80 text-white rounded-full
-                     flex items-center justify-center transition-all">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9
+                     bg-white/90 hover:bg-white text-gray-800 rounded-full border border-gray-100
+                     shadow-md flex items-center justify-center transition-all active:scale-95 backdrop-blur-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
 
-      {# Flecha derecha #}
+      {# Flecha derecha - Premium blanca #}
       <button id="btn-next"
-              class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11
-                     bg-black/50 hover:bg-black/80 text-white rounded-full
-                     flex items-center justify-center transition-all">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9
+                     bg-white/90 hover:bg-white text-gray-800 rounded-full border border-gray-100
+                     shadow-md flex items-center justify-center transition-all active:scale-95 backdrop-blur-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
         </svg>
       </button>
 
-      {# Contador fotos #}
+      {# Contador fotos - Translúcido #}
       <div id="foto-counter"
-           class="absolute top-3 left-3 z-10 bg-black/50 text-white text-xs font-bold px-3 py-1 rounded-full">
+           class="absolute top-4 left-4 z-10 bg-white/80 border border-gray-200/50 text-gray-800 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm backdrop-blur-sm">
         1 / 1
       </div>
 
-      {# Dots #}
+      {# Dots - Pequeñas píldoras minimalistas #}
       <div id="carousel-dots"
-           class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+           class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
       </div>
     </div>
 
-    {# Info del producto — altura fija #}
-    <div class="px-6 py-5 border-t border-gray-100 flex-shrink-0">
-      <h2 id="lb-nombre" class="text-xl font-bold text-gray-900 leading-tight"></h2>
-      <p id="lb-desc" class="text-sm text-gray-500 mt-1 leading-relaxed max-h-20 overflow-y-auto"></p>
-      <p id="lb-precio" class="text-2xl font-extrabold text-gray-900 mt-3"></p>
+    {# Info del producto #}
+    <div class="px-6 py-5 border-t border-gray-100 flex-shrink-0 bg-white">
+      <h2 id="lb-nombre" class="text-lg font-bold text-gray-900 leading-tight"></h2>
+      <p id="lb-desc" class="text-xs text-gray-500 mt-1 leading-relaxed max-h-24 overflow-y-auto pr-1 custom-scrollbar"></p>
+      <div class="flex items-center justify-between mt-4">
+        <p id="lb-precio" class="text-xl font-extrabold text-gray-900"></p>
+        <span class="text-[10px] uppercase font-bold tracking-wider text-pink-600 bg-pink-50 px-2 py-0.5 rounded-full">Detalle</span>
+      </div>
     </div>
   </div>
 </div>
@@ -213,8 +216,12 @@
 #lightbox-overlay { align-items: center; justify-content: center; }
 #lightbox-card { top:50%; left:50%; transform:translate(-50%,-50%); position:absolute; }
 @media (max-width:640px) {
-  #lightbox-card { inset:12px; top:auto; left:auto; transform:none; position:absolute; max-width:none; }
+  #lightbox-card { width: 92%; max-width: 380px; }
 }
+/* Scrollbar ultra-sutil para descripción */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 </style>
 
 <script>
@@ -281,19 +288,19 @@
     dots.innerHTML  = '';
 
     currentImages.forEach(function (url, i) {
-      /* Slide */
+      /* Slide - Fondo blanco limpio, sin bordes negros */
       var slide = document.createElement('div');
-      slide.style.cssText = 'flex-shrink:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#111';
+      slide.style.cssText = 'flex-shrink:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#ffffff;overflow:hidden;';
       var img = document.createElement('img');
       img.src = url;
       img.alt = 'Foto ' + (i + 1);
-      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;transition:all 0.3s;';
       slide.appendChild(img);
       track.appendChild(slide);
 
-      /* Dot */
+      /* Dot - Píldora premium */
       var dot = document.createElement('button');
-      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;border:none;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.4)';
+      dot.style.cssText = 'width:7px;height:7px;border-radius:999px;border:none;cursor:pointer;transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1);background:rgba(0,0,0,0.15);padding:0;outline:none;';
       dot.addEventListener('click', function () { goTo(i); });
       dots.appendChild(dot);
     });
@@ -312,10 +319,10 @@
     if (currentImages.length === 0) return;
     currentIndex = Math.max(0, Math.min(idx, currentImages.length - 1));
     track.style.transform = 'translateX(-' + (currentIndex * 100) + '%)';
-    /* Actualizar dots */
+    /* Actualizar dots animando a píldora activa */
     dots.querySelectorAll('button').forEach(function (d, i) {
-      d.style.background = i === currentIndex ? '#fff' : 'rgba(255,255,255,.4)';
-      d.style.transform  = i === currentIndex ? 'scale(1.3)' : 'scale(1)';
+      d.style.background = i === currentIndex ? '#db2777' : 'rgba(0,0,0,0.15)'; // Rosa fuerte premium
+      d.style.width      = i === currentIndex ? '16px' : '7px';
     });
     /* Contador */
     counter.textContent = (currentIndex + 1) + ' / ' + currentImages.length;
