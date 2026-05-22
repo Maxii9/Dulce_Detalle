@@ -3,7 +3,7 @@ Capa de servicios para la lógica CRUD de Productos, Negocios y Ventas.
 Las vistas delegan toda la lógica de datos a este módulo.
 """
 from decimal import Decimal
-from .models import Negocio, Producto, Venta, ItemVenta, Insumo, Pedido, ItemPedido
+from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido
 
 
 # ── Negocios ──────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ def get_producto(pk: int) -> Producto | None:
         return None
 
 
-def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None) -> Producto:
+def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, imagenes_extra=None) -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
     producto = Producto.objects.create(
         negocio=negocio,
@@ -56,6 +56,11 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
         stock=stock,
         imagen=imagen,
     )
+    # Guardar imágenes adicionales
+    if imagenes_extra:
+        for idx, img in enumerate(imagenes_extra):
+            if img:
+                ImagenProducto.objects.create(producto=producto, imagen=img, orden=idx)
     # Si el producto se crea con stock inicial > 0, registrar movimiento de compra
     if stock > 0:
         from django.utils import timezone
@@ -73,7 +78,7 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
     return producto
 
 
-def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None) -> Producto | None:
+def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, imagenes_extra=None, imagenes_eliminar=None) -> Producto | None:
     """Actualiza un producto existente. Si el stock aumenta, registra un movimiento de compra."""
     producto = get_producto(pk)
     if producto is None:
@@ -90,6 +95,17 @@ def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str 
     if imagen:
         producto.imagen = imagen
     producto.save()
+
+    # Eliminar imágenes extra marcadas para borrar
+    if imagenes_eliminar:
+        ImagenProducto.objects.filter(pk__in=imagenes_eliminar, producto=producto).delete()
+
+    # Agregar nuevas imágenes extra
+    if imagenes_extra:
+        base_orden = producto.imagenes.count()
+        for idx, img in enumerate(imagenes_extra):
+            if img:
+                ImagenProducto.objects.create(producto=producto, imagen=img, orden=base_orden + idx)
 
     # Registrar movimiento de compra si el stock aumentó
     delta = stock - stock_anterior

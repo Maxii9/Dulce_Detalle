@@ -33,28 +33,71 @@
     <form method="post" enctype="multipart/form-data" class="px-8 py-6 space-y-5">
       {% csrf_token %}
 
-      <!-- Imagen -->
+      <!-- ── IMAGEN PRINCIPAL ─────────────────────────── -->
       <div>
-        <label class="block text-sm font-semibold text-gray-300 mb-2">Imagen del producto</label>
+        <label class="block text-sm font-semibold text-gray-300 mb-2">
+          Imagen principal del producto
+        </label>
         {% if producto and producto.imagen %}
-          <div class="mb-3">
+          <div class="mb-3 flex items-start gap-3">
             <img src="{{ producto.imagen.url }}" alt="Imagen actual"
-                 class="w-32 h-32 object-cover rounded-xl border border-gray-700"/>
+                 class="w-24 h-24 object-cover rounded-xl border border-gray-700"/>
             <p class="text-xs text-gray-500 mt-1">Imagen actual. Subí una nueva para reemplazarla.</p>
           </div>
         {% endif %}
         <label id="imagen-label"
-               class="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-600
+               class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-600
                       rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-900/10 transition-all">
           <svg class="w-8 h-8 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>
-          <span id="imagen-nombre" class="text-sm text-gray-500">Hacé clic para seleccionar una imagen</span>
+          <span id="imagen-nombre" class="text-sm text-gray-500">Hacé clic para seleccionar imagen principal</span>
           <span class="text-xs text-gray-600 mt-1">PNG, JPG, WEBP</span>
           <input type="file" name="imagen" id="imagen" accept="image/*" class="hidden"
-                 onchange="document.getElementById('imagen-nombre').textContent = this.files[0]?.name || 'Hacé clic para seleccionar una imagen'"/>
+                 onchange="document.getElementById('imagen-nombre').textContent = this.files[0]?.name || 'Hacé clic para seleccionar imagen principal'"/>
         </label>
+      </div>
+
+      <!-- ── GALERÍA DE IMÁGENES EXTRA ─────────────────── -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-300 mb-2">
+          Galería de fotos adicionales
+          <span class="text-xs font-normal text-gray-500 ml-1">(se muestran en el carrusel de la tienda)</span>
+        </label>
+
+        <!-- Imágenes existentes (solo en edición) -->
+        {% if imagenes_extra %}
+        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3" id="galeria-existentes">
+          {% for img in imagenes_extra %}
+          <div class="relative group" id="img-card-{{ img.pk }}">
+            <img src="{{ img.imagen.url }}" alt="Foto {{ forloop.counter }}"
+                 class="w-full aspect-square object-cover rounded-xl border border-gray-700"/>
+            <label class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl cursor-pointer transition-all">
+              <input type="checkbox" name="eliminar_imagen" value="{{ img.pk }}"
+                     class="hidden eliminar-check" onchange="marcarEliminar(this, 'img-card-{{ img.pk }}')">
+              <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg">✕ Quitar</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Subir nuevas fotos extra -->
+        <label id="extra-label"
+               class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-600
+                      rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-900/10 transition-all">
+          <svg class="w-6 h-6 text-gray-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          <span id="extra-nombre" class="text-sm text-gray-500">Agregar más fotos</span>
+          <span class="text-xs text-gray-600 mt-1">Podés seleccionar varias a la vez</span>
+          <input type="file" name="imagenes_extra" id="imagenes_extra" accept="image/*" multiple class="hidden"
+                 onchange="mostrarPreviewExtra(this)"/>
+        </label>
+
+        <!-- Preview de nuevas fotos seleccionadas -->
+        <div id="preview-extra" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3 hidden"></div>
       </div>
 
       <!-- Nombre -->
@@ -167,23 +210,60 @@
 </div>
 
 <script>
-  function calcularGanancia() {
-    const precio = parseFloat(document.getElementById('precio').value) || 0;
-    const costo = parseFloat(document.getElementById('costo').value) || 0;
-    const display = document.getElementById('ganancia-display');
-    const valor = document.getElementById('ganancia-valor');
-    const ganancia = precio - costo;
-    if (precio > 0 || costo > 0) {
-      valor.textContent = ganancia.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      display.style.display = 'block';
-      display.className = ganancia >= 0
-        ? 'text-xs text-emerald-400 mt-1'
-        : 'text-xs text-red-400 mt-1';
-    } else {
-      display.style.display = 'none';
-    }
+function calcularGanancia() {
+  const precio = parseFloat(document.getElementById('precio').value) || 0;
+  const costo = parseFloat(document.getElementById('costo').value) || 0;
+  const display = document.getElementById('ganancia-display');
+  const valor = document.getElementById('ganancia-valor');
+  const ganancia = precio - costo;
+  if (precio > 0 || costo > 0) {
+    valor.textContent = ganancia.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    display.style.display = 'block';
+    display.className = ganancia >= 0
+      ? 'text-xs text-emerald-400 mt-1'
+      : 'text-xs text-red-400 mt-1';
+  } else {
+    display.style.display = 'none';
   }
-  // Inicializar al cargar si ya hay valores
-  document.addEventListener('DOMContentLoaded', calcularGanancia);
+}
+document.addEventListener('DOMContentLoaded', calcularGanancia);
+
+// Preview de imágenes extra seleccionadas
+function mostrarPreviewExtra(input) {
+  const container = document.getElementById('preview-extra');
+  const label = document.getElementById('extra-nombre');
+  container.innerHTML = '';
+  if (input.files.length === 0) {
+    container.classList.add('hidden');
+    label.textContent = 'Agregar más fotos';
+    return;
+  }
+  label.textContent = input.files.length + ' foto(s) seleccionada(s)';
+  container.classList.remove('hidden');
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const div = document.createElement('div');
+      div.className = 'relative';
+      div.innerHTML = `<img src="${e.target.result}" class="w-full aspect-square object-cover rounded-xl border border-purple-500/50"/>`;
+      container.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Marcar imagen existente para eliminar
+function marcarEliminar(checkbox, cardId) {
+  const card = document.getElementById(cardId);
+  if (checkbox.checked) {
+    card.style.opacity = '0.3';
+    card.querySelector('span').textContent = '✓ Se quitará';
+    card.querySelector('span').className = 'bg-red-800 text-white text-xs font-bold px-2 py-1 rounded-lg';
+  } else {
+    card.style.opacity = '1';
+    card.querySelector('span').textContent = '✕ Quitar';
+    card.querySelector('span').className = 'bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg';
+  }
+}
 </script>
 {% endblock %}

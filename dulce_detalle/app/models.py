@@ -58,6 +58,19 @@ class Producto(models.Model):
         ordering = ['-creado']
 
 
+class ImagenProducto(models.Model):
+    """Imágenes adicionales de un producto (galería)."""
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='imagenes')
+    imagen = models.ImageField(upload_to='productos/')
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+
+    def __str__(self):
+        return f"Imagen de {self.producto.nombre} (#{self.orden})"
+
+
 class Venta(models.Model):
     TIPO_CHOICES = [
         ('pagada', 'Pagada'),

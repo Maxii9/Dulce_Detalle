@@ -167,11 +167,12 @@ def crear_producto(request, slug):
         categoria_id_raw = request.POST.get('categoria_id', '').strip()
         categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
         imagen = request.FILES.get('imagen')
+        imagenes_extra = request.FILES.getlist('imagenes_extra')
         if nombre and precio:
             try:
                 p_val = float(precio)
                 c_val = float(costo)
-                s_val = int(stock)
+                s_val = int(stock) if stock else 0
                 
                 if p_val < 0 or c_val < 0 or s_val < 0:
                     messages.error(request, 'Precio, costo y stock no pueden ser negativos.')
@@ -185,6 +186,7 @@ def crear_producto(request, slug):
                         stock=s_val,
                         imagen=imagen,
                         categoria_id=categoria_id,
+                        imagenes_extra=imagenes_extra,
                     )
                     messages.success(request, f'Producto "{nombre}" creado exitosamente.')
                     return redirect('lista_productos', slug=slug)
@@ -216,11 +218,14 @@ def editar_producto(request, slug, pk):
         categoria_id_raw = request.POST.get('categoria_id', '').strip()
         categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
         imagen = request.FILES.get('imagen')
+        imagenes_extra = request.FILES.getlist('imagenes_extra')
+        imagenes_eliminar_raw = request.POST.getlist('eliminar_imagen')
+        imagenes_eliminar = [int(x) for x in imagenes_eliminar_raw if x.isdigit()]
         if nombre and precio:
             try:
                 p_val = float(precio)
                 c_val = float(costo)
-                s_val = int(stock)
+                s_val = int(stock) if stock else 0
 
                 if p_val < 0 or c_val < 0 or s_val < 0:
                     messages.error(request, 'Precio, costo y stock no pueden ser negativos.')
@@ -234,6 +239,8 @@ def editar_producto(request, slug, pk):
                         stock=s_val,
                         imagen=imagen,
                         categoria_id=categoria_id,
+                        imagenes_extra=imagenes_extra,
+                        imagenes_eliminar=imagenes_eliminar,
                     )
                     messages.success(request, f'Producto "{nombre}" actualizado.')
                     return redirect('lista_productos', slug=slug)
@@ -248,6 +255,7 @@ def editar_producto(request, slug, pk):
         'accion': 'Editar producto',
         'producto': producto,
         'categorias': negocio.categorias_producto.all(),
+        'imagenes_extra': producto.imagenes.all(),
     })
 
 
@@ -592,8 +600,9 @@ def tienda_publica(request, slug):
         # Clientes: redirigir a página de tienda inactiva
         return redirect('tienda_inactiva', slug=slug)
 
-    # Solo mostrar productos con stock disponible
-    productos = services.get_productos(slug).filter(stock__gt=0)
+    # Solo mostrar productos con stock disponible (con prefetch de imágenes extra)
+    from app.models import ImagenProducto
+    productos = services.get_productos(slug).filter(stock__gt=0).prefetch_related('imagenes')
 
     query = request.GET.get('q', '').strip()
     categoria_id = request.GET.get('categoria', '').strip()
@@ -625,6 +634,19 @@ def tienda_publica(request, slug):
         for p in productos
     ]
 
+    # Construir dict de galería: {producto_pk: [url1, url2, ...]}
+    # Incluye la imagen principal primero, luego las adicionales
+    import json
+    galeria_map = {}
+    for p in productos:
+        urls = []
+        if p.imagen:
+            urls.append(p.imagen.url)
+        for img in p.imagenes.all():
+            urls.append(img.imagen.url)
+        galeria_map[p.pk] = urls
+    galeria_json = json.dumps(galeria_map)
+
     return render(request, 'tienda_publica/index.html', {
         'negocio': negocio,
         'productos_con_cant': productos_con_cant,
@@ -634,6 +656,8 @@ def tienda_publica(request, slug):
         'carrito_count': carrito_count,
         'top_vendidos': top_vendidos,
         'es_propietario': es_propietario,
+        'galeria_map': galeria_map,
+        'galeria_json': galeria_json,
     })
 
 def agregar_carrito_publico(request, slug, pk):

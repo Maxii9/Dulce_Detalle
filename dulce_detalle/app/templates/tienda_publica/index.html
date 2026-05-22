@@ -27,7 +27,7 @@
   </form>
 </div>
 
-<!-- Filtros de Categoría (solo los que tienen productos en stock) -->
+<!-- Filtros de Categoría -->
 {% if tipos %}
 <div class="mb-6 -mx-4 px-4 overflow-x-auto">
   <div class="flex gap-2 pb-2 min-w-max">
@@ -68,16 +68,18 @@
 
       {% if producto.imagen %}
         <button type="button"
-          data-img="{{ producto.imagen.url }}"
-          data-nombre="{{ producto.nombre }}"
-          data-desc="{{ producto.descripcion }}"
-          data-precio="{{ producto.precio }}"
+          data-pk="{{ producto.pk }}"
           onclick="abrirLightbox(this)"
           class="w-full h-full block focus:outline-none cursor-zoom-in"
           title="Ver detalle">
           <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+          <!-- Indicador de múltiples fotos -->
+          {% with total_imgs=galeria_map|dictsort:"0" %}
+          {% endwith %}
         </button>
+        <!-- Badge de galería si tiene más de 1 imagen -->
+        <div class="absolute bottom-2 right-2 z-20" id="badge-{{ producto.pk }}"></div>
       {% else %}
         <div class="w-full h-full flex items-center justify-center text-gray-300">
           <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +90,6 @@
     </div>
 
     <div class="p-4 flex flex-col flex-1">
-      <!-- Badge de categoría -->
       <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-700 tracking-wide mb-1">
         {{ producto.categoria.nombre|default:"Sin categoría"|upper }}
       </span>
@@ -131,49 +132,184 @@
 
 </div>
 
-<!-- ── LIGHTBOX MODAL ─────────────────────────────────────────────── -->
+<!-- ── GALERÍA DATA (JSON) ─────────────────────────────────────────── -->
+<script id="galeria-data" type="application/json">
+{{ galeria_json }}
+</script>
+
+<!-- ── LIGHTBOX MODAL CAROUSEL ────────────────────────────────────── -->
 <div id="lightbox-overlay"
-     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-md p-3 sm:p-6">
+
+  <!-- Card central — más grande -->
   <div id="lightbox-card"
-       class="relative bg-white rounded-3xl shadow-2xl overflow-hidden max-w-lg w-full flex flex-col"
-       style="max-height:90vh">
+       class="relative bg-white rounded-3xl shadow-2xl overflow-hidden w-full flex flex-col"
+       style="max-width:800px; max-height:95vh">
+
     <!-- Botón cerrar -->
     <button id="lightbox-close"
-            class="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-black/30 hover:bg-black/60 text-white rounded-full transition-all">
+            class="absolute top-3 right-3 z-20 w-10 h-10 flex items-center justify-center bg-black/40 hover:bg-black/70 text-white rounded-full transition-all">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
       </svg>
     </button>
 
-    <!-- Imagen grande -->
-    <div class="w-full bg-gray-100 flex items-center justify-center overflow-hidden" style="max-height:55vh">
-      <img id="lightbox-img" src="" alt=""
-           class="w-full h-full object-contain"/>
+    <!-- ── CAROUSEL DE IMÁGENES ── -->
+    <div class="relative bg-black overflow-hidden" style="max-height:65vh; min-height:200px">
+      <!-- Contenedor de imágenes -->
+      <div id="carousel-track" class="flex transition-transform duration-300 ease-in-out h-full">
+        <!-- imágenes inyectadas por JS -->
+      </div>
+
+      <!-- Flecha izquierda -->
+      <button id="btn-prev"
+              class="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center
+                     bg-black/50 hover:bg-black/80 text-white rounded-full transition-all hidden">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+
+      <!-- Flecha derecha -->
+      <button id="btn-next"
+              class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center
+                     bg-black/50 hover:bg-black/80 text-white rounded-full transition-all hidden">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>
+
+      <!-- Dots de navegación -->
+      <div id="carousel-dots" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10"></div>
     </div>
 
     <!-- Info del producto -->
-    <div class="p-6 overflow-y-auto">
-      <h2 id="lightbox-nombre" class="text-xl font-bold text-gray-900 mb-1"></h2>
+    <div class="p-5 sm:p-7 overflow-y-auto">
+      <h2 id="lightbox-nombre" class="text-xl sm:text-2xl font-bold text-gray-900 mb-1"></h2>
       <p id="lightbox-desc" class="text-sm text-gray-500 mb-4 leading-relaxed whitespace-pre-line"></p>
-      <p id="lightbox-precio" class="text-2xl font-extrabold text-gray-900"></p>
+      <p id="lightbox-precio" class="text-3xl font-extrabold text-gray-900"></p>
     </div>
   </div>
 </div>
 
 <script>
+// ── Galería data desde Django ──
+let galeriaData = {};
+try {
+  galeriaData = JSON.parse(document.getElementById('galeria-data').textContent);
+} catch(e) {}
+
+// Agregar badges de "N fotos" en tarjetas con galería
+document.addEventListener('DOMContentLoaded', function() {
+  Object.entries(galeriaData).forEach(([pk, urls]) => {
+    if (urls.length > 1) {
+      const badge = document.getElementById('badge-' + pk);
+      if (badge) {
+        badge.innerHTML = `<span class="bg-black/60 text-white text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">📷 ${urls.length}</span>`;
+      }
+    }
+  });
+});
+
+// ── Lightbox State ──
+let currentImages = [];
+let currentIndex = 0;
+
 const overlay = document.getElementById('lightbox-overlay');
 const card = document.getElementById('lightbox-card');
+const track = document.getElementById('carousel-track');
+const dotsContainer = document.getElementById('carousel-dots');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
 
 function abrirLightbox(btn) {
-  document.getElementById('lightbox-img').src = btn.dataset.img;
-  document.getElementById('lightbox-img').alt = btn.dataset.nombre;
-  document.getElementById('lightbox-nombre').textContent = btn.dataset.nombre;
-  document.getElementById('lightbox-desc').textContent = btn.dataset.desc || '';
-  document.getElementById('lightbox-precio').textContent = '$ ' + btn.dataset.precio;
+  const pk = btn.dataset.pk;
+  currentImages = galeriaData[pk] || [];
+  if (currentImages.length === 0) return;
+
+  // Info del producto
+  const card2 = btn.closest('[data-pk]') || btn;
+  const contenido = btn.closest('.flex.flex-col');
+  const nombre = contenido ? contenido.querySelector('p.font-semibold, p.text-xs.text-gray-800')?.textContent?.trim() || '' : '';
+  const desc = contenido ? contenido.querySelector('p.text-gray-400')?.textContent?.trim() || '' : '';
+  const precio = contenido ? contenido.querySelector('p.font-extrabold')?.textContent?.trim() || '' : '';
+
+  document.getElementById('lightbox-nombre').textContent = btn.closest('.flex.flex-col')
+    ? btn.closest('.group').querySelector('p.font-semibold, p.text-xs.text-gray-800')?.textContent?.trim() || ''
+    : '';
+
+  // Re-buscar los datos desde el DOM padre
+  const grupoPadre = btn.closest('.group');
+  if (grupoPadre) {
+    const nomEl = grupoPadre.querySelector('.text-xs.text-gray-800');
+    const descEl = grupoPadre.querySelector('.text-xs.text-gray-400');
+    const precioEl = grupoPadre.querySelector('.font-extrabold.text-gray-900');
+    document.getElementById('lightbox-nombre').textContent = nomEl?.textContent?.trim() || '';
+    document.getElementById('lightbox-desc').textContent = descEl?.textContent?.trim() || '';
+    document.getElementById('lightbox-precio').textContent = precioEl?.textContent?.trim() || '';
+  }
+
+  currentIndex = 0;
+  renderCarousel();
+
   overlay.classList.remove('hidden');
   overlay.classList.add('flex');
   document.body.style.overflow = 'hidden';
 }
+
+function renderCarousel() {
+  // Limpiar track
+  track.innerHTML = '';
+  dotsContainer.innerHTML = '';
+
+  currentImages.forEach((url, i) => {
+    // Slide
+    const slide = document.createElement('div');
+    slide.className = 'flex-shrink-0 w-full flex items-center justify-center';
+    slide.style.cssText = 'min-height:200px; max-height:65vh';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = 'Foto ' + (i + 1);
+    img.className = 'max-w-full max-h-full object-contain';
+    img.style.maxHeight = '65vh';
+    slide.appendChild(img);
+    track.appendChild(slide);
+
+    // Dot
+    const dot = document.createElement('button');
+    dot.className = 'w-2 h-2 rounded-full transition-all ' + (i === 0 ? 'bg-white scale-125' : 'bg-white/40');
+    dot.onclick = () => goTo(i);
+    dotsContainer.appendChild(dot);
+  });
+
+  // Mostrar/ocultar flechas
+  const multi = currentImages.length > 1;
+  btnPrev.classList.toggle('hidden', !multi);
+  btnNext.classList.toggle('hidden', !multi);
+  dotsContainer.classList.toggle('hidden', !multi);
+
+  goTo(0);
+}
+
+function goTo(index) {
+  currentIndex = Math.max(0, Math.min(index, currentImages.length - 1));
+  track.style.transform = `translateX(-${currentIndex * 100}%)`;
+  // Actualizar dots
+  dotsContainer.querySelectorAll('button').forEach((d, i) => {
+    d.className = 'w-2 h-2 rounded-full transition-all ' + (i === currentIndex ? 'bg-white scale-125' : 'bg-white/40');
+  });
+}
+
+btnPrev.addEventListener('click', () => goTo(currentIndex - 1));
+btnNext.addEventListener('click', () => goTo(currentIndex + 1));
+
+// Swipe táctil
+let touchStartX = 0;
+track.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+track.addEventListener('touchend', e => {
+  const delta = touchStartX - e.changedTouches[0].clientX;
+  if (Math.abs(delta) > 50) goTo(currentIndex + (delta > 0 ? 1 : -1));
+});
 
 function cerrarLightbox() {
   overlay.classList.add('hidden');
@@ -186,7 +322,11 @@ overlay.addEventListener('click', function(e) {
   if (!card.contains(e.target)) cerrarLightbox();
 });
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') cerrarLightbox();
+  if (!overlay.classList.contains('hidden')) {
+    if (e.key === 'Escape') cerrarLightbox();
+    if (e.key === 'ArrowRight') goTo(currentIndex + 1);
+    if (e.key === 'ArrowLeft') goTo(currentIndex - 1);
+  }
 });
 </script>
 {% endblock %}
