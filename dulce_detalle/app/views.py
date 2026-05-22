@@ -312,6 +312,7 @@ def carrito_libre_agregar_view(request, slug):
         precio = request.POST.get('precio_libre', '0').strip() or '0'
         costo = request.POST.get('costo_libre', '0').strip() or '0'
         cantidad = request.POST.get('cantidad_libre', '1').strip() or '1'
+        es_gasto = request.POST.get('es_gasto', '') == '1'
         
         try:
             p_val = float(precio)
@@ -324,9 +325,11 @@ def carrito_libre_agregar_view(request, slug):
                     nombre=nombre[:100], 
                     precio=p_val, 
                     costo=c_val, 
-                    cantidad=cant_val
+                    cantidad=cant_val,
+                    es_gasto=es_gasto,
                 )
-                messages.success(request, f'Producto libre "{nombre}" agregado por ${p_val}.')
+                tipo_label = 'Gasto' if es_gasto else 'Venta libre'
+                messages.success(request, f'{tipo_label} "{nombre}" agregado por ${p_val}.')
             else:
                 messages.error(request, 'Revisa los datos: nombre requerido, precio/costo >= 0 y cantidad > 0.')
         except ValueError:
@@ -667,17 +670,41 @@ def checkout_publico(request, slug):
     if not carrito_items:
         return redirect('tienda_publica', slug=slug)
 
+    # Construir opciones de envío activas
+    opciones_envio = []
+    if negocio.envio_domicilio:
+        opciones_envio.append(('domicilio', 'A domicilio'))
+    if negocio.envio_retiro:
+        opciones_envio.append(('retiro', 'Retiro en tienda'))
+    if negocio.envio_convenir:
+        opciones_envio.append(('convenir', 'A convenir'))
+
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()[:100]
         telefono = request.POST.get('telefono', '').strip()[:30]
-        direccion = request.POST.get('direccion', '').strip()[:255]
+        localidad = request.POST.get('localidad', '').strip()[:100]
+        tipo_envio_key = request.POST.get('tipo_envio', '').strip()
+        
+        # Mapear clave a etiqueta legible
+        envio_map = dict(opciones_envio)
+        tipo_envio_label = envio_map.get(tipo_envio_key, tipo_envio_key)
+        
+        # Combinar localidad + tipo envío
+        if localidad and tipo_envio_label:
+            direccion = f"{localidad} — {tipo_envio_label}"
+        elif localidad:
+            direccion = localidad
+        elif tipo_envio_label:
+            direccion = tipo_envio_label
+        else:
+            direccion = ''
         
         if nombre and telefono:
             pedido = services.crear_pedido_cliente(
                 negocio=negocio,
                 nombre=nombre,
                 telefono=telefono,
-                direccion=direccion,
+                direccion=direccion[:255],
                 items_data=carrito_items
             )
             services.carrito_publico_limpiar(request.session)
@@ -687,6 +714,7 @@ def checkout_publico(request, slug):
         'negocio': negocio,
         'carrito_items': carrito_items,
         'total': total,
+        'opciones_envio': opciones_envio,
     })
 
 def exito_publico(request, slug, pedido_id):
@@ -982,12 +1010,18 @@ def configuracion_tienda(request, slug):
         emoji = request.POST.get('emoji', '🛍️').strip()[:10]
         color_primario = request.POST.get('color_primario', '#ec4899').strip()[:7]
         color_secundario = request.POST.get('color_secundario', '#be185d').strip()[:7]
+        envio_domicilio = 'envio_domicilio' in request.POST
+        envio_retiro = 'envio_retiro' in request.POST
+        envio_convenir = 'envio_convenir' in request.POST
         if nombre:
             negocio.nombre = nombre
             negocio.descripcion = descripcion
             negocio.emoji = emoji
             negocio.color_primario = color_primario
             negocio.color_secundario = color_secundario
+            negocio.envio_domicilio = envio_domicilio
+            negocio.envio_retiro = envio_retiro
+            negocio.envio_convenir = envio_convenir
             negocio.save()
             messages.success(request, 'Información de la tienda actualizada.')
             return redirect('configuracion_tienda', slug=slug)

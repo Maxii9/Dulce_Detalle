@@ -87,12 +87,26 @@
             <h4 class="text-sm font-semibold text-content-label mb-4 border-b border-card-border pb-2">Artículos del Pedido</h4>
             <div class="space-y-3">
               {% for item in pedido.items.all %}
-              <div class="flex items-center justify-between py-1">
-                <div class="flex items-center gap-3">
-                  <span class="w-8 h-8 rounded-lg bg-nav-active-bg text-nav-active-text flex items-center justify-center font-bold text-sm">{{ item.cantidad }}x</span>
-                  <span class="text-content-value font-medium">{{ item.producto.nombre }}</span>
+              <div class="flex items-center gap-3 py-1">
+                <!-- Miniatura -->
+                <div class="w-10 h-10 rounded-lg overflow-hidden bg-card-bg-alt border border-card-border flex-shrink-0 flex items-center justify-center">
+                  {% if item.producto and item.producto.imagen %}
+                    <img src="{{ item.producto.imagen.url }}" alt="{{ item.nombre_producto|default:item.producto.nombre }}"
+                         class="w-full h-full object-cover"/>
+                  {% else %}
+                    <svg class="w-5 h-5 text-content-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                  {% endif %}
                 </div>
-                <span class="text-content-muted">${{ item.subtotal }}</span>
+                <div class="flex items-center justify-between flex-1 min-w-0">
+                  <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-nav-active-bg text-nav-active-text flex items-center justify-center font-bold text-sm flex-shrink-0">{{ item.cantidad }}x</span>
+                    <span class="text-content-value font-medium truncate">{{ item.nombre_producto|default:item.producto.nombre }}</span>
+                  </div>
+                  <span class="text-content-muted flex-shrink-0 ml-2">${{ item.subtotal }}</span>
+                </div>
               </div>
               {% endfor %}
             </div>

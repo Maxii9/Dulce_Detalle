@@ -14,6 +14,11 @@ class Negocio(models.Model):
     activa = models.BooleanField(default=False, verbose_name='Tienda activa',
                                  help_text='Activá la tienda una vez que el cliente realizó el pago.')
 
+    # Opciones de envío para el checkout público
+    envio_domicilio = models.BooleanField(default=True, verbose_name='Envío a domicilio')
+    envio_retiro = models.BooleanField(default=True, verbose_name='Retiro en tienda')
+    envio_convenir = models.BooleanField(default=True, verbose_name='A convenir')
+
     def __str__(self):
         return self.nombre
 

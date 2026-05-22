@@ -172,10 +172,28 @@
     <!-- Panel Agregar Producto Libre -->
     <div class="bg-white border border-gray-200 rounded-xl shadow-lg p-5">
       <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
-        <span>✨</span> Venta Libre (Sin stock)
+        <span>✨</span> Venta Libre / Gasto
       </h3>
-      <form action="{% url 'carrito_libre_agregar' slug=negocio.slug %}" method="post" class="space-y-3">
+
+      <!-- Toggle Venta / Gasto -->
+      <div class="flex border border-gray-300 rounded-lg overflow-hidden mb-3" id="toggle-tipo-libre">
+        <label class="flex-1 text-center cursor-pointer">
+          <input type="radio" name="_tipo_libre_ui" value="venta" class="peer sr-only" checked
+                 onchange="setTipoLibre('venta')">
+          <div class="py-2 font-bold text-sm text-gray-500 peer-checked:bg-emerald-600 peer-checked:text-white transition-all">💰 Venta</div>
+        </label>
+        <div class="w-px bg-gray-300"></div>
+        <label class="flex-1 text-center cursor-pointer">
+          <input type="radio" name="_tipo_libre_ui" value="gasto" class="peer sr-only"
+                 onchange="setTipoLibre('gasto')">
+          <div class="py-2 font-bold text-sm text-gray-500 peer-checked:bg-red-500 peer-checked:text-white transition-all">💸 Gasto</div>
+        </label>
+      </div>
+      <p id="tipo-libre-hint" class="text-xs text-gray-400 mb-3">Ingreso positivo para la tienda.</p>
+
+      <form action="{% url 'carrito_libre_agregar' slug=negocio.slug %}" method="post" class="space-y-3" id="form-libre">
         {% csrf_token %}
+        <input type="hidden" name="es_gasto" id="es_gasto_input" value="0">
         <div>
           <input type="text" name="nombre_libre" placeholder="Nombre completo" maxlength="100" required class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
         </div>
@@ -192,11 +210,33 @@
             <input type="number" step="1" min="1" name="cantidad_libre" value="1" title="Cant." class="w-full text-sm border border-gray-300 rounded-lg px-2 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-center">
           </div>
         </div>
-        <button type="submit" class="w-full bg-gray-50 hover:bg-emerald-50 text-emerald-600 border border-gray-300 hover:border-emerald-400 font-semibold py-2.5 rounded-lg text-sm transition-all shadow-sm">
+        <button type="submit" id="btn-libre-submit"
+                class="w-full bg-gray-50 hover:bg-emerald-50 text-emerald-600 border border-gray-300 hover:border-emerald-400 font-semibold py-2.5 rounded-lg text-sm transition-all shadow-sm">
           + Añadir sin registrar
         </button>
       </form>
     </div>
+
+    <script>
+    function setTipoLibre(tipo) {
+      const hint = document.getElementById('tipo-libre-hint');
+      const btn = document.getElementById('btn-libre-submit');
+      const input = document.getElementById('es_gasto_input');
+      if (tipo === 'gasto') {
+        input.value = '1';
+        hint.textContent = 'Egreso negativo para la tienda (gasto operativo).';
+        hint.className = 'text-xs text-red-400 mb-3';
+        btn.className = 'w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 hover:border-red-400 font-semibold py-2.5 rounded-lg text-sm transition-all shadow-sm';
+        btn.textContent = '- Registrar gasto';
+      } else {
+        input.value = '0';
+        hint.textContent = 'Ingreso positivo para la tienda.';
+        hint.className = 'text-xs text-gray-400 mb-3';
+        btn.className = 'w-full bg-gray-50 hover:bg-emerald-50 text-emerald-600 border border-gray-300 hover:border-emerald-400 font-semibold py-2.5 rounded-lg text-sm transition-all shadow-sm';
+        btn.textContent = '+ Añadir sin registrar';
+      }
+    }
+    </script>
 
     <div class="bg-white border border-card-border rounded-2xl p-5 shadow-sm sticky top-6">
       <div class="flex justify-between items-center mb-4 border-b border-card-border pb-3">

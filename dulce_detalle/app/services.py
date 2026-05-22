@@ -46,7 +46,7 @@ def get_producto(pk: int) -> Producto | None:
 
 def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None) -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
-    return Producto.objects.create(
+    producto = Producto.objects.create(
         negocio=negocio,
         categoria_id=categoria_id,
         nombre=nombre,
@@ -56,6 +56,21 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
         stock=stock,
         imagen=imagen,
     )
+    # Si el producto se crea con stock inicial > 0, registrar movimiento de compra
+    if stock > 0:
+        from django.utils import timezone
+        from decimal import Decimal
+        total_egreso = Decimal(str(costo)) * stock
+        Venta.objects.create(
+            negocio=negocio,
+            fecha=timezone.localdate(),
+            tipo='pagada',
+            metodo_pago='egreso',
+            total=-total_egreso,
+            tipo_movimiento='compra_stock',
+            observacion=f'Stock inicial: {stock} unidad(es) de "{nombre}"',
+        )
+    return producto
 
 
 def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None) -> Producto | None:
@@ -195,7 +210,7 @@ def get_carrito_libre(session: dict) -> list[dict]:
     """Retorna la lista de ítems libres"""
     return session.get('carrito_libre', [])
 
-def carrito_libre_agregar(session: dict, nombre: str, precio: float, costo: float, cantidad: int) -> None:
+def carrito_libre_agregar(session: dict, nombre: str, precio: float, costo: float, cantidad: int, es_gasto: bool = False) -> None:
     carrito = get_carrito_libre(session)
     import uuid
     id_libre = str(uuid.uuid4())
@@ -204,7 +219,8 @@ def carrito_libre_agregar(session: dict, nombre: str, precio: float, costo: floa
         'nombre': nombre,
         'precio': precio,
         'costo': costo,
-        'cantidad': cantidad
+        'cantidad': cantidad,
+        'es_gasto': es_gasto,
     })
     session['carrito_libre'] = carrito
     session.modified = True
@@ -238,15 +254,20 @@ def get_carrito_detalle(session: dict) -> list[dict]:
             
     carrito_libre = get_carrito_libre(session)
     for lib in carrito_libre:
-        subtotal = Decimal(str(lib['precio'])) * int(lib['cantidad'])
+        es_gasto = lib.get('es_gasto', False)
+        precio_val = Decimal(str(lib['precio']))
+        subtotal = precio_val * int(lib['cantidad'])
+        if es_gasto:
+            subtotal = -subtotal
         items.append({
             'producto': None,
             'nombre_libre': lib['nombre'],
-            'precio_libre': Decimal(str(lib['precio'])),
+            'precio_libre': precio_val,
             'costo_libre': Decimal(str(lib['costo'])),
             'cantidad': lib['cantidad'],
             'subtotal': subtotal,
             'es_libre': True,
+            'es_gasto': es_gasto,
             'id_str': lib['id_libre'],
         })
     return items
@@ -280,14 +301,21 @@ def crear_venta(negocio: Negocio, fecha, tipo: str, metodo_pago: str, items_data
     )
     for item in items_data:
         if item.get('es_libre'):
+            es_gasto = item.get('es_gasto', False)
+            # Para gastos: precio negativo, tipo_movimiento=compra_stock
+            precio_ui = item['precio_libre']  # siempre positivo en el item
             ItemVenta.objects.create(
                 venta=venta,
                 producto=None,
                 nombre_libre=item['nombre_libre'],
                 cantidad=item['cantidad'],
-                precio_unitario=item['precio_libre'],
+                precio_unitario=precio_ui,
                 costo_unitario=item['costo_libre'],
             )
+            if es_gasto:
+                venta.tipo_movimiento = 'compra_stock'
+                venta.metodo_pago = 'egreso'
+                venta.save(update_fields=['tipo_movimiento', 'metodo_pago'])
         else:
             ItemVenta.objects.create(
                 venta=venta,

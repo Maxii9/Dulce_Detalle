@@ -77,6 +77,46 @@
         </div>
       </div>
 
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- OPCIONES DE ENVÍO                                      -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div class="border-t border-card-border pt-5">
+        <h2 class="text-base font-bold text-content-title mb-1">🚚 Opciones de Envío</h2>
+        <p class="text-xs text-content-subtitle mb-4">Elegí qué métodos de envío ofrecer en tu tienda. Los clientes podrán seleccionar entre las opciones activadas.</p>
+        <div class="space-y-3">
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="envio_domicilio" value="1"
+                   {% if negocio.envio_domicilio %}checked{% endif %}
+                   class="w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <span class="text-xl">🏠</span>
+            <div>
+              <p class="font-semibold text-content-value text-sm">A domicilio</p>
+              <p class="text-xs text-content-subtitle">El pedido se entrega en la dirección del cliente.</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="envio_retiro" value="1"
+                   {% if negocio.envio_retiro %}checked{% endif %}
+                   class="w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <span class="text-xl">🏪</span>
+            <div>
+              <p class="font-semibold text-content-value text-sm">Retiro en tienda</p>
+              <p class="text-xs text-content-subtitle">El cliente pasa a retirar el pedido en tu local.</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="envio_convenir" value="1"
+                   {% if negocio.envio_convenir %}checked{% endif %}
+                   class="w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <span class="text-xl">🤝</span>
+            <div>
+              <p class="font-semibold text-content-value text-sm">A convenir</p>
+              <p class="text-xs text-content-subtitle">El método de entrega se coordina por mensaje.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <button type="submit"
         class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
         Guardar Cambios
