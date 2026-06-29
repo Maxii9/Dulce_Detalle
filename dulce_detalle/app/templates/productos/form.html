@@ -14,6 +14,68 @@
     <span class="text-gray-300">{{ accion }}</span>
   </div>
 
+
+  <!-- ══ ESCÁNER DE CÓDIGO DE BARRAS ══ -->
+  <div class="bg-gray-900 rounded-2xl border border-emerald-800/40 shadow-xl overflow-hidden mb-5">
+    <div class="px-6 py-4 border-b border-gray-800 bg-gradient-to-r from-emerald-900/30 to-transparent flex items-center gap-3">
+      <div class="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M2 4h2v16H2V4zm3 0h1v16H5V4zm2 0h2v16H7V4zm3 0h1v16h-1V4zm2 0h2v16h-2V4zm3 0h1v16h-1V4zm2 0h1v16h-1V4zm2 0h2v16h-2V4z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-bold text-white">Escáner de Stock</p>
+        <p class="text-xs text-gray-400">Escaneá un código para buscar y sumar stock sin abrir el formulario</p>
+      </div>
+    </div>
+    <div class="px-6 py-4 space-y-3">
+      <div class="flex gap-2">
+        <input id="barras-input" type="text" placeholder="Escaneá o escribí el código..." autocomplete="off"
+               class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                      font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"/>
+        <button type="button" onclick="buscarBarras()"
+                class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all text-sm">
+          Buscar
+        </button>
+      </div>
+      <!-- Resultado -->
+      <div id="barras-resultado" class="hidden space-y-2">
+        <div id="barras-encontrado" class="hidden bg-gray-800 rounded-xl border border-emerald-700/50 p-4">
+          <div class="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Producto encontrado</p>
+              <p id="barras-nombre" class="text-white font-bold mt-0.5"></p>
+              <p class="text-gray-400 text-xs mt-0.5">Stock: <span id="barras-stock" class="text-white font-semibold"></span> · Precio: $<span id="barras-precio"></span></p>
+            </div>
+            <a id="barras-editar-link" href="#"
+               class="flex-shrink-0 text-xs text-purple-400 hover:text-purple-300 border border-purple-700/50 rounded-lg px-3 py-1.5 transition-colors">
+              Editar
+            </a>
+          </div>
+          <div class="flex items-center gap-2 border-t border-gray-700 pt-3">
+            <div class="flex items-center bg-gray-700 rounded-xl overflow-hidden border border-gray-600">
+              <button type="button" onclick="cambiarCantidad(-1)" class="px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 transition-colors font-bold">−</button>
+              <input id="barras-cantidad" type="number" value="1" min="1" class="w-14 text-center bg-transparent text-white font-semibold py-2 focus:outline-none text-sm"/>
+              <button type="button" onclick="cambiarCantidad(1)" class="px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 transition-colors font-bold">+</button>
+            </div>
+            <button type="button" onclick="sumarStock()"
+                    class="flex-1 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all text-sm">
+              + Agregar al Stock
+            </button>
+          </div>
+        </div>
+        <div id="barras-no-encontrado" class="hidden bg-gray-800 rounded-xl border border-red-700/40 p-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-red-300 text-sm">Código no registrado. Podés asignarlo al producto de abajo ↓</p>
+        </div>
+        <div id="barras-exito" class="hidden bg-emerald-900/40 rounded-xl border border-emerald-600/40 p-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <p id="barras-exito-msg" class="text-emerald-300 text-sm font-semibold"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Card del formulario -->
   <div class="bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
 
@@ -57,6 +119,24 @@
           <input type="file" name="imagen" id="imagen" accept="image/*" class="hidden"
                  onchange="document.getElementById('imagen-nombre').textContent = this.files[0]?.name || 'Hacé clic para seleccionar imagen principal'"/>
         </label>
+      </div>
+
+      <!-- ── CÓDIGO DE BARRAS ─────────────────────────── -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M2 4h2v16H2V4zm3 0h1v16H5V4zm2 0h2v16H7V4zm3 0h1v16h-1V4zm2 0h2v16h-2V4zm3 0h1v16h-1V4zm2 0h1v16h-1V4zm2 0h2v16h-2V4z"/>
+          </svg>
+          Código de Barras <span class="text-gray-600 font-normal">(opcional)</span>
+        </label>
+        <input type="text" name="codigo_barras" id="codigo_barras"
+               value="{{ producto.codigo_barras|default:'' }}"
+               placeholder="Ej: 7790123456789"
+               maxlength="50"
+               class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono text-sm
+                      placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500
+                      focus:border-transparent transition-all"/>
+        <p class="text-xs text-gray-600 mt-1">Escaneá directamente en este campo o escribí el código.</p>
       </div>
 
       <!-- ── GALERÍA DE IMÁGENES EXTRA ─────────────────── -->
@@ -264,6 +344,127 @@ function marcarEliminar(checkbox, cardId) {
     card.querySelector('span').textContent = '✕ Quitar';
     card.querySelector('span').className = 'bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg';
   }
+}
+
+// ── Lógica del Escáner de Barras ──
+let productoEscaneado = null;
+
+// Escuchar enter en el input del escáner
+document.getElementById('barras-input').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    buscarBarras();
+  }
+});
+
+// Auto-focus al cargar si es modo "nuevo producto"
+window.addEventListener('load', () => {
+  if (document.getElementById('barras-input')) {
+    document.getElementById('barras-input').focus();
+  }
+});
+
+function buscarBarras() {
+  const input = document.getElementById('barras-input');
+  const codigo = input.value.trim();
+  if (!codigo) return;
+
+  const urlBusqueda = `{% url 'buscar_por_barras' negocio.slug %}?codigo=${encodeURIComponent(codigo)}`;
+  
+  fetch(urlBusqueda)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('barras-resultado').classList.remove('hidden');
+      document.getElementById('barras-exito').classList.add('hidden');
+      
+      if (data.encontrado) {
+        // Mostrar form encontrado
+        document.getElementById('barras-no-encontrado').classList.add('hidden');
+        document.getElementById('barras-encontrado').classList.remove('hidden');
+        
+        productoEscaneado = data;
+        document.getElementById('barras-nombre').textContent = data.nombre;
+        document.getElementById('barras-stock').textContent = data.stock;
+        document.getElementById('barras-precio').textContent = data.precio;
+        document.getElementById('barras-cantidad').value = 1;
+        document.getElementById('barras-editar-link').href = `/${'{{ negocio.slug }}'}/gestion/productos/${data.pk}/editar/`;
+      } else {
+        // Mostrar form NO encontrado y pre-llenar el formulario de creación
+        document.getElementById('barras-encontrado').classList.add('hidden');
+        document.getElementById('barras-no-encontrado').classList.remove('hidden');
+        
+        const formInput = document.getElementById('codigo_barras');
+        if (formInput) {
+          formInput.value = codigo;
+          // Hacer un breve highlight del input
+          formInput.classList.add('ring-2', 'ring-emerald-500');
+          setTimeout(() => formInput.classList.remove('ring-2', 'ring-emerald-500'), 1500);
+        }
+      }
+      
+      // Limpiar input y volver a focus
+      input.value = '';
+      input.focus();
+    })
+    .catch(err => console.error('Error buscando barras:', err));
+}
+
+function cambiarCantidad(delta) {
+  const input = document.getElementById('barras-cantidad');
+  let val = parseInt(input.value) || 1;
+  val = Math.max(1, val + delta);
+  input.value = val;
+}
+
+function sumarStock() {
+  if (!productoEscaneado) return;
+  const btn = event.currentTarget;
+  const btnText = btn.textContent;
+  
+  const cantidad = parseInt(document.getElementById('barras-cantidad').value) || 1;
+  const urlStock = `{% url 'incrementar_stock_barras' negocio.slug %}`;
+  
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  
+  fetch(urlStock, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: JSON.stringify({ pk: productoEscaneado.pk, cantidad: cantidad })
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = btnText;
+    
+    if (data.ok) {
+      document.getElementById('barras-encontrado').classList.add('hidden');
+      const exito = document.getElementById('barras-exito');
+      exito.classList.remove('hidden');
+      document.getElementById('barras-exito-msg').textContent = `Stock actualizado: ${data.nuevo_stock} u. de "${data.nombre}"`;
+      
+      // Si estamos editando ESE mismo producto, actualizar el form
+      const stockInput = document.querySelector('input[name="stock"]');
+      if (stockInput && '{{ producto.pk }}' == productoEscaneado.pk) {
+        stockInput.value = data.nuevo_stock;
+      }
+      
+      productoEscaneado = null;
+      document.getElementById('barras-input').focus();
+      
+      setTimeout(() => exito.classList.add('hidden'), 5000);
+    } else {
+      alert('Error: ' + data.error);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.textContent = btnText;
+    alert('Error al comunicar con el servidor.');
+  });
 }
 </script>
 {% endblock %}

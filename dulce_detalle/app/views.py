@@ -166,6 +166,7 @@ def crear_producto(request, slug):
         stock = request.POST.get('stock', '0')
         categoria_id_raw = request.POST.get('categoria_id', '').strip()
         categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
+        codigo_barras = request.POST.get('codigo_barras', '').strip() or None
         imagen = request.FILES.get('imagen')
         imagenes_extra = request.FILES.getlist('imagenes_extra')
         if nombre and precio:
@@ -176,8 +177,10 @@ def crear_producto(request, slug):
                 
                 if p_val < 0 or c_val < 0 or s_val < 0:
                     messages.error(request, 'Precio, costo y stock no pueden ser negativos.')
+                elif codigo_barras and services.Producto.objects.filter(codigo_barras=codigo_barras).exists():
+                    messages.error(request, f'El código "{codigo_barras}" ya está asignado a otro producto.')
                 else:
-                    services.crear_producto(
+                    prod = services.crear_producto(
                         negocio=negocio,
                         nombre=nombre[:100],
                         precio=p_val,
@@ -188,6 +191,9 @@ def crear_producto(request, slug):
                         categoria_id=categoria_id,
                         imagenes_extra=imagenes_extra,
                     )
+                    if codigo_barras:
+                        prod.codigo_barras = codigo_barras[:50]
+                        prod.save(update_fields=['codigo_barras'])
                     messages.success(request, f'Producto "{nombre}" creado exitosamente.')
                     return redirect('lista_productos', slug=slug)
             except ValueError:
@@ -217,6 +223,7 @@ def editar_producto(request, slug, pk):
         stock = request.POST.get('stock', '0')
         categoria_id_raw = request.POST.get('categoria_id', '').strip()
         categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
+        codigo_barras = request.POST.get('codigo_barras', '').strip() or None
         imagen = request.FILES.get('imagen')
         imagenes_extra = request.FILES.getlist('imagenes_extra')
         imagenes_eliminar_raw = request.POST.getlist('eliminar_imagen')
@@ -229,8 +236,10 @@ def editar_producto(request, slug, pk):
 
                 if p_val < 0 or c_val < 0 or s_val < 0:
                     messages.error(request, 'Precio, costo y stock no pueden ser negativos.')
+                elif codigo_barras and services.Producto.objects.filter(codigo_barras=codigo_barras).exclude(pk=pk).exists():
+                    messages.error(request, f'El código "{codigo_barras}" ya está asignado a otro producto.')
                 else:
-                    services.actualizar_producto(
+                    prod = services.actualizar_producto(
                         pk=pk,
                         nombre=nombre[:100],
                         precio=p_val,
@@ -242,6 +251,9 @@ def editar_producto(request, slug, pk):
                         imagenes_extra=imagenes_extra,
                         imagenes_eliminar=imagenes_eliminar,
                     )
+                    if prod:
+                        prod.codigo_barras = codigo_barras[:50] if codigo_barras else None
+                        prod.save(update_fields=['codigo_barras'])
                     messages.success(request, f'Producto "{nombre}" actualizado.')
                     return redirect('lista_productos', slug=slug)
             except ValueError:
@@ -275,6 +287,52 @@ def eliminar_producto(request, slug, pk):
         'negocios': negocios,
         'producto': producto,
     })
+
+
+# ── Código de Barras ──────────────────────────────────────────────────────
+
+@tienda_requerida
+def buscar_por_barras(request, slug):
+    """AJAX GET: busca un producto por su código de barras."""
+    negocio, _ = _contexto_base(request, slug)
+    codigo = request.GET.get('codigo', '').strip()
+    if not codigo or negocio is None:
+        return JsonResponse({'encontrado': False, 'error': 'Código vacío'})
+    try:
+        producto = services.Producto.objects.get(codigo_barras=codigo, negocio=negocio)
+        return JsonResponse({
+            'encontrado': True,
+            'pk': producto.pk,
+            'nombre': producto.nombre,
+            'precio': float(producto.precio),
+            'costo': float(producto.costo),
+            'stock': producto.stock,
+            'categoria': producto.categoria.nombre if producto.categoria else '',
+        })
+    except services.Producto.DoesNotExist:
+        return JsonResponse({'encontrado': False, 'error': 'Producto no encontrado'})
+
+
+@tienda_requerida
+def incrementar_stock_barras(request, slug):
+    """AJAX POST: suma stock a un producto buscado por código de barras."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405)
+    negocio, _ = _contexto_base(request, slug)
+    if negocio is None:
+        return JsonResponse({'ok': False, 'error': 'No autorizado'}, status=403)
+    try:
+        data = json.loads(request.body)
+        pk = int(data.get('pk', 0))
+        cantidad = int(data.get('cantidad', 1))
+        if cantidad <= 0:
+            return JsonResponse({'ok': False, 'error': 'Cantidad inválida'})
+        producto = get_object_or_404(services.Producto, pk=pk, negocio=negocio)
+        producto.stock += cantidad
+        producto.save(update_fields=['stock', 'actualizado'])
+        return JsonResponse({'ok': True, 'nuevo_stock': producto.stock, 'nombre': producto.nombre})
+    except (ValueError, json.JSONDecodeError):
+        return JsonResponse({'ok': False, 'error': 'Datos inválidos'}, status=400)
 
 
 # ── Carrito ────────────────────────────────────────────────────────────────
@@ -625,6 +683,7 @@ def tienda_publica(request, slug):
 
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
+    carrito_total = sum(item['subtotal'] for item in carrito_items)
     top_vendidos = services.get_top_vendidos(slug)
 
     # Anotar cada producto con la cantidad ya en el carrito del cliente
@@ -654,6 +713,8 @@ def tienda_publica(request, slug):
         'tipo_activo': categoria_id,
         'tipos': tipos,
         'carrito_count': carrito_count,
+        'carrito_items': carrito_items,
+        'carrito_total': carrito_total,
         'top_vendidos': top_vendidos,
         'es_propietario': es_propietario,
         'galeria_map': galeria_map,
