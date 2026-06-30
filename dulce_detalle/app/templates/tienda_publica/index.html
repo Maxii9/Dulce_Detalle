@@ -450,23 +450,34 @@
 
   function abrirCarrito() {
     if(!drawerCart) return;
-    drawerCart.style.transform = 'translateX(0)';
+    drawerCart.classList.remove('translate-x-full');
+    drawerCart.classList.add('translate-x-0');
     overlayCart.classList.remove('hidden');
-    overlayCart.style.opacity = '1';
+    // Pequeño delay para asegurar que la transición de opacidad se aplique
+    setTimeout(function() { overlayCart.style.opacity = '1'; }, 10);
     document.body.style.overflow = 'hidden';
   }
 
   function cerrarCarrito() {
     if(!drawerCart) return;
-    drawerCart.style.transform = 'translateX(100%)';
+    drawerCart.classList.remove('translate-x-0');
+    drawerCart.classList.add('translate-x-full');
     overlayCart.style.opacity = '0';
-    setTimeout(() => { overlayCart.classList.add('hidden'); }, 300);
+    setTimeout(function() { overlayCart.classList.add('hidden'); }, 300);
     document.body.style.overflow = '';
   }
 
   if (btnCart) btnCart.addEventListener('click', abrirCarrito);
   if (btnCloseCart) btnCloseCart.addEventListener('click', cerrarCarrito);
   if (overlayCart) overlayCart.addEventListener('click', cerrarCarrito);
+
+  // Auto-abrir carrito si viene en la URL
+  if (window.location.search.indexOf('cart=open') > -1) {
+    abrirCarrito();
+    // Limpiar la URL sin recargar la página
+    var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    window.history.replaceState({path: newUrl}, '', newUrl);
+  }
 
 })();
 </script>

@@ -736,11 +736,16 @@ def agregar_carrito_publico(request, slug, pk):
         messages.warning(request, f'Solo hay {producto.stock} unidad(es) disponible(s) de "{producto.nombre}".')
     else:
         services.carrito_publico_agregar(request.session, pk)
-    return redirect('tienda_publica', slug=slug)
+    from django.urls import reverse
+    return redirect(reverse('tienda_publica', kwargs={'slug': slug}) + '?cart=open')
 
 def quitar_carrito_publico(request, slug, pk):
     services.carrito_publico_quitar(request.session, pk)
-    return redirect('checkout_publico', slug=slug)
+    referer = request.META.get('HTTP_REFERER', '')
+    if 'checkout' in referer:
+        return redirect('checkout_publico', slug=slug)
+    from django.urls import reverse
+    return redirect(reverse('tienda_publica', kwargs={'slug': slug}) + '?cart=open')
 
 def checkout_publico(request, slug):
     negocio = get_object_or_404(services.Negocio, slug=slug)
