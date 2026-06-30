@@ -49,7 +49,7 @@
 
 <!-- ── BANDA ANIMADA MARQUEE ────────────────────── -->
 {% if productos_con_cant %}
-<div class="relative w-full overflow-hidden mb-10 py-4" style="background: linear-gradient(90deg, rgba(249,250,251,1) 0%, rgba(255,255,255,0) 10%, rgba(255,255,255,0) 90%, rgba(249,250,251,1) 100%); border-radius: 1rem;">
+<div class="marquee-wrapper w-full overflow-hidden mb-10 py-4" style="position:relative;background: linear-gradient(90deg, rgba(249,250,251,1) 0%, rgba(255,255,255,0) 10%, rgba(255,255,255,0) 90%, rgba(249,250,251,1) 100%); border-radius: 1rem;">
   
   <div class="marquee-container flex gap-4 w-max hover:[animation-play-state:paused]" style="animation: scroll 40s linear infinite;">
     
@@ -104,10 +104,10 @@
   <style>
     @keyframes scroll {
       0% { transform: translateX(0); }
-      100% { transform: translateX(calc(-50% - 0.5rem)); } /* -50% del total (que es 2 veces el original + gap) */
+      100% { transform: translateX(calc(-50% - 0.5rem)); }
     }
-    /* Pseudo-elementos para difuminar los bordes */
-    .relative::before, .relative::after {
+    /* Pseudo-elementos de difuminado SOLO para el marquee */
+    .marquee-wrapper::before, .marquee-wrapper::after {
       content: "";
       position: absolute;
       top: 0;
@@ -116,11 +116,11 @@
       z-index: 10;
       pointer-events: none;
     }
-    .relative::before {
+    .marquee-wrapper::before {
       left: 0;
       background: linear-gradient(to right, #f9fafb, transparent);
     }
-    .relative::after {
+    .marquee-wrapper::after {
       right: 0;
       background: linear-gradient(to left, #f9fafb, transparent);
     }
@@ -442,42 +442,6 @@
     }
   });
 
-  /* ── 7. Lógica Carrito Drawer Lateral ── */
-  var btnCart = document.getElementById('btn-open-cart');
-  var drawerCart = document.getElementById('cart-drawer');
-  var overlayCart = document.getElementById('cart-overlay');
-  var btnCloseCart = document.getElementById('btn-close-cart');
-
-  function abrirCarrito() {
-    if(!drawerCart) return;
-    drawerCart.style.setProperty('--tw-translate-x', '0px');
-    drawerCart.style.transform = 'translateX(0px)';
-    overlayCart.classList.remove('hidden');
-    setTimeout(function() { overlayCart.style.opacity = '1'; }, 10);
-    document.body.style.overflow = 'hidden';
-  }
-
-  function cerrarCarrito() {
-    if(!drawerCart) return;
-    drawerCart.style.setProperty('--tw-translate-x', '100%');
-    drawerCart.style.transform = 'translateX(100%)';
-    overlayCart.style.opacity = '0';
-    setTimeout(function() { overlayCart.classList.add('hidden'); }, 300);
-    document.body.style.overflow = '';
-  }
-
-  if (btnCart) btnCart.addEventListener('click', abrirCarrito);
-  if (btnCloseCart) btnCloseCart.addEventListener('click', cerrarCarrito);
-  if (overlayCart) overlayCart.addEventListener('click', cerrarCarrito);
-
-  // Auto-abrir carrito si viene en la URL
-  if (window.location.search.indexOf('cart=open') > -1) {
-    abrirCarrito();
-    // Limpiar la URL sin recargar la página
-    var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-    window.history.replaceState({path: newUrl}, '', newUrl);
-  }
-
 })();
 </script>
 
@@ -558,5 +522,47 @@
   {% endif %}
 
 </div>
+
+<script>
+/* ── Carrito Drawer Lateral — se ejecuta DESPUÉS del HTML del drawer ── */
+(function () {
+  'use strict';
+
+  var btnCart     = document.getElementById('btn-open-cart');
+  var drawerCart  = document.getElementById('cart-drawer');
+  var overlayCart = document.getElementById('cart-overlay');
+  var btnCloseCart = document.getElementById('btn-close-cart');
+
+  function abrirCarrito() {
+    if (!drawerCart) return;
+    drawerCart.style.transform = 'translateX(0)';
+    overlayCart.classList.remove('hidden');
+    setTimeout(function () { overlayCart.style.opacity = '1'; }, 10);
+    document.body.style.overflow = 'hidden';
+  }
+
+  function cerrarCarrito() {
+    if (!drawerCart) return;
+    drawerCart.style.transform = 'translateX(100%)';
+    overlayCart.style.opacity = '0';
+    setTimeout(function () { overlayCart.classList.add('hidden'); }, 300);
+    document.body.style.overflow = '';
+  }
+
+  /* Exponer globalmente para el botón inline del carrito vacío */
+  window.cerrarCarrito = cerrarCarrito;
+
+  if (btnCart)      btnCart.addEventListener('click', abrirCarrito);
+  if (btnCloseCart) btnCloseCart.addEventListener('click', cerrarCarrito);
+  if (overlayCart)  overlayCart.addEventListener('click', cerrarCarrito);
+
+  /* Auto-abrir si la URL trae ?cart=open (redireccionado desde agregar_carrito) */
+  if (window.location.search.indexOf('cart=open') > -1) {
+    abrirCarrito();
+    var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+    window.history.replaceState({ path: newUrl }, '', newUrl);
+  }
+}());
+</script>
 
 {% endblock %}
