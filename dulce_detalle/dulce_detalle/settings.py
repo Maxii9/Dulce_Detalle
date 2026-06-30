@@ -31,7 +31,7 @@ if not SECRET_KEY:
     raise ValueError('SECRET_KEY no está configurado. Set the SECRET_KEY environment variable.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+DEBUG = True
 
 _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
 if _allowed_hosts_env:
