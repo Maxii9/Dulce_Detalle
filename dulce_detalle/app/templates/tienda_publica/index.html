@@ -190,13 +190,19 @@
         </button>
         {% elif producto.stock > 0 %}
           {% if en_carrito >= producto.stock %}
-          <button disabled class="w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm">
+          <button disabled class="btn-add-disabled w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm"
+                  data-pk="{{ producto.pk }}" data-stock="{{ producto.stock }}">
             Máx. en carrito ({{ en_carrito }})
           </button>
           {% else %}
+          {# Fallback href para sin JS; JS lo intercepta vía fetch() #}
           <a href="{% url 'agregar_carrito_publico' negocio.slug producto.pk %}"
-             class="block w-full text-center py-2.5 bg-gray-900 hover:bg-brand text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm">
-            Añadir{% if en_carrito > 0 %} · {{ en_carrito }} en carrito{% endif %}
+             class="btn-add block w-full text-center py-2.5 bg-gray-900 hover:bg-brand text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm"
+             data-pk="{{ producto.pk }}"
+             data-url-agregar="{% url 'carrito_api_agregar' negocio.slug producto.pk %}"
+             data-en-carrito="{{ en_carrito }}"
+             data-stock="{{ producto.stock }}">
+            {% if en_carrito > 0 %}+ Añadir · <span class="carrito-badge-{{ producto.pk }}">{{ en_carrito }}</span> en carrito{% else %}Añadir al carrito{% endif %}
           </a>
           {% endif %}
         {% else %}
@@ -465,74 +471,163 @@
     </button>
   </div>
 
-  <!-- Body (Items) -->
-  <div class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
-    {% if carrito_items %}
-      <div class="space-y-4">
-        {% for item in carrito_items %}
-        <div class="flex items-center gap-4 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm hover:shadow-md transition-shadow">
-          <!-- Miniatura -->
-          <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">
-            {% if item.producto.imagen %}
-              <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}" class="w-full h-full object-cover"/>
-            {% else %}
-              <div class="w-full h-full flex items-center justify-center text-gray-300">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-              </div>
-            {% endif %}
-          </div>
-          <!-- Info -->
-          <div class="flex-1 min-w-0">
-            <h3 class="text-sm font-bold text-gray-900 leading-tight truncate">{{ item.producto.nombre }}</h3>
-            <p class="text-xs text-gray-500 mt-1">{{ item.cantidad }} x ${{ item.producto.precio }}</p>
-          </div>
-          <!-- Acciones -->
-          <div class="flex flex-col items-end gap-2 flex-shrink-0">
-            <span class="font-black text-gray-900">${{ item.subtotal }}</span>
-            <a href="{% url 'quitar_carrito_publico' negocio.slug item.producto.pk %}" class="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" title="Quitar item">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            </a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-        <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center border-4 border-white shadow-sm">
-          <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-        </div>
-        <p class="font-medium text-gray-500">Tu carrito está vacío</p>
-        <button onclick="cerrarCarrito()" class="px-6 py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:bg-brand transition-colors">Empezar a comprar</button>
-      </div>
-    {% endif %}
-  </div>
+  <!-- Body (Items) — Renderizado dinámicamente por JS -->
+  <div id="drawer-body" class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar"></div>
 
-  <!-- Footer (Total y Checkout) -->
-  {% if carrito_items %}
-  <div class="px-6 py-5 border-t border-gray-100 bg-white">
-    <div class="flex items-end justify-between mb-5">
-      <span class="text-sm font-bold text-gray-500">Total a pagar:</span>
-      <span class="text-3xl font-black text-brand">${{ carrito_total }}</span>
-    </div>
-    <a href="{% url 'checkout_publico' negocio.slug %}" class="w-full flex items-center justify-center gap-2 py-4 bg-brand hover:bg-purple-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-brand/30 group">
-      Terminar compra
-      <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-    </a>
-  </div>
-  {% endif %}
+  <!-- Footer (Total y Checkout) — Renderizado dinámicamente por JS -->
+  <div id="drawer-footer"></div>
 
 </div>
 
+{# URLs para JS — evita hardcodear paths en el script #}
+<script id="cart-config" type="application/json">
+{
+  "urlAgregar": "{{ request.scheme }}://{{ request.get_host }}/{{ negocio.slug }}/tienda/carrito/api/agregar/",
+  "urlQuitar":  "{{ request.scheme }}://{{ request.get_host }}/{{ negocio.slug }}/tienda/carrito/api/quitar/",
+  "urlCheckout": "{% url 'checkout_publico' negocio.slug %}",
+  "csrfToken": "{{ csrf_token }}",
+  "carritoInicial": {
+    "count": {{ carrito_count }},
+    "total": "{{ carrito_total }}",
+    "items": [
+      {% for item in carrito_items %}
+      {
+        "pk": {{ item.producto.pk }},
+        "nombre": "{{ item.producto.nombre|escapejs }}",
+        "imagen_url": "{% if item.producto.imagen %}{{ item.producto.imagen.url }}{% endif %}",
+        "cantidad": {{ item.cantidad }},
+        "precio": "{{ item.producto.precio }}",
+        "subtotal": "{{ item.subtotal }}",
+        "stock": {{ item.producto.stock }}
+      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+}
+</script>
+
 <script>
-/* ── Carrito Drawer Lateral — se ejecuta DESPUÉS del HTML del drawer ── */
+/* ══════════════════════════════════════════════════════
+   CARRITO DINÁMICO — Drawer + AJAX sin recarga de página
+   ══════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  var btnCart     = document.getElementById('btn-open-cart');
-  var drawerCart  = document.getElementById('cart-drawer');
-  var overlayCart = document.getElementById('cart-overlay');
-  var btnCloseCart = document.getElementById('btn-close-cart');
+  /* ── Configuración desde Django ── */
+  var cfg = {};
+  try { cfg = JSON.parse(document.getElementById('cart-config').textContent); } catch(e) {}
 
+  var URL_AGREGAR  = cfg.urlAgregar  || '';
+  var URL_QUITAR   = cfg.urlQuitar   || '';
+  var URL_CHECKOUT = cfg.urlCheckout || '';
+  var CSRF         = cfg.csrfToken   || '';
+
+  /* ── Estado en memoria ── */
+  var estado = cfg.carritoInicial || { count: 0, total: '0', items: [] };
+
+  /* ── Elementos del DOM ── */
+  var btnCart      = document.getElementById('btn-open-cart');
+  var drawerCart   = document.getElementById('cart-drawer');
+  var overlayCart  = document.getElementById('cart-overlay');
+  var btnCloseCart = document.getElementById('btn-close-cart');
+  var drawerBody   = document.getElementById('drawer-body');
+  var drawerFooter = document.getElementById('drawer-footer');
+
+  /* ─────────────────────────────────────────
+     RENDER DEL DRAWER
+  ───────────────────────────────────────── */
+  function renderDrawer() {
+    /* Badge del navbar */
+    var badge = btnCart ? btnCart.querySelector('span') : null;
+    if (btnCart) {
+      if (estado.count > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white transform translate-x-1/4 -translate-y-1/4 bg-brand rounded-full border-2 border-white';
+          btnCart.appendChild(badge);
+        }
+        badge.textContent = estado.count;
+      } else {
+        if (badge) badge.remove();
+      }
+    }
+
+    /* Cuerpo del drawer */
+    if (!drawerBody) return;
+
+    if (estado.items.length === 0) {
+      drawerBody.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-gray-400 space-y-4 pt-16">'
+        + '<div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center border-4 border-white shadow-sm">'
+        + '<svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>'
+        + '</div>'
+        + '<p class="font-medium text-gray-500">Tu carrito está vacío</p>'
+        + '<button onclick="cerrarCarrito()" class="px-6 py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:opacity-80 transition">Empezar a comprar</button>'
+        + '</div>';
+      if (drawerFooter) drawerFooter.innerHTML = '';
+      return;
+    }
+
+    var html = '<div class="space-y-3">';
+    estado.items.forEach(function(item) {
+      var imgHtml = item.imagen_url
+        ? '<img src="' + item.imagen_url + '" alt="' + escHtml(item.nombre) + '" class="w-full h-full object-cover"/>'
+        : '<div class="w-full h-full flex items-center justify-center text-gray-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+
+      html += '<div class="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">'
+        /* Miniatura */
+        + '<div class="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">' + imgHtml + '</div>'
+        /* Info */
+        + '<div class="flex-1 min-w-0">'
+        + '<h3 class="text-sm font-bold text-gray-900 leading-tight truncate">' + escHtml(item.nombre) + '</h3>'
+        + '<p class="text-xs text-gray-400 mt-0.5">$' + item.precio + ' c/u</p>'
+        + '</div>'
+        /* Controles cantidad + precio */
+        + '<div class="flex flex-col items-end gap-2 flex-shrink-0">'
+        + '<span class="text-sm font-black text-gray-900">$' + item.subtotal + '</span>'
+        + '<div class="flex items-center gap-1">'
+        /* Botón − */
+        + '<button class="btn-quitar w-7 h-7 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-600 flex items-center justify-center text-lg font-bold transition-colors leading-none" data-pk="' + item.pk + '" aria-label="Quitar uno">−</button>'
+        /* Contador */
+        + '<span class="text-sm font-bold text-gray-900 w-6 text-center">' + item.cantidad + '</span>'
+        /* Botón + */
+        + '<button class="btn-agregar w-7 h-7 rounded-full bg-gray-100 hover:bg-green-100 hover:text-green-700 text-gray-600 flex items-center justify-center text-lg font-bold transition-colors leading-none' + (item.cantidad >= item.stock ? ' opacity-40 cursor-not-allowed' : '') + '" data-pk="' + item.pk + '" data-stock="' + item.stock + '" aria-label="Agregar uno">+</button>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    });
+    html += '</div>';
+    drawerBody.innerHTML = html;
+
+    /* Footer */
+    if (drawerFooter) {
+      drawerFooter.innerHTML = '<div class="px-6 py-5 border-t border-gray-100 bg-white">'
+        + '<div class="flex items-end justify-between mb-5">'
+        + '<span class="text-sm font-bold text-gray-500">Total a pagar:</span>'
+        + '<span class="text-3xl font-black" style="color:var(--color-primary)">$' + estado.total + '</span>'
+        + '</div>'
+        + '<a href="' + URL_CHECKOUT + '" class="w-full flex items-center justify-center gap-2 py-4 text-white font-bold rounded-2xl transition-all shadow-lg group" style="background:var(--color-primary)">'
+        + 'Terminar compra'
+        + '<svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>'
+        + '</a></div>';
+    }
+
+    /* Listeners de los botones + y − del drawer */
+    drawerBody.querySelectorAll('.btn-quitar').forEach(function(btn) {
+      btn.addEventListener('click', function() { apiQuitar(parseInt(btn.dataset.pk)); });
+    });
+    drawerBody.querySelectorAll('.btn-agregar').forEach(function(btn) {
+      if (parseInt(btn.dataset.stock) > 0) {
+        btn.addEventListener('click', function() {
+          var item = estado.items.find(function(i){ return i.pk === parseInt(btn.dataset.pk); });
+          if (item && item.cantidad < item.stock) apiAgregar(parseInt(btn.dataset.pk));
+        });
+      }
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     ABRIR / CERRAR DRAWER
+  ───────────────────────────────────────── */
   function abrirCarrito() {
     if (!drawerCart) return;
     drawerCart.style.transform = 'translateX(0)';
@@ -549,19 +644,96 @@
     document.body.style.overflow = '';
   }
 
-  /* Exponer globalmente para el botón inline del carrito vacío */
   window.cerrarCarrito = cerrarCarrito;
 
   if (btnCart)      btnCart.addEventListener('click', abrirCarrito);
   if (btnCloseCart) btnCloseCart.addEventListener('click', cerrarCarrito);
   if (overlayCart)  overlayCart.addEventListener('click', cerrarCarrito);
 
-  /* Auto-abrir si la URL trae ?cart=open (redireccionado desde agregar_carrito) */
+  /* ─────────────────────────────────────────
+     LLAMADAS AJAX
+  ───────────────────────────────────────── */
+  function apiPost(url, cb) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) { if (data.ok) { estado = data; renderDrawer(); if (cb) cb(data); } else { alert(data.error || 'Error'); } })
+    .catch(function(e) { console.error('Cart API error:', e); });
+  }
+
+  function apiAgregar(pk) { apiPost(URL_AGREGAR + pk + '/', null); }
+  function apiQuitar(pk)  { apiPost(URL_QUITAR  + pk + '/', null); }
+
+  /* ─────────────────────────────────────────
+     BOTONES "AÑADIR" DE LAS TARJETAS
+  ───────────────────────────────────────── */
+  document.querySelectorAll('.btn-add').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var pk  = parseInt(btn.dataset.pk);
+      var url = btn.dataset.urlAgregar;
+      if (!url) return;
+
+      /* Feedback visual instantáneo */
+      btn.classList.add('opacity-75');
+      var orig = btn.innerHTML;
+      btn.innerHTML = '✓ Agregando...';
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.classList.remove('opacity-75');
+        if (data.ok) {
+          estado = data;
+          renderDrawer();
+          abrirCarrito();
+          /* Actualizar texto del botón con la nueva cantidad */
+          var item = data.items.find(function(i){ return i.pk === pk; });
+          var cant = item ? item.cantidad : 1;
+          btn.innerHTML = '+ Añadir · <span class="carrito-badge-' + pk + '">' + cant + '</span> en carrito';
+          btn.dataset.enCarrito = cant;
+          /* Si alcanzó el stock, deshabilitar */
+          if (item && cant >= item.stock) {
+            btn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+          }
+        } else {
+          btn.innerHTML = orig;
+          alert(data.error || 'No se pudo agregar.');
+        }
+      })
+      .catch(function(e) {
+        btn.classList.remove('opacity-75');
+        btn.innerHTML = orig;
+        console.error('Cart API error:', e);
+      });
+    });
+  });
+
+  /* ─────────────────────────────────────────
+     RENDER INICIAL + AUTO-ABRIR
+  ───────────────────────────────────────── */
+  renderDrawer();
+
   if (window.location.search.indexOf('cart=open') > -1) {
     abrirCarrito();
     var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
     window.history.replaceState({ path: newUrl }, '', newUrl);
   }
+
+  /* ─────────────────────────────────────────
+     UTILIDAD
+  ───────────────────────────────────────── */
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
 }());
 </script>
 

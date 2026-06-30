@@ -528,8 +528,20 @@ def carrito_publico_agregar(session: dict, producto_pk: int) -> None:
     session.modified = True
 
 def carrito_publico_quitar(session: dict, producto_pk: int) -> None:
+    """Elimina completamente el producto del carrito (sin importar cantidad)."""
     carrito = session.get('carrito_publico', {})
     carrito.pop(str(producto_pk), None)
+    session['carrito_publico'] = carrito
+    session.modified = True
+
+def carrito_publico_decrementar(session: dict, producto_pk: int) -> None:
+    """Descuenta 1 unidad. Si llega a 0, elimina el item del carrito."""
+    carrito = session.get('carrito_publico', {})
+    key = str(producto_pk)
+    if key in carrito:
+        carrito[key] -= 1
+        if carrito[key] <= 0:
+            del carrito[key]
     session['carrito_publico'] = carrito
     session.modified = True
 

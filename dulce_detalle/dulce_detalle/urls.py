@@ -86,6 +86,9 @@ urlpatterns = [
         path('', views.tienda_publica, name='tienda_publica'),
         path('carrito/agregar/<int:pk>/', views.agregar_carrito_publico, name='agregar_carrito_publico'),
         path('carrito/quitar/<int:pk>/', views.quitar_carrito_publico, name='quitar_carrito_publico'),
+        # API JSON para carrito dinámico (AJAX)
+        path('carrito/api/agregar/<int:pk>/', views.carrito_publico_api_agregar, name='carrito_api_agregar'),
+        path('carrito/api/quitar/<int:pk>/',  views.carrito_publico_api_quitar,  name='carrito_api_quitar'),
         path('checkout/', views.checkout_publico, name='checkout_publico'),
         path('pedido/<int:pedido_id>/exito/', views.exito_publico, name='exito_publico'),
     ])),

@@ -747,6 +747,64 @@ def quitar_carrito_publico(request, slug, pk):
     from django.urls import reverse
     return redirect(reverse('tienda_publica', kwargs={'slug': slug}) + '?cart=open')
 
+
+def _carrito_publico_json(request, slug):
+    """Helper: devuelve el estado actual del carrito como dict serializable."""
+    from decimal import Decimal
+    items_qs = services.get_carrito_publico_detalle(request.session, slug)
+    carrito_count = sum(i['cantidad'] for i in items_qs)
+    carrito_total = sum((i['subtotal'] for i in items_qs), Decimal('0'))
+    items_out = []
+    for i in items_qs:
+        p = i['producto']
+        items_out.append({
+            'pk':        p.pk,
+            'nombre':    p.nombre,
+            'imagen_url': p.imagen.url if p.imagen else '',
+            'cantidad':  i['cantidad'],
+            'precio':    str(p.precio),
+            'subtotal':  str(i['subtotal']),
+            'stock':     p.stock,
+        })
+    return {
+        'ok': True,
+        'carrito_count': carrito_count,
+        'carrito_total': str(carrito_total),
+        'items': items_out,
+    }
+
+
+def carrito_publico_api_agregar(request, slug, pk):
+    """API JSON: agrega 1 unidad al carrito público."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405)
+
+    producto = get_object_or_404(services.Producto, pk=pk, negocio__slug=slug)
+    negocio = producto.negocio
+
+    if request.user.is_authenticated and (request.user.is_superuser or request.user == negocio.propietario):
+        return JsonResponse({'ok': False, 'error': 'Modo Vista Previa'}, status=403)
+
+    carrito = request.session.get('carrito_publico', {})
+    cantidad_actual = carrito.get(str(pk), 0)
+    if cantidad_actual >= producto.stock:
+        return JsonResponse({
+            'ok': False,
+            'error': f'Solo hay {producto.stock} unidad(es) disponible(s) de "{producto.nombre}".',
+        }, status=400)
+
+    services.carrito_publico_agregar(request.session, pk)
+    return JsonResponse(_carrito_publico_json(request, slug))
+
+
+def carrito_publico_api_quitar(request, slug, pk):
+    """API JSON: descuenta 1 unidad del carrito público (o elimina si llega a 0)."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405)
+
+    services.carrito_publico_decrementar(request.session, pk)
+    return JsonResponse(_carrito_publico_json(request, slug))
+
 def checkout_publico(request, slug):
     negocio = get_object_or_404(services.Negocio, slug=slug)
     
