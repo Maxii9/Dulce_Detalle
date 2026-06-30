@@ -450,18 +450,17 @@
 
   function abrirCarrito() {
     if(!drawerCart) return;
-    drawerCart.classList.remove('translate-x-full');
-    drawerCart.classList.add('translate-x-0');
+    drawerCart.style.setProperty('--tw-translate-x', '0px');
+    drawerCart.style.transform = 'translateX(0px)';
     overlayCart.classList.remove('hidden');
-    // Pequeño delay para asegurar que la transición de opacidad se aplique
     setTimeout(function() { overlayCart.style.opacity = '1'; }, 10);
     document.body.style.overflow = 'hidden';
   }
 
   function cerrarCarrito() {
     if(!drawerCart) return;
-    drawerCart.classList.remove('translate-x-0');
-    drawerCart.classList.add('translate-x-full');
+    drawerCart.style.setProperty('--tw-translate-x', '100%');
+    drawerCart.style.transform = 'translateX(100%)';
     overlayCart.style.opacity = '0';
     setTimeout(function() { overlayCart.classList.add('hidden'); }, 300);
     document.body.style.overflow = '';
