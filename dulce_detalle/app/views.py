@@ -681,9 +681,10 @@ def tienda_publica(request, slug):
     from app.models import CategoriaProducto
     tipos = [(cat.pk, cat.nombre) for cat in CategoriaProducto.objects.filter(pk__in=categorias_con_stock_ids).order_by('nombre')]
 
+    from decimal import Decimal
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
-    carrito_total = sum(item['subtotal'] for item in carrito_items)
+    carrito_total = sum((item['subtotal'] for item in carrito_items), Decimal('0'))
     top_vendidos = services.get_top_vendidos(slug)
 
     # Anotar cada producto con la cantidad ya en el carrito del cliente
