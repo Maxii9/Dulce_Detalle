@@ -35,6 +35,19 @@ class Negocio(models.Model):
         help_text='Si está activado, se muestra el texto de descripción debajo del nombre de la tienda.'
     )
 
+    ESTILO_FUENTE_CHOICES = [
+        ('abril',    'Abril Fatface — Itálica bold'),
+        ('playfair', 'Playfair Display — Elegante serif'),
+        ('bebas',    'Bebas Neue — Mayúsculas compactas'),
+        ('dancing',  'Dancing Script — Cursíva manuscrita'),
+        ('righteous','Righteous — Redondeada moderna'),
+        ('unbounded','Unbounded — Geométrica sin serif'),
+    ]
+    estilo_fuente = models.CharField(
+        max_length=15, choices=ESTILO_FUENTE_CHOICES, default='abril',
+        verbose_name='Estilo de fuente del título'
+    )
+
     def __str__(self):
         return self.nombre
 

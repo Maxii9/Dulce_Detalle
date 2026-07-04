@@ -106,7 +106,37 @@
             </div>
           </div>
 
-          <!-- Mostrar descripción en la tienda pública -->
+          <!-- Estilo de fuente del título -->
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Estilo del nombre en la tienda pública</label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {% for val, label in negocio.ESTILO_FUENTE_CHOICES %}
+              <label class="cursor-pointer">
+                <input type="radio" name="estilo_fuente" value="{{ val }}"
+                       class="peer sr-only"
+                       {% if negocio.estilo_fuente == val %}checked{% endif %}>
+                <div class="flex flex-col items-center justify-center p-3 border-2 border-card-border rounded-xl
+                            bg-white peer-checked:border-sidebar-text peer-checked:bg-sidebar-bg/10
+                            hover:bg-gray-50 transition-all text-center gap-1">
+                  <span class="text-lg leading-none
+                    {% if val == 'abril' %}font-['Abril_Fatface'] italic
+                    {% elif val == 'playfair' %}font-['Playfair_Display'] italic font-black
+                    {% elif val == 'bebas' %}font-['Bebas_Neue'] tracking-widest uppercase
+                    {% elif val == 'dancing' %}font-['Dancing_Script'] font-bold
+                    {% elif val == 'righteous' %}font-['Righteous']
+                    {% elif val == 'unbounded' %}font-['Unbounded'] font-black text-base
+                    {% endif %}"
+                    style="color:{{ negocio.color_primario }}">
+                    Aa
+                  </span>
+                  <span class="text-[10px] font-semibold text-content-subtitle leading-tight">{{ label|truncatechars:22 }}</span>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Mostrar descripción -->
           <label class="flex items-start gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
             <input type="checkbox" name="mostrar_descripcion" value="1"
                    {% if negocio.mostrar_descripcion %}checked{% endif %}

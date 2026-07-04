@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 
 <head>
   <meta charset="UTF-8" />
@@ -121,11 +121,62 @@
   <style>
     body {
       font-family: 'Inter', sans-serif;
+      background: var(--admin-bg);
+      color: var(--admin-text);
+      transition: background .3s ease, color .3s ease;
+    }
+    /* ── Modo claro (default) ── */
+    [data-theme="light"] {
+      --admin-bg: #ffffff;
+      --admin-text: #111827;
+    }
+    /* ── Modo oscuro ── */
+    [data-theme="dark"] {
+      --admin-bg: #0d0d14;
+      --admin-text: #f1f5f9;
+    }
+    /* Overrides Tailwind dark */
+    [data-theme="dark"] .bg-white           { background:#1a1a2e !important; }
+    [data-theme="dark"] .bg-page-bg         { background:#0d0d14 !important; }
+    [data-theme="dark"] .text-page-text     { color:#f1f5f9 !important; }
+    [data-theme="dark"] aside               { background:#12121f !important; border-color:#2a2a3e !important; }
+    [data-theme="dark"] .border-sidebar-border { border-color:#2a2a3e !important; }
+    [data-theme="dark"] .bg-sidebar-bg      { background:#12121f !important; }
+    [data-theme="dark"] .text-sidebar-title { color:#f1f5f9 !important; }
+    [data-theme="dark"] .text-sidebar-text  { color:#a5b4fc !important; }
+    [data-theme="dark"] .text-content-title { color:#f1f5f9 !important; }
+    [data-theme="dark"] .text-content-subtitle { color:#94a3b8 !important; }
+    [data-theme="dark"] .text-content-value { color:#e2e8f0 !important; }
+    [data-theme="dark"] .bg-card-bg         { background:#1e1e30 !important; }
+    [data-theme="dark"] .bg-card-bg-alt     { background:#252538 !important; }
+    [data-theme="dark"] .border-card-border { border-color:#2e2e45 !important; }
+    [data-theme="dark"] .bg-gray-50         { background:#1a1a2e !important; }
+    [data-theme="dark"] .bg-gray-100        { background:#252538 !important; }
+    [data-theme="dark"] .text-gray-500      { color:#64748b !important; }
+    [data-theme="dark"] .text-gray-600      { color:#64748b !important; }
+    [data-theme="dark"] .border-gray-200    { border-color:#2e2e45 !important; }
+    [data-theme="dark"] .border-input-border{ border-color:#3a3a55 !important; }
+    [data-theme="dark"] .text-input-text    { color:#e2e8f0 !important; }
+    [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select {
+      background: #1e1e30 !important;
+      color: #e2e8f0 !important;
+      border-color: #3a3a55 !important;
     }
 
-    .transition-all {
-      transition: all 0.3s ease;
+    /* Toggle button */
+    .admin-theme-toggle {
+      width:36px; height:36px;
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+      border:1px solid transparent;
+      transition:all .25s ease;
+      background: transparent;
+      color: inherit;
+      opacity: .7;
     }
+    .admin-theme-toggle:hover { opacity:1; }
+    .transition-all { transition: all 0.3s ease; }
   </style>
 </head>
 
@@ -312,6 +363,18 @@
         <!-- Botón Compartir Tienda + Switcher de negocios -->
         <div class="flex items-center gap-3 ml-auto">
 
+          <!-- Toggle dark/light mode -->
+          <button id="admin-theme-toggle" class="admin-theme-toggle" aria-label="Modo oscuro" title="Alternar modo claro/oscuro">
+            <svg id="admin-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71m12.73 0-.71-.71M6.34 6.34l-.71-.71M12 5a7 7 0 100 14A7 7 0 0012 5z"/>
+            </svg>
+            <svg id="admin-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
+            </svg>
+          </button>
+
           {% if negocio %}
           <!-- Botón compartir -->
           <div class="relative">
@@ -433,6 +496,38 @@
       });
     }
     {% endif %}
+  </script>
+
+  <script>
+    /* ── Admin Dark Mode ── */
+    (function () {
+      var html     = document.documentElement;
+      var btn      = document.getElementById('admin-theme-toggle');
+      var iconSun  = document.getElementById('admin-icon-sun');
+      var iconMoon = document.getElementById('admin-icon-moon');
+
+      var saved = localStorage.getItem('admin-theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      apply(saved || (prefersDark ? 'dark' : 'light'));
+
+      function apply(theme) {
+        html.setAttribute('data-theme', theme);
+        if (theme === 'dark') {
+          if (iconSun)  iconSun.classList.remove('hidden');
+          if (iconMoon) iconMoon.classList.add('hidden');
+        } else {
+          if (iconSun)  iconSun.classList.add('hidden');
+          if (iconMoon) iconMoon.classList.remove('hidden');
+        }
+        localStorage.setItem('admin-theme', theme);
+      }
+
+      if (btn) {
+        btn.addEventListener('click', function () {
+          apply(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        });
+      }
+    }());
   </script>
 </body>
 </html>
