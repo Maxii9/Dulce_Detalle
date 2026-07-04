@@ -10,8 +10,19 @@
     body { font-family: 'Inter', sans-serif; }
     .transition-all { transition: all 0.3s ease; }
     :root {
-      --color-primary: {{ negocio.color_primario|default:"#6d28d9" }};
+      --color-primary:   {{ negocio.color_primario|default:"#6d28d9" }};
+      --color-secondary: {{ negocio.color_secundario|default:"#7c3aed" }};
+      /* Tints derivados automáticamente */
+      --color-primary-bg:   color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+      --color-primary-text: var(--color-primary);
     }
+    /* Clases utilitarias que usan el color del negocio */
+    .bg-tienda    { background-color: var(--color-primary) !important; }
+    .text-tienda  { color: var(--color-primary) !important; }
+    .border-tienda{ border-color: var(--color-primary) !important; }
+    .bg-tienda-soft { background-color: var(--color-primary-bg) !important; }
+    .hover\:bg-tienda:hover { background-color: var(--color-secondary) !important; }
+    .ring-tienda  { --tw-ring-color: var(--color-primary); }
   </style>
   <script>
     tailwind.config = {

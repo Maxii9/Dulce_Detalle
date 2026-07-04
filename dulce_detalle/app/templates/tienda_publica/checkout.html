@@ -111,7 +111,11 @@
         {% endif %}
 
         <div class="pt-6 border-t border-gray-100">
-          <button type="submit" class="w-full py-4 bg-brand hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-brand/30 transition-all text-lg tracking-wide">
+          <button type="submit"
+                  class="w-full py-4 text-white font-bold rounded-xl shadow-lg transition-all text-lg tracking-wide"
+                  style="background:var(--color-primary);box-shadow:0 8px 24px color-mix(in srgb,var(--color-primary) 35%,transparent)"
+                  onmouseover="this.style.background='var(--color-secondary)'"
+                  onmouseout="this.style.background='var(--color-primary)'">
             Enviar Pedido por ${{ total }}
           </button>
         </div>
