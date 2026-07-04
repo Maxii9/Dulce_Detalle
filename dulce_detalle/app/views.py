@@ -1162,6 +1162,8 @@ def configuracion_tienda(request, slug):
         envio_domicilio = 'envio_domicilio' in request.POST
         envio_retiro = 'envio_retiro' in request.POST
         envio_convenir = 'envio_convenir' in request.POST
+        velocidad_carrusel = request.POST.get('velocidad_carrusel', 'normal')
+        mostrar_descripcion = 'mostrar_descripcion' in request.POST
         if nombre:
             negocio.nombre = nombre
             negocio.descripcion = descripcion
@@ -1171,6 +1173,8 @@ def configuracion_tienda(request, slug):
             negocio.envio_domicilio = envio_domicilio
             negocio.envio_retiro = envio_retiro
             negocio.envio_convenir = envio_convenir
+            negocio.velocidad_carrusel = velocidad_carrusel
+            negocio.mostrar_descripcion = mostrar_descripcion
             negocio.save()
             messages.success(request, 'Información de la tienda actualizada.')
             return redirect('configuracion_tienda', slug=slug)

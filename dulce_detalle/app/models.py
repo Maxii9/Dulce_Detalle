@@ -19,6 +19,22 @@ class Negocio(models.Model):
     envio_retiro = models.BooleanField(default=True, verbose_name='Retiro en tienda')
     envio_convenir = models.BooleanField(default=True, verbose_name='A convenir')
 
+    # Opciones visuales de la tienda pública
+    VELOCIDAD_CHOICES = [
+        ('lento',  'Lento (90s)'),
+        ('normal', 'Normal (60s)'),
+        ('rapido', 'Rápido (35s)'),
+    ]
+    velocidad_carrusel = models.CharField(
+        max_length=10, choices=VELOCIDAD_CHOICES, default='normal',
+        verbose_name='Velocidad del carrusel'
+    )
+    mostrar_descripcion = models.BooleanField(
+        default=False,
+        verbose_name='Mostrar descripción en la tienda pública',
+        help_text='Si está activado, se muestra el texto de descripción debajo del nombre de la tienda.'
+    )
+
     def __str__(self):
         return self.nombre
 

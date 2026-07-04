@@ -77,9 +77,52 @@
         </div>
       </div>
 
-      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- OPCIONES VISUALES DE LA TIENDA -->
+      <!-- ====================================================== -->
+      <div class="border-t border-card-border pt-5">
+        <h2 class="text-base font-bold text-content-title mb-1">🎠 Tienda pública</h2>
+        <p class="text-xs text-content-subtitle mb-4">Personalizá cómo se ve tu tienda online para tus clientes.</p>
+        <div class="space-y-4">
+
+          <!-- Velocidad del carrusel -->
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Velocidad del carrusel de productos</label>
+            <div class="grid grid-cols-3 gap-2">
+              {% for val, label in negocio.VELOCIDAD_CHOICES %}
+              <label class="cursor-pointer group">
+                <input type="radio" name="velocidad_carrusel" value="{{ val }}"
+                       class="peer sr-only"
+                       {% if negocio.velocidad_carrusel == val %}checked{% endif %}>
+                <div class="flex flex-col items-center justify-center p-3 border-2 border-card-border rounded-xl
+                            bg-white peer-checked:border-sidebar-text peer-checked:bg-sidebar-bg/10
+                            hover:bg-gray-50 transition-all text-center">
+                  <span class="text-lg mb-1">
+                    {% if val == 'lento' %}🐢{% elif val == 'rapido' %}⚡{% else %}🚶{% endif %}
+                  </span>
+                  <span class="text-xs font-bold text-content-subtitle">{{ label }}</span>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Mostrar descripción en la tienda pública -->
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="mostrar_descripcion" value="1"
+                   {% if negocio.mostrar_descripcion %}checked{% endif %}
+                   class="mt-0.5 w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <div>
+              <p class="font-semibold text-content-value text-sm">Mostrar descripción de la tienda</p>
+              <p class="text-xs text-content-subtitle mt-0.5">Si está activado, se muestra el texto de descripción debajo del nombre en tu tienda online. Desactivá si preferís que no aparezca.</p>
+            </div>
+          </label>
+
+        </div>
+      </div>
+
+      <!-- ====================================================== -->
       <!-- OPCIONES DE ENVÍO                                      -->
-      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- ====================================================== -->
       <div class="border-t border-card-border pt-5">
         <h2 class="text-base font-bold text-content-title mb-1">🚚 Opciones de Envío</h2>
         <p class="text-xs text-content-subtitle mb-4">Elegí qué métodos de envío ofrecer en tu tienda. Los clientes podrán seleccionar entre las opciones activadas.</p>
