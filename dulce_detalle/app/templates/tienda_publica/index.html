@@ -523,7 +523,13 @@
   var CSRF         = cfg.csrfToken   || '';
 
   /* ── Estado en memoria ── */
-  var estado = cfg.carritoInicial || { count: 0, total: '0', items: [] };
+  /* Normalizar carritoInicial al formato interno {count, total, items} */
+  var raw = cfg.carritoInicial || {};
+  var estado = {
+    count: raw.count || 0,
+    total: raw.total || '0',
+    items: raw.items || []
+  };
 
   /* ── Elementos del DOM ── */
   var btnCart      = document.getElementById('btn-open-cart');
@@ -603,7 +609,7 @@
       drawerFooter.innerHTML = '<div class="px-6 py-5 border-t border-gray-100 bg-white">'
         + '<div class="flex items-end justify-between mb-5">'
         + '<span class="text-sm font-bold text-gray-500">Total a pagar:</span>'
-        + '<span class="text-3xl font-black" style="color:var(--color-primary)">$' + estado.total + '</span>'
+        + '<span class="text-3xl font-black" style="color:var(--color-primary)">$' + (estado.total || estado.carrito_total || '0') + '</span>'
         + '</div>'
         + '<a href="' + URL_CHECKOUT + '" class="w-full flex items-center justify-center gap-2 py-4 text-white font-bold rounded-2xl transition-all shadow-lg group" style="background:var(--color-primary)">'
         + 'Terminar compra'
@@ -633,7 +639,7 @@
     drawerCart.style.transform = 'translateX(0)';
     overlayCart.classList.remove('hidden');
     setTimeout(function () { overlayCart.style.opacity = '1'; }, 10);
-    document.body.style.overflow = 'hidden';
+    /* NO bloqueamos el scroll — el cliente puede seguir navegando */
   }
 
   function cerrarCarrito() {
@@ -641,7 +647,6 @@
     drawerCart.style.transform = 'translateX(100%)';
     overlayCart.style.opacity = '0';
     setTimeout(function () { overlayCart.classList.add('hidden'); }, 300);
-    document.body.style.overflow = '';
   }
 
   window.cerrarCarrito = cerrarCarrito;
@@ -660,7 +665,20 @@
       credentials: 'same-origin',
     })
     .then(function(r) { return r.json(); })
-    .then(function(data) { if (data.ok) { estado = data; renderDrawer(); if (cb) cb(data); } else { alert(data.error || 'Error'); } })
+    .then(function(data) {
+      if (data.ok) {
+        /* Normalizar claves: la API devuelve carrito_count/carrito_total */
+        estado = {
+          count:  data.count  !== undefined ? data.count  : (data.carrito_count || 0),
+          total:  data.total  !== undefined ? data.total  : (data.carrito_total || '0'),
+          items:  data.items  || []
+        };
+        renderDrawer();
+        if (cb) cb(data);
+      } else {
+        alert(data.error || 'Error');
+      }
+    })
     .catch(function(e) { console.error('Cart API error:', e); });
   }
 
@@ -691,11 +709,15 @@
       .then(function(data) {
         btn.classList.remove('opacity-75');
         if (data.ok) {
-          estado = data;
+          /* Normalizar claves de la API */
+          estado = {
+            count: data.count  !== undefined ? data.count  : (data.carrito_count || 0),
+            total: data.total  !== undefined ? data.total  : (data.carrito_total || '0'),
+            items: data.items  || []
+          };
           renderDrawer();
-          abrirCarrito();
           /* Actualizar texto del botón con la nueva cantidad */
-          var item = data.items.find(function(i){ return i.pk === pk; });
+          var item = estado.items.find(function(i){ return i.pk === pk; });
           var cant = item ? item.cantidad : 1;
           btn.innerHTML = '+ Añadir · <span class="carrito-badge-' + pk + '">' + cant + '</span> en carrito';
           btn.dataset.enCarrito = cant;
@@ -703,6 +725,8 @@
           if (item && cant >= item.stock) {
             btn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
           }
+          /* Toast no-bloqueante en vez de abrir el drawer */
+          mostrarToast('¡Agregado! ' + escHtml(item ? item.nombre : '') + ' (' + cant + ' en carrito)');
         } else {
           btn.innerHTML = orig;
           alert(data.error || 'No se pudo agregar.');
@@ -732,6 +756,29 @@
   ───────────────────────────────────────── */
   function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Toast no-bloqueante ── */
+  function mostrarToast(msg) {
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = [
+      'position:fixed','bottom:24px','left:50%','transform:translateX(-50%) translateY(20px)',
+      'background:#111827','color:#fff','font-size:13px','font-weight:600',
+      'padding:10px 20px','border-radius:999px','box-shadow:0 4px 20px rgba(0,0,0,.3)',
+      'z-index:9999','opacity:0','transition:all .25s ease','white-space:nowrap',
+      'pointer-events:none'
+    ].join(';');
+    document.body.appendChild(t);
+    requestAnimationFrame(function(){
+      t.style.opacity = '1';
+      t.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    setTimeout(function(){
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(-50%) translateY(10px)';
+      setTimeout(function(){ t.remove(); }, 300);
+    }, 2200);
   }
 
 }());
