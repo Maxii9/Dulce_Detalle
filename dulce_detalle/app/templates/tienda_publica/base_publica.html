@@ -76,7 +76,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 3.5rem 1rem 2.5rem;
+      padding: 2rem 1rem 1.5rem;
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -182,15 +182,9 @@
 
   <!-- ── Navbar ── -->
   <nav class="sticky top-0 z-40 border-b">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-end gap-4">
 
-      <!-- Logo / link inicio -->
-      <a href="{% url 'tienda_publica' negocio.slug %}" class="flex items-center gap-2 group shrink-0">
-        <span class="text-2xl group-hover:scale-110 transition-transform">{{ negocio.emoji }}</span>
-        <span class="text-base font-extrabold tracking-tight text-base-color hidden sm:inline">{{ negocio.nombre }}</span>
-      </a>
 
-      <!-- Acciones del nav -->
       <div class="flex items-center gap-2">
 
         <!-- Toggle dark/light -->
@@ -239,13 +233,11 @@
   <!-- ── Hero con el nombre de la tienda ── -->
   {% block hero %}
   <div class="store-hero">
-    <span class="store-hero-emoji">{{ negocio.emoji }}</span>
     <h1 class="store-hero-name">{{ negocio.nombre }}</h1>
     {% if negocio.descripcion %}
     <p class="store-hero-desc">{{ negocio.descripcion }}</p>
     {% endif %}
-    <!-- Línea decorativa bajo el nombre -->
-    <div style="margin-top:1.25rem;width:60px;height:3px;border-radius:99px;background:var(--color-primary);opacity:.6"></div>
+    <div style="margin-top:1rem;width:50px;height:3px;border-radius:99px;background:var(--color-primary);opacity:.55"></div>
   </div>
   {% endblock %}
 
