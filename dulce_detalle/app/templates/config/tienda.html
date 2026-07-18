@@ -156,7 +156,7 @@
 
             <div class="mb-4">
               <label class="block text-sm font-semibold text-content-subtitle mb-2">Tamaño del logo</label>
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {% for val, label in negocio.TAMANO_LOGO_CHOICES %}
                 <label class="cursor-pointer group">
                   <input type="radio" name="tamano_logo" value="{{ val }}"
@@ -166,7 +166,7 @@
                               bg-white peer-checked:border-sidebar-text peer-checked:bg-sidebar-bg/10
                               hover:bg-gray-50 transition-all text-center">
                     <span class="text-lg mb-1">
-                      {% if val == 'pequeno' %}S{% elif val == 'mediano' %}M{% else %}L{% endif %}
+                      {% if val == 'pequeno' %}S{% elif val == 'mediano' %}M{% elif val == 'grande' %}L{% else %}XL{% endif %}
                     </span>
                     <span class="text-xs font-bold text-content-subtitle">{{ label }}</span>
                   </div>

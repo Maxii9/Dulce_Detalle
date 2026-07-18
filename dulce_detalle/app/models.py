@@ -52,9 +52,10 @@ class Negocio(models.Model):
         ('pequeno', 'Pequeño (96px)'),
         ('mediano', 'Mediano (128px)'),
         ('grande', 'Grande (192px)'),
+        ('gigante', 'Gigante (256px)'),
     ]
     tamano_logo = models.CharField(
-        max_length=10, choices=TAMANO_LOGO_CHOICES, default='mediano',
+        max_length=15, choices=TAMANO_LOGO_CHOICES, default='mediano',
         verbose_name='Tamaño del logo'
     )
 
