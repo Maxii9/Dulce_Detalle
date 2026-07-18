@@ -118,18 +118,30 @@ def lista_productos(request, slug):
     productos = services.get_productos(negocio.slug)
     
     query = request.GET.get('q', '').strip()
-    tipo = request.GET.get('categoria', '').strip()
+    cat_filter = request.GET.get('categoria', '').strip()
+    sub_filter = request.GET.get('subcategoria', '').strip()
     if query:
         productos = productos.filter(nombre__icontains=query)
-    if tipo:
-        productos = productos.filter(categoria_id=tipo)
+    if sub_filter:
+        productos = productos.filter(subcategoria_id=sub_filter)
+    elif cat_filter:
+        productos = productos.filter(categoria_id=cat_filter)
         
     carrito_items = services.get_carrito_detalle(request.session)
     total = services.carrito_total(request.session)
     
     valor_inventario = sum(p.costo * p.stock for p in productos)
 
-    tipos = negocio.categorias_producto.all()
+    # Categorias con subcategorias agrupadas para el desplegable
+    from app.models import Subcategoria as SubcatModel
+    categorias_raw = negocio.categorias_producto.prefetch_related('subcategorias').all()
+    categorias_agrupadas = [
+        {
+            'cat': cat,
+            'subs': list(cat.subcategorias.all()),
+        }
+        for cat in categorias_raw
+    ]
 
     # PKs de productos cuyo stock ya está agotado en el carrito
     carrito_cantidades = {item['producto'].pk: item['cantidad'] for item in carrito_items}
@@ -141,8 +153,9 @@ def lista_productos(request, slug):
         'negocios': negocios,
         'productos': productos,
         'query': query,
-        'tipo_activo': tipo,
-        'tipos': tipos,
+        'cat_activa': cat_filter,
+        'sub_activa': sub_filter,
+        'categorias_agrupadas': categorias_agrupadas,
         'carrito_items': carrito_items,
         'total': total,
         'carrito_count': len(carrito_items),
@@ -166,6 +179,8 @@ def crear_producto(request, slug):
         stock = request.POST.get('stock', '0')
         categoria_id_raw = request.POST.get('categoria_id', '').strip()
         categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
+        subcategoria_id_raw = request.POST.get('subcategoria_id', '').strip()
+        subcategoria_id = int(subcategoria_id_raw) if subcategoria_id_raw.isdigit() else None
         codigo_barras = request.POST.get('codigo_barras', '').strip() or None
         imagen = request.FILES.get('imagen')
         imagenes_extra = request.FILES.getlist('imagenes_extra')
@@ -189,6 +204,7 @@ def crear_producto(request, slug):
                         stock=s_val,
                         imagen=imagen,
                         categoria_id=categoria_id,
+                        subcategoria_id=subcategoria_id,
                         imagenes_extra=imagenes_extra,
                     )
                     if codigo_barras:
@@ -201,12 +217,14 @@ def crear_producto(request, slug):
         else:
             messages.error(request, 'El nombre y el precio son campos obligatorios.')
 
+    from app.models import Subcategoria as SubcatModel
+    categorias = negocio.categorias_producto.prefetch_related('subcategorias').all()
     return render(request, 'productos/form.html', {
         'negocio': negocio,
         'negocios': negocios,
         'accion': 'Nuevo producto',
         'producto': None,
-        'categorias': negocio.categorias_producto.all(),
+        'categorias': categorias,
     })
 
 
@@ -223,6 +241,8 @@ def editar_producto(request, slug, pk):
         stock = request.POST.get('stock', '0')
         categoria_id_raw = request.POST.get('categoria_id', '').strip()
         categoria_id = int(categoria_id_raw) if categoria_id_raw.isdigit() else None
+        subcategoria_id_raw = request.POST.get('subcategoria_id', '').strip()
+        subcategoria_id = int(subcategoria_id_raw) if subcategoria_id_raw.isdigit() else None
         codigo_barras = request.POST.get('codigo_barras', '').strip() or None
         imagen = request.FILES.get('imagen')
         imagenes_extra = request.FILES.getlist('imagenes_extra')
@@ -248,6 +268,7 @@ def editar_producto(request, slug, pk):
                         stock=s_val,
                         imagen=imagen,
                         categoria_id=categoria_id,
+                        subcategoria_id=subcategoria_id,
                         imagenes_extra=imagenes_extra,
                         imagenes_eliminar=imagenes_eliminar,
                     )
@@ -261,12 +282,14 @@ def editar_producto(request, slug, pk):
         else:
             messages.error(request, 'El nombre y el precio son campos obligatorios.')
 
+    from app.models import Subcategoria as SubcatModel
+    categorias = negocio.categorias_producto.prefetch_related('subcategorias').all()
     return render(request, 'productos/form.html', {
         'negocio': negocio,
         'negocios': negocios,
         'accion': 'Editar producto',
         'producto': producto,
-        'categorias': negocio.categorias_producto.all(),
+        'categorias': categorias,
         'imagenes_extra': producto.imagenes.all(),
     })
 
@@ -663,14 +686,18 @@ def tienda_publica(request, slug):
     productos = services.get_productos(slug).filter(stock__gt=0).prefetch_related('imagenes')
 
     query = request.GET.get('q', '').strip()
-    categoria_id = request.GET.get('categoria', '').strip()
+    cat_filter = request.GET.get('categoria', '').strip()
+    sub_filter = request.GET.get('subcategoria', '').strip()
 
     if query:
         productos = productos.filter(nombre__icontains=query)
-    if categoria_id:
-        productos = productos.filter(categoria_id=categoria_id)
+    if sub_filter:
+        productos = productos.filter(subcategoria_id=sub_filter)
+    elif cat_filter:
+        productos = productos.filter(categoria_id=cat_filter)
 
-    # Solo mostrar los tipos que tienen al menos 1 producto con stock
+    # Categorías con stock agrupadas con sus subcategorías
+    from app.models import CategoriaProducto, Subcategoria as SubcatModel
     categorias_con_stock_ids = (
         services.get_productos(slug)
         .filter(stock__gt=0)
@@ -678,8 +705,17 @@ def tienda_publica(request, slug):
         .values_list('categoria_id', flat=True)
         .distinct()
     )
-    from app.models import CategoriaProducto
-    tipos = [(cat.pk, cat.nombre) for cat in CategoriaProducto.objects.filter(pk__in=categorias_con_stock_ids).order_by('nombre')]
+    categorias_base = CategoriaProducto.objects.filter(
+        pk__in=categorias_con_stock_ids
+    ).prefetch_related('subcategorias').order_by('nombre')
+
+    categorias_agrupadas = [
+        {
+            'cat': cat,
+            'subs': list(cat.subcategorias.all()),
+        }
+        for cat in categorias_base
+    ]
 
     from decimal import Decimal
     carrito_items = services.get_carrito_publico_detalle(request.session, slug)
@@ -711,8 +747,9 @@ def tienda_publica(request, slug):
         'negocio': negocio,
         'productos_con_cant': productos_con_cant,
         'query': query,
-        'tipo_activo': categoria_id,
-        'tipos': tipos,
+        'cat_activa': cat_filter,
+        'sub_activa': sub_filter,
+        'categorias_agrupadas': categorias_agrupadas,
         'carrito_count': carrito_count,
         'carrito_items': carrito_items,
         'carrito_total': carrito_total,
@@ -1146,8 +1183,7 @@ def crear_tienda_adicional(request):
     })
 
 
-
-# ── Configuración ─────────────────────────────────────────────────────────
+# ── Configuración ──────────────────────────────────────────────────────
 
 @tienda_requerida
 def configuracion_tienda(request, slug):
@@ -1156,7 +1192,7 @@ def configuracion_tienda(request, slug):
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()[:100]
         descripcion = request.POST.get('descripcion', '').strip()[:500]
-        emoji = request.POST.get('emoji', '🛍️').strip()[:10]
+        emoji = request.POST.get('emoji', '🛙️').strip()[:10]
         color_primario = request.POST.get('color_primario', '#ec4899').strip()[:7]
         color_secundario = request.POST.get('color_secundario', '#be185d').strip()[:7]
         envio_domicilio = 'envio_domicilio' in request.POST
@@ -1165,6 +1201,8 @@ def configuracion_tienda(request, slug):
         velocidad_carrusel = request.POST.get('velocidad_carrusel', 'normal')
         mostrar_descripcion = 'mostrar_descripcion' in request.POST
         estilo_fuente = request.POST.get('estilo_fuente', 'abril')
+        eliminar_logo = request.POST.get('eliminar_logo') == '1'
+        logo = request.FILES.get('logo')
         if nombre:
             negocio.nombre = nombre
             negocio.descripcion = descripcion
@@ -1177,6 +1215,10 @@ def configuracion_tienda(request, slug):
             negocio.velocidad_carrusel = velocidad_carrusel
             negocio.mostrar_descripcion = mostrar_descripcion
             negocio.estilo_fuente = estilo_fuente
+            if logo:
+                negocio.logo = logo
+            elif eliminar_logo:
+                negocio.logo = None
             negocio.save()
             messages.success(request, 'Información de la tienda actualizada.')
             return redirect('configuracion_tienda', slug=slug)
@@ -1204,7 +1246,7 @@ def politica_privacidad(request):
 @tienda_requerida
 def configuracion_categorias(request, slug):
     negocio, negocios = _contexto_base(request, slug)
-    categorias = negocio.categorias_producto.all()
+    categorias = negocio.categorias_producto.prefetch_related('subcategorias').all()
     
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -1225,6 +1267,30 @@ def configuracion_categorias(request, slug):
                 messages.error(request, 'Error al borrar la categoría (o no existe).')
             except django.db.models.deletion.ProtectedError:
                 messages.error(request, 'No podés eliminar este tipo porque hay productos que lo están usando. Eliminá o reasigná los productos primero.')
+        elif action == 'add_sub':
+            cat_id = request.POST.get('categoria_id', '').strip()
+            nombre_sub = request.POST.get('nombre_sub', '').strip()[:80]
+            if cat_id and nombre_sub:
+                try:
+                    cat = CategoriaProducto.objects.get(pk=cat_id, negocio=negocio)
+                    from app.models import Subcategoria as SubcatModel
+                    SubcatModel.objects.get_or_create(categoria=cat, nombre=nombre_sub)
+                    messages.success(request, f'Subcategoría "{nombre_sub}" agregada a "{cat.nombre}".')
+                except CategoriaProducto.DoesNotExist:
+                    messages.error(request, 'Categoría no encontrada.')
+            else:
+                messages.error(request, 'Ingresa un nombre válido para la subcategoría.')
+        elif action == 'delete_sub':
+            sub_id = request.POST.get('subcategoria_id', '').strip()
+            if sub_id:
+                try:
+                    from app.models import Subcategoria as SubcatModel
+                    sub = SubcatModel.objects.get(pk=sub_id, categoria__negocio=negocio)
+                    nombre_sub = sub.nombre
+                    sub.delete()
+                    messages.success(request, f'Subcategoría "{nombre_sub}" eliminada.')
+                except SubcatModel.DoesNotExist:
+                    messages.error(request, 'Subcategoría no encontrada.')
         return redirect('configuracion_categorias', slug=slug)
 
     return render(request, 'config/categorias.html', {

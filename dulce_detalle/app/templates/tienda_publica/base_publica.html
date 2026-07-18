@@ -238,9 +238,20 @@
   <!-- ── Hero con el nombre de la tienda ── -->
   {% block hero %}
   <div class="store-hero">
-    <h1 class="store-hero-name font-{{ negocio.estilo_fuente|default:'abril' }}">{{ negocio.nombre }}</h1>
-    {% if negocio.mostrar_descripcion and negocio.descripcion %}
-    <p class="store-hero-desc">{{ negocio.descripcion }}</p>
+    {% if negocio.logo %}
+      <!-- Logo personalizado de la tienda -->
+      <img src="{{ negocio.logo.url }}" alt="{{ negocio.nombre }}"
+           class="max-h-32 max-w-[280px] w-auto object-contain mb-2"
+           style="filter: drop-shadow(0 2px 8px rgba(0,0,0,.10));">
+      {% if negocio.mostrar_descripcion and negocio.descripcion %}
+      <p class="store-hero-desc">{{ negocio.descripcion }}</p>
+      {% endif %}
+    {% else %}
+      <!-- Nombre con fuente personalizada (default) -->
+      <h1 class="store-hero-name font-{{ negocio.estilo_fuente|default:'abril' }}">{{ negocio.nombre }}</h1>
+      {% if negocio.mostrar_descripcion and negocio.descripcion %}
+      <p class="store-hero-desc">{{ negocio.descripcion }}</p>
+      {% endif %}
     {% endif %}
     <div style="margin-top:1rem;width:50px;height:3px;border-radius:99px;background:var(--color-primary);opacity:.55"></div>
   </div>
@@ -284,10 +295,9 @@
     var iconSun = document.getElementById('icon-sun');
     var iconMoon= document.getElementById('icon-moon');
 
-    // Recuperar preferencia guardada o sistema
+    // Recuperar preferencia guardada — si no hay, siempre claro
     var saved = localStorage.getItem('tienda-theme');
-    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var current = saved || (prefersDark ? 'dark' : 'light');
+    var current = saved || 'light';
     apply(current);
 
     function apply(theme) {

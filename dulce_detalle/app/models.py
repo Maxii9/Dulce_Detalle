@@ -48,6 +48,14 @@ class Negocio(models.Model):
         verbose_name='Estilo de fuente del título'
     )
 
+    logo = models.ImageField(
+        upload_to='logos/',
+        blank=True,
+        null=True,
+        verbose_name='Logo de la tienda',
+        help_text='Logo que se mostrará en la tienda online (fondo blanco o transparente recomendado).'
+    )
+
     def __str__(self):
         return self.nombre
 
@@ -68,6 +76,21 @@ class CategoriaProducto(models.Model):
         verbose_name_plural = "Categorias de Producto"
 
 
+class Subcategoria(models.Model):
+    """Subcategoría dentro de una CategoriaProducto (ej: Pantalones → Shorts)."""
+    categoria = models.ForeignKey(
+        CategoriaProducto, on_delete=models.CASCADE, related_name='subcategorias'
+    )
+    nombre = models.CharField(max_length=80)
+
+    def __str__(self):
+        return f"{self.categoria.nombre} › {self.nombre}"
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name_plural = "Subcategorías"
+
+
 class Producto(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='productos')
     categoria = models.ForeignKey(CategoriaProducto, on_delete=models.PROTECT, related_name='productos', null=True, blank=True)
@@ -75,6 +98,10 @@ class Producto(models.Model):
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     costo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     descripcion = models.TextField(blank=True)
+    subcategoria = models.ForeignKey(
+        'Subcategoria', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='productos', verbose_name='Subcategoría'
+    )
     codigo_barras = models.CharField(max_length=50, blank=True, null=True, unique=True, db_index=True, verbose_name='Código de barras')
     stock = models.IntegerField(default=0)
     imagen = models.ImageField(upload_to='productos/', blank=True, null=True)

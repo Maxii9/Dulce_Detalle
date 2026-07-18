@@ -16,6 +16,57 @@
   <!-- Columna Principal: Formulario de la Imagen de Referencia -->
   <div class="lg:col-span-7 space-y-6">
     
+  <!-- ══ ESCÁNER DE CÓDIGO DE BARRAS — CARRITO ══ -->
+  <div class="bg-gray-900 rounded-xl border border-emerald-800/40 shadow-lg overflow-hidden mb-5">
+    <div class="px-5 py-3 border-b border-gray-800 bg-gradient-to-r from-emerald-900/30 to-transparent flex items-center gap-3">
+      <div class="w-7 h-7 bg-emerald-700 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M2 4h2v16H2V4zm3 0h1v16H5V4zm2 0h2v16H7V4zm3 0h1v16h-1V4zm2 0h2v16h-2V4zm3 0h1v16h-1V4zm2 0h1v16h-1V4zm2 0h2v16h-2V4z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-bold text-white">Escáner de Barras — Agregar al Carrito</p>
+        <p class="text-xs text-gray-400">Escaneá un código para agregar el producto directamente</p>
+      </div>
+    </div>
+    <div class="px-5 py-4 space-y-3">
+      <div class="flex gap-2">
+        <input id="carrito-barras-input" type="text" placeholder="Escaneá o escribí el código..."
+               autocomplete="off"
+               class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                      font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"/>
+        <button type="button" onclick="carritoScanBuscar()"
+                class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all text-sm">
+          Agregar
+        </button>
+      </div>
+      <!-- Resultado del escaneo -->
+      <div id="carrito-scan-resultado" class="hidden">
+        <div id="carrito-scan-encontrado" class="hidden bg-gray-800 rounded-xl border border-emerald-700/50 p-3 flex items-center justify-between gap-3">
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-emerald-400 font-bold uppercase tracking-wide">Producto encontrado</p>
+            <p id="carrito-scan-nombre" class="text-white font-bold text-sm truncate"></p>
+            <p class="text-gray-400 text-xs mt-0.5">Stock: <span id="carrito-scan-stock" class="text-white font-semibold"></span>
+               · $<span id="carrito-scan-precio"></span></p>
+          </div>
+          <button type="button" onclick="carritoScanAgregar()"
+                  id="carrito-scan-btn"
+                  class="flex-shrink-0 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-all">
+            + Agregar
+          </button>
+        </div>
+        <div id="carrito-scan-no-encontrado" class="hidden bg-gray-800 rounded-xl border border-red-700/40 p-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-red-300 text-sm">Código no registrado en esta tienda.</p>
+        </div>
+        <div id="carrito-scan-exito" class="hidden bg-emerald-900/40 rounded-xl border border-emerald-600/40 p-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <p id="carrito-scan-exito-msg" class="text-emerald-300 text-sm font-semibold"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
     <div class="bg-white text-gray-800 rounded-xl shadow-lg border border-gray-200 overflow-hidden relative">
       <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -304,5 +355,84 @@
 
   </div>
 </div>
+
+<script>
+// ── Escáner de barras para el carrito de venta ──
+(function() {
+  var productoScan = null;
+  var urlBusqueda = '{% url "buscar_por_barras" negocio.slug %}';
+  var urlAgregar  = '{% url "carrito_agregar" negocio.slug 0 %}'.replace('/0/', '/');
+
+  var input = document.getElementById('carrito-barras-input');
+  if (input) {
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); carritoScanBuscar(); }
+    });
+    // Auto-foco al cargar
+    window.addEventListener('load', function() { input.focus(); });
+  }
+
+  window.carritoScanBuscar = function() {
+    var codigo = input ? input.value.trim() : '';
+    if (!codigo) return;
+
+    fetch(urlBusqueda + '?codigo=' + encodeURIComponent(codigo))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var resultado = document.getElementById('carrito-scan-resultado');
+        var encontrado = document.getElementById('carrito-scan-encontrado');
+        var noEncontrado = document.getElementById('carrito-scan-no-encontrado');
+        var exito = document.getElementById('carrito-scan-exito');
+
+        resultado.classList.remove('hidden');
+        exito.classList.add('hidden');
+
+        if (data.encontrado) {
+          productoScan = data;
+          noEncontrado.classList.add('hidden');
+          encontrado.classList.remove('hidden');
+          document.getElementById('carrito-scan-nombre').textContent = data.nombre;
+          document.getElementById('carrito-scan-stock').textContent = data.stock;
+          document.getElementById('carrito-scan-precio').textContent = data.precio;
+        } else {
+          productoScan = null;
+          encontrado.classList.add('hidden');
+          noEncontrado.classList.remove('hidden');
+        }
+        if (input) { input.value = ''; input.focus(); }
+      })
+      .catch(function(e) { console.error('Scan error:', e); });
+  };
+
+  window.carritoScanAgregar = function() {
+    if (!productoScan) return;
+    var btn = document.getElementById('carrito-scan-btn');
+    var orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Agregando...';
+
+    // Usamos redirect normal via fetch a la URL de agregar
+    var url = urlAgregar + productoScan.pk + '/';
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      redirect: 'follow',
+      credentials: 'same-origin'
+    })
+    .then(function() {
+      // Recargar la página para reflejar el carrito actualizado
+      window.location.reload();
+    })
+    .catch(function(e) {
+      btn.disabled = false;
+      btn.textContent = orig;
+      console.error('Agregar error:', e);
+    });
+  };
+})();
+</script>
 
 {% endblock %}

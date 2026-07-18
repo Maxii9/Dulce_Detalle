@@ -3,7 +3,7 @@ Capa de servicios para la lógica CRUD de Productos, Negocios y Ventas.
 Las vistas delegan toda la lógica de datos a este módulo.
 """
 from decimal import Decimal
-from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido
+from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido, Subcategoria
 
 
 # ── Negocios ──────────────────────────────────────────────────────────────
@@ -33,7 +33,11 @@ def get_negocio_activo(session) -> Negocio | None:
 
 def get_productos(negocio_slug: str):
     """Lista todos los productos de un negocio dado su slug."""
-    return Producto.objects.filter(negocio__slug=negocio_slug).select_related('negocio')
+    return (
+        Producto.objects
+        .filter(negocio__slug=negocio_slug)
+        .select_related('negocio', 'categoria', 'subcategoria')
+    )
 
 
 def get_producto(pk: int) -> Producto | None:
@@ -44,11 +48,12 @@ def get_producto(pk: int) -> Producto | None:
         return None
 
 
-def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, imagenes_extra=None) -> Producto:
+def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None) -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
     producto = Producto.objects.create(
         negocio=negocio,
         categoria_id=categoria_id,
+        subcategoria_id=subcategoria_id,
         nombre=nombre,
         precio=precio,
         costo=costo,
@@ -78,7 +83,7 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
     return producto
 
 
-def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, imagenes_extra=None, imagenes_eliminar=None) -> Producto | None:
+def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None, imagenes_eliminar=None) -> Producto | None:
     """Actualiza un producto existente. Si el stock aumenta, registra un movimiento de compra."""
     producto = get_producto(pk)
     if producto is None:
@@ -87,6 +92,7 @@ def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str 
     stock_anterior = producto.stock  # Guardar antes de actualizar
 
     producto.categoria_id = categoria_id
+    producto.subcategoria_id = subcategoria_id
     producto.nombre = nombre
     producto.precio = precio
     producto.costo = costo

@@ -1,43 +1,111 @@
 {% extends 'base.html' %}
-{% block title %}Tipos de Producto{% endblock %}
+{% block title %}Categorías y Subcategorías{% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto">
-  <h1 class="text-2xl font-bold text-content-title mb-6 flex items-center gap-2">
-    <span>🗂️</span> Tipos de Producto
+  <h1 class="text-2xl font-bold text-content-title mb-2 flex items-center gap-2">
+    <span>🗂️</span> Categorías y Subcategorías
   </h1>
-  <p class="text-content-subtitle text-sm mb-6">Estas son las opciones que aparecerán en el menú desplegable de "Tipo" a la hora de crear un nuevo producto.</p>
-  
+  <p class="text-content-subtitle text-sm mb-6">
+    Organizá tus productos con categorías y subcategorías. Ej: <strong>Pantalones</strong> → Shorts, Mom, Cargos.
+  </p>
+
   <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-    
-    <!-- Agregar categoria -->
+
+    <!-- ── Agregar categoría ── -->
     <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6 h-fit">
-      <h3 class="font-bold text-content-title mb-4">Añadir nuevo tipo</h3>
+      <h3 class="font-bold text-content-title mb-4 flex items-center gap-2">
+        <span class="text-lg">📁</span> Nueva categoría
+      </h3>
       <form method="post" class="flex flex-col gap-3">
         {% csrf_token %}
         <input type="hidden" name="action" value="add">
-        <input type="text" name="nombre" placeholder="Ej: Pijamas" required maxlength="50" class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">
-        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full">+ Guardar Tipo</button>
+        <input type="text" name="nombre" placeholder="Ej: Pantalones" required maxlength="50"
+               class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">
+        <button type="submit"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full">
+          + Guardar Categoría
+        </button>
       </form>
     </div>
 
-    <!-- Listado -->
-    <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border overflow-hidden">
+    <!-- ── Listado con acordeón ── -->
+    <div class="space-y-3">
       {% if categorias %}
-      <ul class="divide-y divide-card-border">
         {% for cat in categorias %}
-        <li class="p-4 flex justify-between items-center hover:bg-card-row-hover transition-colors">
-          <span class="font-semibold text-content-value">{{ cat.nombre }}</span>
-          <form method="post" onsubmit="return confirm('¿Seguro quieres borrar este tipo? Si hay productos vinculados a este tipo, el sistema no te dejará eliminarlo. Debes eliminar o reasignar los productos primero.')">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="categoria_id" value="{{ cat.id }}">
-            <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-bold bg-red-50 px-2 py-1 rounded">Eliminar</button>
-          </form>
-        </li>
+        <div class="bg-card-bg rounded-2xl border border-card-border overflow-hidden shadow-sm">
+
+          <!-- Cabecera de la categoría -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <button type="button"
+                    onclick="toggleCat('cat-{{ cat.pk }}')"
+                    class="flex items-center gap-2 text-left flex-1 group">
+              <svg id="arrow-cat-{{ cat.pk }}"
+                   class="w-4 h-4 text-content-subtitle transition-transform duration-200"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+              </svg>
+              <span class="font-bold text-content-value group-hover:text-content-title transition-colors">
+                {{ cat.nombre }}
+              </span>
+              <span class="text-xs text-content-subtitle bg-card-bg-alt px-2 py-0.5 rounded-full border border-card-border">
+                {{ cat.subcategorias.count }} sub.
+              </span>
+            </button>
+            <!-- Eliminar categoría -->
+            <form method="post"
+                  onsubmit="return confirm('¿Seguro que querés borrar esta categoría? Se eliminarán también sus subcategorías.')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="categoria_id" value="{{ cat.pk }}">
+              <button type="submit"
+                      class="text-red-500 hover:text-red-700 text-xs font-bold bg-red-50 px-2 py-1 rounded ml-2">
+                Eliminar
+              </button>
+            </form>
+          </div>
+
+          <!-- Acordeón: subcategorías + formulario agregar -->
+          <div id="cat-{{ cat.pk }}" class="hidden border-t border-card-border px-4 py-3 space-y-2 bg-card-bg-alt">
+
+            <!-- Subcategorías existentes -->
+            {% for sub in cat.subcategorias.all %}
+            <div class="flex items-center justify-between py-1">
+              <span class="text-sm text-content-value flex items-center gap-2">
+                <span class="text-content-subtitle">└</span> {{ sub.nombre }}
+              </span>
+              <form method="post"
+                    onsubmit="return confirm('¿Eliminar la subcategoría \"{{ sub.nombre }}\"?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_sub">
+                <input type="hidden" name="subcategoria_id" value="{{ sub.pk }}">
+                <button type="submit"
+                        class="text-red-400 hover:text-red-600 text-xs font-semibold px-1.5 py-0.5 rounded bg-red-50 hover:bg-red-100 transition-colors">
+                  ✕
+                </button>
+              </form>
+            </div>
+            {% empty %}
+            <p class="text-xs text-content-subtitle italic">Sin subcategorías todavía.</p>
+            {% endfor %}
+
+            <!-- Agregar subcategoría -->
+            <form method="post" class="flex gap-2 mt-2 pt-2 border-t border-card-border">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_sub">
+              <input type="hidden" name="categoria_id" value="{{ cat.pk }}">
+              <input type="text" name="nombre_sub" placeholder="Nueva subcategoría..." maxlength="80" required
+                     class="flex-1 border border-input-border rounded-lg px-3 py-1.5 text-sm text-input-text focus:outline-none focus:ring-1 focus:ring-input-focus bg-card-bg">
+              <button type="submit"
+                      class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">
+                + Agregar
+              </button>
+            </form>
+          </div>
+
+        </div>
         {% endfor %}
-      </ul>
       {% else %}
-      <div class="p-6 text-center text-content-muted">
+      <div class="bg-card-bg rounded-2xl border border-card-border p-6 text-center text-content-muted">
         No hay categorías creadas.
       </div>
       {% endif %}
@@ -45,4 +113,19 @@
 
   </div>
 </div>
+
+<script>
+function toggleCat(id) {
+  const panel = document.getElementById(id);
+  const catPk = id.replace('cat-', '');
+  const arrow = document.getElementById('arrow-cat-' + catPk);
+  if (panel.classList.contains('hidden')) {
+    panel.classList.remove('hidden');
+    if (arrow) arrow.style.transform = 'rotate(90deg)';
+  } else {
+    panel.classList.add('hidden');
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  }
+}
+</script>
 {% endblock %}

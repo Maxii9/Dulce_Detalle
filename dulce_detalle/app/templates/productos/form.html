@@ -194,27 +194,80 @@
                       focus:border-transparent transition-all"/>
       </div>
 
-      <!-- Tipo / Categoría -->
-      <div>
-        <label for="tipo" class="block text-sm font-semibold text-gray-300 mb-2">Categoría</label>
-        <div class="relative">
-          <select name="categoria_id" id="tipo"
-                  class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
-                         focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
-                         transition-all appearance-none cursor-pointer">
-            {% for cat in categorias %}
-              <option value="{{ cat.pk }}" {% if producto.categoria_id == cat.pk %}selected{% endif %}>{{ cat.nombre }}</option>
-            {% empty %}
-              <option value="" selected>Sin categorías cargadas</option>
-            {% endfor %}
-          </select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
+      <!-- Categoría + Subcategoría -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="categoria_id" class="block text-sm font-semibold text-gray-300 mb-2">Categoría</label>
+          <div class="relative">
+            <select name="categoria_id" id="categoria_id"
+                    onchange="actualizarSubcats(this.value)"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
+                           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                           transition-all appearance-none cursor-pointer">
+              <option value="">— Sin categoría —</option>
+              {% for cat in categorias %}
+                <option value="{{ cat.pk }}"
+                        data-subs='[{% for sub in cat.subcategorias.all %}{"pk":{{ sub.pk }},"nombre":"{{ sub.nombre }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
+                        {% if producto.categoria_id == cat.pk %}selected{% endif %}>
+                  {{ cat.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div id="subcategoria-wrapper">
+          <label for="subcategoria_id" class="block text-sm font-semibold text-gray-300 mb-2">
+            Subcategoría <span class="text-gray-600 font-normal">(opcional)</span>
+          </label>
+          <div class="relative">
+            <select name="subcategoria_id" id="subcategoria_id"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
+                           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                           transition-all appearance-none cursor-pointer disabled:opacity-40">
+              <option value="">— Sin subcategoría —</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
+
+      <script>
+      var _productoSubcatActual = {{ producto.subcategoria_id|default:'null' }};
+      function actualizarSubcats(catPk) {
+        var sel = document.getElementById('subcategoria_id');
+        sel.innerHTML = '<option value="">— Sin subcategoría —</option>';
+        if (!catPk) { sel.disabled = true; return; }
+        var catOpt = document.querySelector('#categoria_id option[value="' + catPk + '"]');
+        var subs = [];
+        try { subs = JSON.parse(catOpt ? catOpt.dataset.subs : '[]'); } catch(e) {}
+        if (subs.length === 0) { sel.disabled = true; return; }
+        sel.disabled = false;
+        subs.forEach(function(sub) {
+          var opt = document.createElement('option');
+          opt.value = sub.pk;
+          opt.textContent = sub.nombre;
+          if (sub.pk === _productoSubcatActual) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      }
+      // Inicializar al cargar
+      document.addEventListener('DOMContentLoaded', function() {
+        var catSel = document.getElementById('categoria_id');
+        if (catSel && catSel.value) actualizarSubcats(catSel.value);
+        else document.getElementById('subcategoria_id').disabled = true;
+      });
+      </script>
+
 
       <!-- Precio de venta y Costo en fila -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

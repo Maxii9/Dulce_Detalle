@@ -6,7 +6,7 @@
     <span>⚙️</span> Información del Negocio
   </h1>
   <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6 space-y-8">
-    <form method="post" class="space-y-5">
+    <form method="post" enctype="multipart/form-data" class="space-y-5">
       {% csrf_token %}
       <div>
         <label class="block text-sm font-bold text-content-subtitle mb-2">Nombre público <span class="text-red-500">*</span></label>
@@ -147,6 +147,54 @@
             </div>
           </label>
 
+          <!-- ── LOGO DE LA TIENDA ── -->
+          <div class="border-t border-card-border pt-4">
+            <h3 class="text-sm font-bold text-content-title mb-1 flex items-center gap-2">
+              🖼️ Logo de la tienda
+            </h3>
+            <p class="text-xs text-content-subtitle mb-3">El logo se muestra en el encabezado de tu tienda online. Ideal usar una imagen con fondo blanco o sin fondo (PNG/SVG).</p>
+
+            {% if negocio.logo %}
+            <!-- Logo actual -->
+            <div class="flex items-center gap-4 mb-3 p-3 bg-card-bg-alt rounded-xl border border-card-border">
+              <img src="{{ negocio.logo.url }}" alt="Logo actual"
+                   class="w-20 h-20 object-contain rounded-lg border border-card-border bg-white p-1">
+              <div class="flex-1">
+                <p class="text-xs font-semibold text-content-value">Logo actual</p>
+                <p class="text-xs text-content-subtitle mt-0.5">Subí una nueva imagen para reemplazarlo.</p>
+                <label class="flex items-center gap-2 mt-2 cursor-pointer group">
+                  <input type="checkbox" name="eliminar_logo" value="1" id="eliminar_logo_check"
+                         class="w-4 h-4 rounded accent-red-500 cursor-pointer">
+                  <span class="text-xs text-red-500 font-semibold group-hover:text-red-600 transition-colors">Eliminar logo actual</span>
+                </label>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Zona de upload -->
+            <label id="logo-label"
+                   class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-card-border
+                          rounded-xl cursor-pointer hover:border-sidebar-text hover:bg-sidebar-bg/30 transition-all">
+              <svg class="w-7 h-7 text-content-subtitle mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              <span id="logo-label-text" class="text-sm text-content-subtitle">Hacé clic para subir el logo</span>
+              <span class="text-xs text-content-subtitle mt-0.5">PNG, JPG, SVG — Recomendado fondo blanco o transparente</span>
+              <input type="file" name="logo" id="logo-input" accept="image/*" class="hidden"
+                     onchange="previewLogo(this)">
+            </label>
+
+            <!-- Preview del nuevo logo seleccionado -->
+            <div id="logo-preview-container" class="hidden mt-3 flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+              <img id="logo-preview-img" src="" alt="Preview" class="w-16 h-16 object-contain rounded-lg bg-white border border-emerald-200 p-1">
+              <div>
+                <p class="text-xs font-semibold text-emerald-700">Logo listo para subir</p>
+                <p id="logo-preview-nombre" class="text-xs text-emerald-600 mt-0.5"></p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -255,5 +303,23 @@
       updatePreviews(this.value, 'secondary');
     }
   });
+
+  // Preview del logo seleccionado
+  function previewLogo(input) {
+    const container = document.getElementById('logo-preview-container');
+    const previewImg = document.getElementById('logo-preview-img');
+    const labelText = document.getElementById('logo-label-text');
+    const previewNombre = document.getElementById('logo-preview-nombre');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        container.classList.remove('hidden');
+        labelText.textContent = '✅ Logo seleccionado';
+        previewNombre.textContent = input.files[0].name;
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
 </script>
 {% endblock %}

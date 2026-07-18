@@ -45,21 +45,102 @@
   </div>
 </div>
 
-<!-- Filtros de Categoría -->
-<div class="mb-6 flex flex-wrap gap-2">
-  <a href="{% url 'lista_productos' slug=negocio.slug %}{% if query %}?q={{ query }}{% endif %}"
-     class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
-            {% if not tipo_activo %}bg-filter-active-bg text-filter-active-text border-filter-active-border{% else %}bg-filter-idle-bg text-filter-idle-text border-filter-idle-border hover:bg-filter-hover-bg{% endif %}">
-    Todos
-  </a>
-  {% for cat in tipos %}
-  <a href="?categoria={{ cat.pk }}{% if query %}&q={{ query }}{% endif %}"
-     class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
-            {% if tipo_activo == cat.pk|stringformat:'s' %}bg-filter-active-bg text-filter-active-text border-filter-active-border{% else %}bg-filter-idle-bg text-filter-idle-text border-filter-idle-border hover:bg-filter-hover-bg{% endif %}">
-    {{ cat.nombre }}
-  </a>
-  {% endfor %}
+<!-- ── Filtro desplegable de Categorías ── -->
+<div class="mb-6 relative" id="cat-dropdown-wrapper">
+  <button type="button" id="cat-dropdown-btn"
+          onclick="toggleCatDropdown()"
+          class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all
+                 {% if cat_activa or sub_activa %}bg-filter-active-bg text-filter-active-text border-filter-active-border{% else %}bg-filter-idle-bg text-filter-idle-text border-filter-idle-border hover:bg-filter-hover-bg{% endif %}">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 6h16M4 12h10M4 18h6"/>
+    </svg>
+    Categorías
+    {% if cat_activa or sub_activa %}<span class="ml-1">●</span>{% endif %}
+    <svg id="cat-dropdown-arrow" class="w-3.5 h-3.5 ml-1 transition-transform duration-200"
+         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+
+  <!-- Panel del dropdown -->
+  <div id="cat-dropdown-panel"
+       class="hidden absolute left-0 top-full mt-2 z-30 bg-card-bg border border-card-border rounded-2xl shadow-xl w-64 overflow-hidden">
+
+    <!-- "Todos" -->
+    <a href="{% url 'lista_productos' slug=negocio.slug %}{% if query %}?q={{ query }}{% endif %}"
+       class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold hover:bg-card-bg-alt transition-colors
+              {% if not cat_activa and not sub_activa %}text-emerald-600 bg-emerald-50{% else %}text-content-value{% endif %}">
+      <span class="text-base">🛍️</span> Todos
+    </a>
+
+    <div class="border-t border-card-border">
+      {% for grupo in categorias_agrupadas %}
+      <div>
+        <!-- Categoría principal -->
+        <div class="flex items-center">
+          <a href="?categoria={{ grupo.cat.pk }}{% if query %}&q={{ query }}{% endif %}"
+             class="flex-1 px-4 py-2 text-sm font-bold hover:bg-card-bg-alt transition-colors
+                    {% if cat_activa == grupo.cat.pk|stringformat:'s' and not sub_activa %}text-emerald-600 bg-emerald-50{% else %}text-content-value{% endif %}">
+            {{ grupo.cat.nombre }}
+          </a>
+          {% if grupo.subs %}
+          <button type="button"
+                  onclick="toggleSubcat('subcat-gestion-{{ grupo.cat.pk }}')"
+                  class="pr-3 text-content-subtitle hover:text-content-title transition-colors">
+            <svg id="arr-gestion-{{ grupo.cat.pk }}" class="w-4 h-4 transition-transform duration-200"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+          {% endif %}
+        </div>
+        <!-- Subcategorías -->
+        {% if grupo.subs %}
+        <div id="subcat-gestion-{{ grupo.cat.pk }}"
+             class="{% if cat_activa == grupo.cat.pk|stringformat:'s' or sub_activa %}block{% else %}hidden{% endif %} bg-card-bg-alt border-t border-card-border">
+          {% for sub in grupo.subs %}
+          <a href="?subcategoria={{ sub.pk }}{% if query %}&q={{ query }}{% endif %}"
+             class="flex items-center gap-2 pl-8 pr-4 py-2 text-xs font-semibold hover:bg-card-row-hover transition-colors
+                    {% if sub_activa == sub.pk|stringformat:'s' %}text-emerald-600{% else %}text-content-subtitle{% endif %}">
+            <span class="text-content-muted">└</span> {{ sub.nombre }}
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
 </div>
+
+<script>
+function toggleCatDropdown() {
+  const panel = document.getElementById('cat-dropdown-panel');
+  const arrow = document.getElementById('cat-dropdown-arrow');
+  const open = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', open);
+  arrow.style.transform = open ? '' : 'rotate(180deg)';
+}
+function toggleSubcat(id) {
+  const panel = document.getElementById(id);
+  const catPk = id.replace('subcat-gestion-', '');
+  const arrow = document.getElementById('arr-gestion-' + catPk);
+  const open = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', open);
+  if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
+}
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', function(e) {
+  const wrapper = document.getElementById('cat-dropdown-wrapper');
+  if (wrapper && !wrapper.contains(e.target)) {
+    document.getElementById('cat-dropdown-panel').classList.add('hidden');
+    document.getElementById('cat-dropdown-arrow').style.transform = '';
+  }
+});
+</script>
+
 
 <!-- Grilla y Carrito -->
 <div class="flex flex-col xl:flex-row gap-6">
@@ -123,7 +204,7 @@
     <div class="p-3">
       <!-- Categoría badge -->
       <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 mb-1">
-        {{ producto.categoria.nombre|default:"Sin categoría" }}
+        {{ producto.categoria.nombre|default:"Sin categoría" }}{% if producto.subcategoria %} › {{ producto.subcategoria.nombre }}{% endif %}
       </span>
       <!-- Precio de venta -->
       <p class="text-lg font-bold text-gray-900">$ {{ producto.precio }}</p>
