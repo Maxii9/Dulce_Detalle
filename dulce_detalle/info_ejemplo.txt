@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────
+# Archivo de configuración de productos
+# Completá los datos y colocá este archivo
+# dentro de la misma carpeta que las imágenes.
+# ─────────────────────────────────────────────
+
+# Nombre base del producto.
+# Si hay más de 1 imagen, se agrega el número automáticamente:
+# "Medias Soquetes Los Simpsons 001", "Medias Soquetes Los Simpsons 002"...
+nombre=Medias Soquetes Los Simpsons
+
+# Nombre exacto de la categoría (se crea automáticamente si no existe)
+categoria=Medias soquetes adultos
+
+# Precio de venta al público
+precio=2000
+
+# Costo de compra
+costo=900
+
+# Stock inicial (0 por defecto)
+stock=0
+
+# Descripción del producto (opcional)
+descripcion=Medias soquetes de algodón, talle único adulto.
+
+# Slug de la tienda destino.
+# Opciones disponibles:
+#   mango-accesorio  → Mango Accesorios
+#   admin            → Magic Style
+#   store            → Store
+tienda=mango-accesorio

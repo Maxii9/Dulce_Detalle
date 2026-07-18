@@ -241,7 +241,7 @@
     {% if negocio.logo %}
       <!-- Logo personalizado de la tienda -->
       <img src="{{ negocio.logo.url }}" alt="{{ negocio.nombre }}"
-           class="max-h-32 max-w-[280px] w-auto object-contain mb-2"
+           class="{% if negocio.tamano_logo == 'pequeno' %}max-h-24{% elif negocio.tamano_logo == 'grande' %}max-h-48{% else %}max-h-32{% endif %} max-w-[280px] w-auto object-contain mb-2"
            style="filter: drop-shadow(0 2px 8px rgba(0,0,0,.10));">
       {% if negocio.mostrar_descripcion and negocio.descripcion %}
       <p class="store-hero-desc">{{ negocio.descripcion }}</p>

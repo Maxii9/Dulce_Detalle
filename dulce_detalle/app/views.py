@@ -1201,6 +1201,7 @@ def configuracion_tienda(request, slug):
         velocidad_carrusel = request.POST.get('velocidad_carrusel', 'normal')
         mostrar_descripcion = 'mostrar_descripcion' in request.POST
         estilo_fuente = request.POST.get('estilo_fuente', 'abril')
+        tamano_logo = request.POST.get('tamano_logo', 'mediano')
         eliminar_logo = request.POST.get('eliminar_logo') == '1'
         logo = request.FILES.get('logo')
         if nombre:
@@ -1215,6 +1216,7 @@ def configuracion_tienda(request, slug):
             negocio.velocidad_carrusel = velocidad_carrusel
             negocio.mostrar_descripcion = mostrar_descripcion
             negocio.estilo_fuente = estilo_fuente
+            negocio.tamano_logo = tamano_logo
             if logo:
                 negocio.logo = logo
             elif eliminar_logo:

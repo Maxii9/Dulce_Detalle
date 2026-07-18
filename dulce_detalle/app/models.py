@@ -48,6 +48,16 @@ class Negocio(models.Model):
         verbose_name='Estilo de fuente del título'
     )
 
+    TAMANO_LOGO_CHOICES = [
+        ('pequeno', 'Pequeño (96px)'),
+        ('mediano', 'Mediano (128px)'),
+        ('grande', 'Grande (192px)'),
+    ]
+    tamano_logo = models.CharField(
+        max_length=10, choices=TAMANO_LOGO_CHOICES, default='mediano',
+        verbose_name='Tamaño del logo'
+    )
+
     logo = models.ImageField(
         upload_to='logos/',
         blank=True,
