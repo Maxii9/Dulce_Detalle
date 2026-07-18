@@ -263,7 +263,7 @@ document.addEventListener('click', function(e) {
           {% if en_carrito >= producto.stock %}
           <button disabled class="btn-add-disabled w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm"
                   data-pk="{{ producto.pk }}" data-stock="{{ producto.stock }}">
-            Máx. en carrito ({{ en_carrito }})
+            Agotado ❌
           </button>
           {% else %}
           {# Fallback href para sin JS; JS lo intercepta vía fetch() #}
@@ -794,10 +794,14 @@ document.addEventListener('click', function(e) {
           btn.dataset.enCarrito = cant;
           /* Si alcanzó el stock, deshabilitar */
           if (item && cant >= item.stock) {
-            btn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+            btn.innerHTML = 'Agotado ❌';
+            btn.classList.remove('bg-tienda', 'hover:bg-tienda', 'text-white', 'shadow-sm', 'group-hover:shadow-md');
+            btn.classList.add('bg-amber-50', 'text-amber-600', 'border', 'border-amber-200', 'cursor-not-allowed', 'pointer-events-none');
+          } else {
+            btn.innerHTML = '+ Añadir · <span class="carrito-badge-' + pk + '">' + cant + '</span> en carrito';
           }
           /* Toast no-bloqueante en vez de abrir el drawer */
-          mostrarToast('¡Agregado! ' + escHtml(item ? item.nombre : '') + ' (' + cant + ' en carrito)');
+          mostrarToast('Agregado ✅');
         } else {
           btn.innerHTML = orig;
           alert(data.error || 'No se pudo agregar.');
