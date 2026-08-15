@@ -3,7 +3,7 @@ Capa de servicios para la lógica CRUD de Productos, Negocios y Ventas.
 Las vistas delegan toda la lógica de datos a este módulo.
 """
 from decimal import Decimal
-from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido, Subcategoria
+from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido, Subcategoria, EventoAnalytics
 
 
 # ── Negocios ──────────────────────────────────────────────────────────────
@@ -366,14 +366,49 @@ def eliminar_ventas(venta_ids: list) -> int:
     return count
 
 
+def registrar_visita(negocio: Negocio, session: dict) -> None:
+    """Registra una visita a la tienda pública una sola vez por sesión."""
+    key = f'visita_registrada_{negocio.slug}'
+    if not session.get(key):
+        EventoAnalytics.objects.create(negocio=negocio, tipo='visita')
+        session[key] = True
+        session.modified = True
+
+
+def registrar_busqueda(negocio: Negocio, termino: str) -> None:
+    """Registra una búsqueda en la tienda pública."""
+    if termino:
+        EventoAnalytics.objects.create(
+            negocio=negocio,
+            tipo='busqueda',
+            detalle=termino[:200]
+        )
+
+
+def registrar_click_producto(negocio: Negocio, producto_pk: int) -> None:
+    """Registra un clic/vista detallada de un producto."""
+    try:
+        producto = Producto.objects.get(pk=producto_pk, negocio=negocio)
+        EventoAnalytics.objects.create(
+            negocio=negocio,
+            tipo='click_producto',
+            producto=producto
+        )
+    except Producto.DoesNotExist:
+        pass
+
+
 def get_resumen_estadisticas(negocio_slug: str) -> dict:
     from django.utils import timezone
+    from django.db.models import Count
     import json
     hoy = timezone.now().date()
     # Lunes de esta semana
     inicio_semana = hoy - timezone.timedelta(days=hoy.weekday())
     # Primer día de este mes
     inicio_mes = hoy.replace(day=1)
+    # Últimos 7 días para métricas online
+    hace_7_dias = timezone.now() - timezone.timedelta(days=7)
 
     ventas = Venta.objects.filter(negocio__slug=negocio_slug).prefetch_related('items')
     productos = Producto.objects.filter(negocio__slug=negocio_slug)
@@ -435,6 +470,34 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
         grafico_gastos.append(float(gastos))
         grafico_ganancias.append(float(ganancia_neta))
 
+    # ── Métricas de tienda online (últimos 7 días) ──
+    eventos = EventoAnalytics.objects.filter(negocio__slug=negocio_slug)
+    visitas_semana = eventos.filter(tipo='visita', fecha__gte=hace_7_dias).count()
+    pedidos_online_semana = Pedido.objects.filter(
+        negocio__slug=negocio_slug, creado__gte=hace_7_dias
+    ).count()
+
+    # Top 5 búsquedas (últimos 30 días)
+    hace_30_dias = timezone.now() - timezone.timedelta(days=30)
+    top_busquedas = (
+        eventos
+        .filter(tipo='busqueda', fecha__gte=hace_30_dias)
+        .exclude(detalle='')
+        .values('detalle')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:5]
+    )
+
+    # Top 5 productos más vistos (últimos 30 días)
+    top_clicks = (
+        eventos
+        .filter(tipo='click_producto', fecha__gte=hace_30_dias)
+        .exclude(producto__isnull=True)
+        .values('producto__pk', 'producto__nombre')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:5]
+    )
+
     return {
         'hoy': _calcular(ventas_hoy, is_hoy=True),
         'semana': _calcular(ventas_semana, is_semana=True),
@@ -442,6 +505,11 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
         'grafico_labels': json.dumps(grafico_labels),
         'grafico_gastos': json.dumps(grafico_gastos),
         'grafico_ganancias': json.dumps(grafico_ganancias),
+        # Métricas online
+        'visitas_semana': visitas_semana,
+        'pedidos_online_semana': pedidos_online_semana,
+        'top_busquedas': list(top_busquedas),
+        'top_clicks': list(top_clicks),
     }
 
 

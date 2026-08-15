@@ -137,6 +137,97 @@
     </div>
   </section>
 
+  <!-- SECCIÓN MÉTRICAS TIENDA ONLINE -->
+  <section class="mt-4">
+    <div class="flex items-center gap-3 mb-4">
+      <h2 class="text-xl font-bold text-content-title flex items-center gap-2">
+        <span class="text-xl">🌐</span> Métricas de Tienda Online (Catálogo Público)
+      </h2>
+      <div class="h-px bg-divider flex-1"></div>
+    </div>
+
+    <!-- Tarjetas de visitas y pedidos online -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+      <!-- Visitas (últimos 7 días) -->
+      <div class="bg-white border border-card-border rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:border-blue-300 transition-colors">
+        <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full blur-2xl group-hover:bg-blue-100 transition-all"></div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-2xl">👁️</span>
+          <p class="text-xs font-semibold text-content-label uppercase tracking-wider">Visitas a la Tienda</p>
+        </div>
+        <p class="text-4xl font-bold text-blue-600">{{ stats.visitas_semana }}</p>
+        <p class="text-xs text-content-subtitle mt-1">Últimos 7 días (1 por sesión)</p>
+      </div>
+
+      <!-- Pedidos Online (últimos 7 días) -->
+      <div class="bg-white border border-card-border rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:border-violet-300 transition-colors">
+        <div class="absolute -right-4 -top-4 w-24 h-24 bg-violet-50 rounded-full blur-2xl group-hover:bg-violet-100 transition-all"></div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-2xl">📦</span>
+          <p class="text-xs font-semibold text-content-label uppercase tracking-wider">Pedidos Online Recibidos</p>
+        </div>
+        <p class="text-4xl font-bold text-violet-600">{{ stats.pedidos_online_semana }}</p>
+        <p class="text-xs text-content-subtitle mt-1">Últimos 7 días</p>
+      </div>
+    </div>
+
+    <!-- Top 5 búsquedas y productos más vistos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- Top 5 Búsquedas -->
+      <div class="bg-card-bg-alt border border-card-border rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="text-lg">🔍</span>
+          <h3 class="font-bold text-content-title text-sm uppercase tracking-wide">Top 5 Búsquedas (30 días)</h3>
+        </div>
+        {% if stats.top_busquedas %}
+          <ol class="space-y-2">
+            {% for b in stats.top_busquedas %}
+            <li class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-xs font-bold text-content-label w-5 text-center">{{ forloop.counter }}</span>
+                <span class="text-sm font-semibold text-content-title truncate">{{ b.detalle }}</span>
+              </div>
+              <span class="flex-shrink-0 text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                {{ b.total }}
+              </span>
+            </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <p class="text-sm text-content-subtitle py-4 text-center">Sin búsquedas aún.</p>
+        {% endif %}
+      </div>
+
+      <!-- Top 5 Productos más vistos -->
+      <div class="bg-card-bg-alt border border-card-border rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="text-lg">🔥</span>
+          <h3 class="font-bold text-content-title text-sm uppercase tracking-wide">Top 5 Productos Vistos (30 días)</h3>
+        </div>
+        {% if stats.top_clicks %}
+          <ol class="space-y-2">
+            {% for c in stats.top_clicks %}
+            <li class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-xs font-bold text-content-label w-5 text-center">{{ forloop.counter }}</span>
+                <span class="text-sm font-semibold text-content-title truncate">{{ c.producto__nombre }}</span>
+              </div>
+              <span class="flex-shrink-0 text-xs font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                {{ c.total }}
+              </span>
+            </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <p class="text-sm text-content-subtitle py-4 text-center">Sin clics registrados aún.</p>
+        {% endif %}
+      </div>
+
+    </div>
+  </section>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

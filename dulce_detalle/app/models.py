@@ -257,3 +257,28 @@ class Nota(models.Model):
 
     def __str__(self):
         return f"Nota de {self.negocio.nombre} - {self.creado.strftime('%d/%m/%Y')}"
+
+
+class EventoAnalytics(models.Model):
+    """Registra eventos de la tienda pública: visitas, búsquedas y clics en productos."""
+    TIPO_CHOICES = [
+        ('visita', 'Visita a la tienda'),
+        ('busqueda', 'Búsqueda'),
+        ('click_producto', 'Click en producto'),
+    ]
+    negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='eventos_analytics')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    producto = models.ForeignKey(
+        Producto, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='eventos_analytics', verbose_name='Producto (para clics)'
+    )
+    detalle = models.CharField(max_length=200, blank=True, help_text='Término de búsqueda u otro detalle')
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name = 'Evento Analytics'
+        verbose_name_plural = 'Eventos Analytics'
+
+    def __str__(self):
+        return f"{self.tipo} — {self.negocio.nombre} — {self.fecha.strftime('%d/%m/%Y %H:%M')}"

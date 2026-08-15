@@ -689,6 +689,12 @@ def tienda_publica(request, slug):
     cat_filter = request.GET.get('categoria', '').strip()
     sub_filter = request.GET.get('subcategoria', '').strip()
 
+    # ── Registrar eventos analíticos (solo para clientes, no para el propietario) ──
+    if not es_propietario:
+        services.registrar_visita(negocio, request.session)
+        if query:
+            services.registrar_busqueda(negocio, query)
+
     if query:
         productos = productos.filter(nombre__icontains=query)
     if sub_filter:
@@ -758,6 +764,21 @@ def tienda_publica(request, slug):
         'galeria_map': galeria_map,
         'galeria_json': galeria_json,
     })
+
+
+def api_registrar_click(request, slug, pk):
+    """AJAX POST: registra un clic/vista detallada de un producto en la tienda pública."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    negocio = get_object_or_404(services.Negocio, slug=slug)
+    # No registrar clics del propietario
+    if request.user.is_authenticated and (
+        request.user.is_superuser or request.user == negocio.propietario
+    ):
+        return JsonResponse({'ok': True})
+    services.registrar_click_producto(negocio, pk)
+    return JsonResponse({'ok': True})
+
 
 def agregar_carrito_publico(request, slug, pk):
     producto = get_object_or_404(services.Producto, pk=pk, negocio__slug=slug)

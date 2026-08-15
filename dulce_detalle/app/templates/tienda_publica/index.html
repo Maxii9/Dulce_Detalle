@@ -435,6 +435,10 @@ document.addEventListener('click', function(e) {
   var btnNext  = document.getElementById('btn-next');
 
   /* ── 4. Abrir lightbox al hacer clic en cualquier botón de producto ── */
+  /* URL base del endpoint de analytics (inyectada desde Django) */
+  var URL_CLICK_BASE = '{% url "api_registrar_click" negocio.slug 0 %}'.replace('/0/', '/');
+  var CSRF_CLICK = '{{ csrf_token }}';
+
   document.querySelectorAll('.producto-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var pk    = btn.dataset.pk;
@@ -453,6 +457,15 @@ document.addEventListener('click', function(e) {
       document.getElementById('lb-nombre').textContent = btn.dataset.nombre  || '';
       document.getElementById('lb-desc').textContent   = btn.dataset.desc    || '';
       document.getElementById('lb-precio').textContent = btn.dataset.precio ? '$ ' + btn.dataset.precio : '';
+
+      /* Registrar clic silenciosamente (analytics) */
+      if (pk && URL_CLICK_BASE) {
+        fetch(URL_CLICK_BASE + pk + '/', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF_CLICK, 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        }).catch(function() {}); /* silencioso: no interrumpir UX si falla */
+      }
 
       renderCarousel();
       abrirOverlay();
