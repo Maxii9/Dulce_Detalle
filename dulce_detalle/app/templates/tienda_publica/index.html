@@ -122,10 +122,11 @@ document.addEventListener('click', function(e) {
 <div class="marquee-wrapper w-full overflow-hidden mb-10 py-4" style="position:relative;background: linear-gradient(90deg, rgba(249,250,251,1) 0%, rgba(255,255,255,0) 10%, rgba(255,255,255,0) 90%, rgba(249,250,251,1) 100%); border-radius: 1rem;">
   
   <div class="marquee-container flex gap-4 w-max hover:[animation-play-state:paused]"
-       style="animation: scroll {% if negocio.velocidad_carrusel == 'lento' %}90s{% elif negocio.velocidad_carrusel == 'rapido' %}35s{% else %}60s{% endif %} linear infinite;">
+       id="marquee-band"
+       style="animation: scroll 60s linear infinite;">
     
     <!-- Original -->
-    <div class="flex gap-4 items-center">
+    <div class="flex gap-4 items-center" id="marquee-original">
       {% for prod, cant in productos_con_cant %}
         <div class="flex items-center gap-3 bg-white border border-gray-100 rounded-full px-4 py-2 shadow-sm w-max shrink-0 transition-transform hover:scale-105 hover:shadow-md cursor-pointer producto-btn"
              data-pk="{{ prod.pk }}" data-nombre="{{ prod.nombre }}" data-desc="{{ prod.descripcion }}" data-precio="{{ prod.precio }}">
@@ -196,8 +197,26 @@ document.addEventListener('click', function(e) {
       background: linear-gradient(to left, #f9fafb, transparent);
     }
   </style>
+
+  <script>
+  /* Velocidad constante en px/segundo, independiente del número de productos */
+  (function() {
+    var VELOCIDAD_PX = {% if negocio.velocidad_carrusel == 'lento' %}80{% elif negocio.velocidad_carrusel == 'rapido' %}200{% else %}130{% endif %};
+    var band = document.getElementById('marquee-band');
+    var original = document.getElementById('marquee-original');
+    if (!band || !original) return;
+    /* Esperar a que el DOM pinte para medir el ancho real */
+    requestAnimationFrame(function() {
+      var anchoPista = original.offsetWidth; /* ancho de UN set de productos */
+      if (!anchoPista) return;
+      var duracion = anchoPista / VELOCIDAD_PX;
+      band.style.animationDuration = duracion.toFixed(2) + 's';
+    });
+  })();
+  </script>
 </div>
 {% endif %}
+
 
 <!-- Grilla de productos -->
 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
@@ -729,6 +748,30 @@ document.addEventListener('click', function(e) {
   /* ─────────────────────────────────────────
      LLAMADAS AJAX
   ───────────────────────────────────────── */
+  function syncProductButtons() {
+    /* Recorre todos los botones de la grilla para actualizar su texto y estado según el carrito actual */
+    document.querySelectorAll('.btn-add, .btn-add-disabled').forEach(function(btn) {
+      var pk = parseInt(btn.dataset.pk);
+      var stock = parseInt(btn.dataset.stock);
+      var item = estado.items.find(function(i){ return i.pk === pk; });
+      var cant = item ? item.cantidad : 0;
+      
+      btn.dataset.enCarrito = cant;
+      
+      if (cant >= stock) {
+        btn.innerHTML = 'Agotado ❌';
+        btn.className = 'btn-add-disabled w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm pointer-events-none';
+      } else {
+        if (cant > 0) {
+          btn.innerHTML = '+ Añadir · <span class="carrito-badge-' + pk + '">' + cant + '</span> en carrito';
+        } else {
+          btn.innerHTML = 'Añadir al carrito';
+        }
+        btn.className = 'btn-add block w-full text-center py-2.5 bg-tienda hover:bg-tienda text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm opacity-95 hover:opacity-100 cursor-pointer pointer-events-auto';
+      }
+    });
+  }
+
   function apiPost(url, cb) {
     fetch(url, {
       method: 'POST',
@@ -745,6 +788,7 @@ document.addEventListener('click', function(e) {
           items:  data.items  || []
         };
         renderDrawer();
+        syncProductButtons();
         if (cb) cb(data);
       } else {
         alert(data.error || 'Error');
