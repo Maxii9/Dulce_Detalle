@@ -1,8 +1,8 @@
 {% extends "tienda_publica/base_publica.html" %}
 
-{% block content %}
+{% block hero %}
 <!-- Cabecera -->
-<div class="mb-10 text-center flex flex-col items-center justify-center gap-4 relative">
+<div class="mt-8 mb-4 px-4 text-center flex flex-col items-center justify-center gap-4 relative">
   <div class="w-full max-w-2xl mx-auto bg-white/40 backdrop-blur-md border border-white/60 rounded-[2rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden">
     <div class="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent pointer-events-none"></div>
     {% if negocio.logo %}
@@ -30,7 +30,9 @@
     </form>
   </div>
 </div>
+{% endblock %}
 
+{% block content %}
 <!-- ── Filtros de Categoría: desplegable acordeón ── -->
 {% if categorias_agrupadas %}
 <div class="mb-6 relative" id="tp-cat-wrapper">
