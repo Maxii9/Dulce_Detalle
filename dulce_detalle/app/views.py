@@ -1408,3 +1408,16 @@ def configuracion_usuarios(request, slug):
         'negocios': negocios,
         'users_list': users_list,
     })
+
+@tienda_requerida
+def limpiar_estadisticas(request, slug):
+    negocio, _ = _contexto_base(request, slug)
+    if request.method == 'POST':
+        # Eliminar ventas y pedidos
+        services.Venta.objects.filter(negocio=negocio).delete()
+        services.Pedido.objects.filter(negocio=negocio).delete()
+        # Eliminar eventos analíticos
+        from app.models import EventoAnalytics
+        EventoAnalytics.objects.filter(negocio=negocio).delete()
+        messages.success(request, 'Todas las estadísticas, ventas y analíticas han sido reiniciadas.')
+    return redirect('estadisticas_ventas', slug=slug)

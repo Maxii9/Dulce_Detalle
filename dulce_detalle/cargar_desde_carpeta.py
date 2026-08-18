@@ -39,8 +39,18 @@ USO:
 
 import os
 import sys
+import io
 import django
 from pathlib import Path
+
+try:
+    from PIL import Image
+    PILLOW_OK = True
+except ImportError:
+    PILLOW_OK = False
+
+MAX_BYTES_IMAGEN   = 8 * 1024 * 1024  # 8 MB — limite Cloudinary free
+MAX_NOMBRE_ARCHIVO = 90               # varchar(100) en BD
 
 # ── Configuración de Django ───────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
@@ -48,8 +58,45 @@ sys.path.insert(0, str(BASE_DIR))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "dulce_detalle.settings")
 django.setup()
 
-from django.core.files import File  # noqa: E402
+from django.core.files import File          # noqa: E402
+from django.core.files.base import ContentFile  # noqa: E402
 from app.models import Negocio, CategoriaProducto, Producto  # noqa: E402
+
+
+def nombre_archivo_seguro(nombre: str) -> str:
+    sufijo   = Path(nombre).suffix
+    base     = Path(nombre).stem
+    max_base = MAX_NOMBRE_ARCHIVO - len(sufijo)
+    return base[:max_base] + sufijo
+
+
+def preparar_imagen(ruta: Path):
+    """Lee y opcionalmente comprime la imagen si supera el limite de Cloudinary."""
+    datos  = ruta.read_bytes()
+    nombre = nombre_archivo_seguro(ruta.name)
+
+    if len(datos) > MAX_BYTES_IMAGEN and PILLOW_OK:
+        try:
+            img = Image.open(io.BytesIO(datos))
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            buf     = io.BytesIO()
+            calidad = 85
+            while calidad >= 40:
+                buf.seek(0); buf.truncate()
+                img.save(buf, format="JPEG", quality=calidad, optimize=True)
+                if buf.tell() <= MAX_BYTES_IMAGEN:
+                    break
+                calidad -= 10
+            datos  = buf.getvalue()
+            nombre = nombre_archivo_seguro(ruta.stem[:MAX_NOMBRE_ARCHIVO - 4] + ".jpg")
+            print(f"     [COMPRIMIDA] {ruta.name[:50]} -> {len(datos)//1024}KB")
+        except Exception as e:
+            print(f"     [AVISO] No se pudo comprimir {ruta.name[:50]}: {e}")
+    elif len(datos) > MAX_BYTES_IMAGEN and not PILLOW_OK:
+        raise ValueError(f"File size too large. Got {len(datos)}. Instala Pillow: pip install Pillow")
+
+    return ContentFile(datos, name=nombre), nombre
 
 
 # ── Extensiones de imagen aceptadas ──────────────────────────────────────────
@@ -178,8 +225,8 @@ def main():
 
         # ── Subir imagen al producto ─────────────────────────────────────────
         try:
-            with open(ruta_imagen, "rb") as img_file:
-                prod.imagen.save(ruta_imagen.name, File(img_file), save=True)
+            img_file, nombre_archivo = preparar_imagen(ruta_imagen)
+            prod.imagen.save(nombre_archivo, img_file, save=True)
             creados += 1
             print(f"  [+] ({idx:03d}/{total}) Creado con imagen: {nombre_prod}")
         except Exception as e:

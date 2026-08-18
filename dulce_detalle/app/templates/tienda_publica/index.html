@@ -2,29 +2,33 @@
 
 {% block content %}
 <!-- Cabecera -->
-<div class="mb-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4">
-  <div>
-    <h1 class="text-3xl font-bold text-gray-900">Catálogo de Productos</h1>
-    <p class="text-gray-500 mt-1">{{ negocio.descripcion }}</p>
-  </div>
-
-  <form method="get" class="relative flex items-center w-full sm:w-auto">
-    {% if tipo_activo %}
-      <input type="hidden" name="tipo" value="{{ tipo_activo }}">
+<div class="mb-10 text-center flex flex-col items-center justify-center gap-4 relative">
+  <div class="w-full max-w-2xl mx-auto bg-white/40 backdrop-blur-md border border-white/60 rounded-[2rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent pointer-events-none"></div>
+    {% if negocio.logo %}
+    <img src="{{ negocio.logo.url }}" alt="Logo {{ negocio.nombre }}" class="w-28 h-28 mx-auto rounded-3xl object-cover shadow-lg mb-6 relative z-10 ring-4 ring-white/50">
     {% endif %}
-    <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar en la tienda..."
-           class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm text-gray-900 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand shadow-sm transition-all">
-    <svg class="w-4 h-4 text-gray-400 absolute left-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-    </svg>
-    {% if query %}
-    <a href="{% url 'tienda_publica' negocio.slug %}{% if tipo_activo %}?tipo={{ tipo_activo }}{% endif %}" class="absolute right-3 text-gray-400 hover:text-red-500 p-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 relative z-10 tracking-tight" style="font-family: 'Playfair Display', serif;">Catálogo de Productos</h1>
+    <p class="text-gray-600 md:text-lg leading-relaxed relative z-10">{{ negocio.descripcion }}</p>
+    
+    <form method="get" class="relative flex items-center w-full max-w-md mx-auto mt-8 z-10">
+      {% if tipo_activo %}
+        <input type="hidden" name="tipo" value="{{ tipo_activo }}">
+      {% endif %}
+      <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar en la tienda..."
+             class="w-full pl-12 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-full text-base text-gray-900 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 shadow-sm transition-all placeholder-gray-400">
+      <svg class="w-5 h-5 text-brand absolute left-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
       </svg>
-    </a>
-    {% endif %}
-  </form>
+      {% if query %}
+      <a href="{% url 'tienda_publica' negocio.slug %}{% if tipo_activo %}?tipo={{ tipo_activo }}{% endif %}" class="absolute right-3 text-gray-400 hover:text-red-500 p-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </a>
+      {% endif %}
+    </form>
+  </div>
 </div>
 
 <!-- ── Filtros de Categoría: desplegable acordeón ── -->
@@ -205,13 +209,18 @@ document.addEventListener('click', function(e) {
     var band = document.getElementById('marquee-band');
     var original = document.getElementById('marquee-original');
     if (!band || !original) return;
-    /* Esperar a que el DOM pinte para medir el ancho real */
-    requestAnimationFrame(function() {
+    
+    function setSpeed() {
       var anchoPista = original.offsetWidth; /* ancho de UN set de productos */
       if (!anchoPista) return;
       var duracion = anchoPista / VELOCIDAD_PX;
       band.style.animationDuration = duracion.toFixed(2) + 's';
-    });
+    }
+    
+    /* Esperar a que el DOM pinte para medir el ancho real */
+    requestAnimationFrame(setSpeed);
+    window.addEventListener('load', setSpeed);
+    window.addEventListener('resize', setSpeed);
   })();
   </script>
 </div>

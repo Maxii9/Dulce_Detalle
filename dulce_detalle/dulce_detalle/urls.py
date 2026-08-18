@@ -59,6 +59,7 @@ urlpatterns = [
         path('ventas/eliminar-masivo/', views.ventas_bulk_eliminar, name='ventas_bulk_eliminar'),
         path('ventas/<int:pk>/cambiar-tipo/', views.cambiar_tipo_venta, name='cambiar_tipo_venta'),
         path('estadisticas/', views.estadisticas_ventas, name='estadisticas_ventas'),
+        path('estadisticas/limpiar/', views.limpiar_estadisticas, name='limpiar_estadisticas'),
 
         # Pedidos
         path('pedidos/', views.lista_pedidos, name='lista_pedidos'),
