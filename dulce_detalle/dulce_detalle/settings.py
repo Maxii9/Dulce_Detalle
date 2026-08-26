@@ -31,7 +31,7 @@ if not SECRET_KEY:
     raise ValueError('SECRET_KEY no está configurado. Set the SECRET_KEY environment variable.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').strip().lower() in ('true', '1', 'yes')
 
 _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
 if _allowed_hosts_env:
@@ -178,10 +178,15 @@ if not DEBUG:
     # Activarlo en Django causaría un loop de redirección (400 Bad Request).
     SECURE_HSTS_SECONDS = 31536000  # 1 año
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True        # [M-2] Habilitar preload para HSTS
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
     # Render pasa el protocolo real en este header
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# [M-3] Sesión expira en 8 horas (en lugar de las 2 semanas por default)
+SESSION_COOKIE_AGE = 60 * 60 * 8   # 8 horas en segundos
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Mantiene sesión aunque se cierre el tab
 
 # Email configuration (for password reset)
 # Local: set EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend in .env

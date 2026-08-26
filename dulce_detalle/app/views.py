@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse
 import json
+import logging
 from . import services
 from .models import Nota
 from django.contrib.auth import login, logout, authenticate
@@ -18,6 +19,8 @@ from app.models import Negocio, CategoriaProducto
 import functools
 import django
 from django.db import models as db_models
+
+logger = logging.getLogger(__name__)
 
 
 class RegistroConEmailForm(UserCreationForm):
@@ -776,7 +779,9 @@ def api_registrar_click(request, slug, pk):
         request.user.is_superuser or request.user == negocio.propietario
     ):
         return JsonResponse({'ok': True})
-    services.registrar_click_producto(negocio, pk)
+    # [C-3] Validar que el producto pertenece a este negocio
+    producto = get_object_or_404(services.Producto, pk=pk, negocio=negocio)
+    services.registrar_click_producto(negocio, producto.pk)
     return JsonResponse({'ok': True})
 
 
@@ -799,8 +804,13 @@ def agregar_carrito_publico(request, slug, pk):
 
 def quitar_carrito_publico(request, slug, pk):
     services.carrito_publico_quitar(request.session, pk)
+    # [A-2] Validar que el Referer pertenezca al mismo dominio antes de usarlo
     referer = request.META.get('HTTP_REFERER', '')
-    if 'checkout' in referer:
+    host = request.get_host()
+    referer_seguro = referer and (
+        referer.startswith(f'https://{host}') or referer.startswith(f'http://{host}')
+    )
+    if referer_seguro and 'checkout' in referer:
         return redirect('checkout_publico', slug=slug)
     from django.urls import reverse
     return redirect(reverse('tienda_publica', kwargs={'slug': slug}) + '?cart=open')
@@ -926,9 +936,12 @@ def checkout_publico(request, slug):
 
 def exito_publico(request, slug, pedido_id):
     negocio = get_object_or_404(services.Negocio, slug=slug)
+    # [A-1] Validar que el pedido pertenece a este negocio (evita enumeración)
+    from app.models import Pedido
+    pedido = get_object_or_404(Pedido, pk=pedido_id, negocio=negocio)
     return render(request, 'tienda_publica/exito.html', {
         'negocio': negocio,
-        'pedido_id': pedido_id
+        'pedido_id': pedido.pk,
     })
 
 
@@ -1030,8 +1043,10 @@ def cambiar_tipo_venta(request, slug, pk):
             else:
                 return JsonResponse({'error': 'Tipo inválido'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-            
+            # [M-4] No exponer detalles internos en producción
+            logger.exception("Error en cambiar_tipo_venta pk=%s", pk)
+            return JsonResponse({'error': 'Error interno del servidor'}, status=500)
+
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 
