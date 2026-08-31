@@ -4,17 +4,68 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class Negocio(models.Model):
-    propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='negocios', null=True, blank=True)
-    TIPOS = [
-        ('bijouteria', 'Bijoutería'),
-        ('dulceria', 'Dulcería'),
-    ]
-    slug = models.CharField(max_length=20, unique=True, choices=TIPOS)
+    propietario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='negocios')
+    slug = models.CharField(max_length=30, unique=True)  # Generado dinámicamente desde el nombre
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     color_primario = models.CharField(max_length=7, default='#6d28d9')
     color_secundario = models.CharField(max_length=7, default='#7c3aed')
     emoji = models.CharField(max_length=5, default='🛍️')
+    activa = models.BooleanField(default=False, verbose_name='Tienda activa',
+                                 help_text='Activá la tienda una vez que el cliente realizó el pago.')
+
+    # Opciones de envío para el checkout público
+    envio_domicilio = models.BooleanField(default=True, verbose_name='Envío a domicilio')
+    envio_retiro = models.BooleanField(default=True, verbose_name='Retiro en tienda')
+    envio_convenir = models.BooleanField(default=True, verbose_name='A convenir')
+
+    # Opciones visuales de la tienda pública
+    VELOCIDAD_CHOICES = [
+        ('lento',  'Lento (90s)'),
+        ('normal', 'Normal (60s)'),
+        ('rapido', 'Rápido (35s)'),
+    ]
+    velocidad_carrusel = models.CharField(
+        max_length=10, choices=VELOCIDAD_CHOICES, default='normal',
+        verbose_name='Velocidad del carrusel'
+    )
+    mostrar_descripcion = models.BooleanField(
+        default=False,
+        verbose_name='Mostrar descripción en la tienda pública',
+        help_text='Si está activado, se muestra el texto de descripción debajo del nombre de la tienda.'
+    )
+
+    ESTILO_FUENTE_CHOICES = [
+        ('abril',    'Abril Fatface — Itálica bold'),
+        ('playfair', 'Playfair Display — Elegante serif'),
+        ('bebas',    'Bebas Neue — Mayúsculas compactas'),
+        ('dancing',  'Dancing Script — Cursíva manuscrita'),
+        ('righteous','Righteous — Redondeada moderna'),
+        ('unbounded','Unbounded — Geométrica sin serif'),
+    ]
+    estilo_fuente = models.CharField(
+        max_length=15, choices=ESTILO_FUENTE_CHOICES, default='abril',
+        verbose_name='Estilo de fuente del título'
+    )
+
+    TAMANO_LOGO_CHOICES = [
+        ('pequeno', 'Pequeño (96px)'),
+        ('mediano', 'Mediano (128px)'),
+        ('grande', 'Grande (192px)'),
+        ('gigante', 'Gigante (256px)'),
+    ]
+    tamano_logo = models.CharField(
+        max_length=15, choices=TAMANO_LOGO_CHOICES, default='mediano',
+        verbose_name='Tamaño del logo'
+    )
+
+    logo = models.ImageField(
+        upload_to='logos/',
+        blank=True,
+        null=True,
+        verbose_name='Logo de la tienda',
+        help_text='Logo que se mostrará en la tienda online (fondo blanco o transparente recomendado).'
+    )
 
     def __str__(self):
         return self.nombre
@@ -36,23 +87,33 @@ class CategoriaProducto(models.Model):
         verbose_name_plural = "Categorias de Producto"
 
 
+class Subcategoria(models.Model):
+    """Subcategoría dentro de una CategoriaProducto (ej: Pantalones → Shorts)."""
+    categoria = models.ForeignKey(
+        CategoriaProducto, on_delete=models.CASCADE, related_name='subcategorias'
+    )
+    nombre = models.CharField(max_length=80)
+
+    def __str__(self):
+        return f"{self.categoria.nombre} › {self.nombre}"
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name_plural = "Subcategorías"
+
+
 class Producto(models.Model):
-    TIPO_CHOICES = [
-        ('medias', 'Medias'),
-        ('accesorios', 'Accesorios'),
-        ('bazar', 'Bazar'),
-        ('maquillaje', 'Maquillaje'),
-        ('aromas', 'Aromas'),
-        ('papeleria', 'Papelería'),
-        ('unas', 'Uñas'),
-        ('otros', 'Otros'),
-    ]
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='productos')
-    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='otros')
+    categoria = models.ForeignKey(CategoriaProducto, on_delete=models.PROTECT, related_name='productos', null=True, blank=True)
     nombre = models.CharField(max_length=100)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     costo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     descripcion = models.TextField(blank=True)
+    subcategoria = models.ForeignKey(
+        'Subcategoria', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='productos', verbose_name='Subcategoría'
+    )
+    codigo_barras = models.CharField(max_length=50, blank=True, null=True, unique=True, db_index=True, verbose_name='Código de barras')
     stock = models.IntegerField(default=0)
     imagen = models.ImageField(upload_to='productos/', blank=True, null=True)
     creado = models.DateTimeField(auto_now_add=True)
@@ -63,6 +124,19 @@ class Producto(models.Model):
 
     class Meta:
         ordering = ['-creado']
+
+
+class ImagenProducto(models.Model):
+    """Imágenes adicionales de un producto (galería)."""
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='imagenes')
+    imagen = models.ImageField(upload_to='productos/')
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+
+    def __str__(self):
+        return f"Imagen de {self.producto.nombre} (#{self.orden})"
 
 
 class Venta(models.Model):
@@ -76,7 +150,12 @@ class Venta(models.Model):
         ('transferencia', 'Transferencia bancaria'),
         ('mercadopago', 'Mercado Pago'),
         ('qr', 'QR'),
+        ('egreso', 'Egreso directo'),
         ('otro', 'Otro'),
+    ]
+    TIPO_MOVIMIENTO_CHOICES = [
+        ('venta', 'Venta'),
+        ('compra_stock', 'Compra de stock'),
     ]
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='ventas')
     fecha = models.DateField()
@@ -84,6 +163,12 @@ class Venta(models.Model):
     metodo_pago = models.CharField(max_length=20, choices=METODO_CHOICES, default='efectivo')
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     observacion = models.TextField(blank=True, null=True)
+    tipo_movimiento = models.CharField(
+        max_length=15,
+        choices=TIPO_MOVIMIENTO_CHOICES,
+        default='venta',
+        verbose_name='Tipo de movimiento'
+    )
     creado = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -149,7 +234,8 @@ class Pedido(models.Model):
 
 class ItemPedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='items')
-    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='items_pedido')
+    producto = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True, related_name='items_pedido')
+    nombre_producto = models.CharField(max_length=150, null=True, blank=True)  # Guardar el nombre en caso de que el producto sea eliminado
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
@@ -158,7 +244,8 @@ class ItemPedido(models.Model):
         return self.cantidad * self.precio_unitario
 
     def __str__(self):
-        return f"{self.cantidad}x {self.producto.nombre}"
+        nombre = self.producto.nombre if self.producto else self.nombre_producto
+        return f"{self.cantidad}x {nombre}"
 
 class Nota(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='notas')
@@ -170,3 +257,28 @@ class Nota(models.Model):
 
     def __str__(self):
         return f"Nota de {self.negocio.nombre} - {self.creado.strftime('%d/%m/%Y')}"
+
+
+class EventoAnalytics(models.Model):
+    """Registra eventos de la tienda pública: visitas, búsquedas y clics en productos."""
+    TIPO_CHOICES = [
+        ('visita', 'Visita a la tienda'),
+        ('busqueda', 'Búsqueda'),
+        ('click_producto', 'Click en producto'),
+    ]
+    negocio = models.ForeignKey(Negocio, on_delete=models.CASCADE, related_name='eventos_analytics')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    producto = models.ForeignKey(
+        Producto, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='eventos_analytics', verbose_name='Producto (para clics)'
+    )
+    detalle = models.CharField(max_length=200, blank=True, help_text='Término de búsqueda u otro detalle')
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name = 'Evento Analytics'
+        verbose_name_plural = 'Eventos Analytics'
+
+    def __str__(self):
+        return f"{self.tipo} — {self.negocio.nombre} — {self.fecha.strftime('%d/%m/%Y %H:%M')}"

@@ -3,7 +3,7 @@ Capa de servicios para la lógica CRUD de Productos, Negocios y Ventas.
 Las vistas delegan toda la lógica de datos a este módulo.
 """
 from decimal import Decimal
-from .models import Negocio, Producto, Venta, ItemVenta, Insumo, Pedido, ItemPedido
+from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido, Subcategoria, EventoAnalytics
 
 
 # ── Negocios ──────────────────────────────────────────────────────────────
@@ -33,7 +33,11 @@ def get_negocio_activo(session) -> Negocio | None:
 
 def get_productos(negocio_slug: str):
     """Lista todos los productos de un negocio dado su slug."""
-    return Producto.objects.filter(negocio__slug=negocio_slug).select_related('negocio')
+    return (
+        Producto.objects
+        .filter(negocio__slug=negocio_slug)
+        .select_related('negocio', 'categoria', 'subcategoria')
+    )
 
 
 def get_producto(pk: int) -> Producto | None:
@@ -44,11 +48,12 @@ def get_producto(pk: int) -> Producto | None:
         return None
 
 
-def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, tipo: str = 'otros') -> Producto:
+def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None) -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
-    return Producto.objects.create(
+    producto = Producto.objects.create(
         negocio=negocio,
-        tipo=tipo,
+        categoria_id=categoria_id,
+        subcategoria_id=subcategoria_id,
         nombre=nombre,
         precio=precio,
         costo=costo,
@@ -56,14 +61,38 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
         stock=stock,
         imagen=imagen,
     )
+    # Guardar imágenes adicionales
+    if imagenes_extra:
+        for idx, img in enumerate(imagenes_extra):
+            if img:
+                ImagenProducto.objects.create(producto=producto, imagen=img, orden=idx)
+    # Si el producto se crea con stock inicial > 0, registrar movimiento de compra
+    if stock > 0:
+        from django.utils import timezone
+        from decimal import Decimal
+        total_egreso = Decimal(str(costo)) * stock
+        Venta.objects.create(
+            negocio=negocio,
+            fecha=timezone.localdate(),
+            tipo='pagada',
+            metodo_pago='egreso',
+            total=-total_egreso,
+            tipo_movimiento='compra_stock',
+            observacion=f'Stock inicial: {stock} unidad(es) de "{nombre}"',
+        )
+    return producto
 
 
-def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, tipo: str = 'otros') -> Producto | None:
-    """Actualiza un producto existente. Retorna el producto actualizado o None."""
+def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None, imagenes_eliminar=None) -> Producto | None:
+    """Actualiza un producto existente. Si el stock aumenta, registra un movimiento de compra."""
     producto = get_producto(pk)
     if producto is None:
         return None
-    producto.tipo = tipo
+
+    stock_anterior = producto.stock  # Guardar antes de actualizar
+
+    producto.categoria_id = categoria_id
+    producto.subcategoria_id = subcategoria_id
     producto.nombre = nombre
     producto.precio = precio
     producto.costo = costo
@@ -72,7 +101,35 @@ def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str 
     if imagen:
         producto.imagen = imagen
     producto.save()
+
+    # Eliminar imágenes extra marcadas para borrar
+    if imagenes_eliminar:
+        ImagenProducto.objects.filter(pk__in=imagenes_eliminar, producto=producto).delete()
+
+    # Agregar nuevas imágenes extra
+    if imagenes_extra:
+        base_orden = producto.imagenes.count()
+        for idx, img in enumerate(imagenes_extra):
+            if img:
+                ImagenProducto.objects.create(producto=producto, imagen=img, orden=base_orden + idx)
+
+    # Registrar movimiento de compra si el stock aumentó
+    delta = stock - stock_anterior
+    if delta > 0:
+        from django.utils import timezone
+        total_egreso = Decimal(str(costo)) * delta
+        Venta.objects.create(
+            negocio=producto.negocio,
+            fecha=timezone.localdate(),
+            tipo='pagada',
+            metodo_pago='egreso',
+            total=-total_egreso,
+            tipo_movimiento='compra_stock',
+            observacion=f'Reposición de stock: +{delta} unidad(es) de "{nombre}"',
+        )
+
     return producto
+
 
 
 def eliminar_producto(pk: int) -> bool:
@@ -175,7 +232,7 @@ def get_carrito_libre(session: dict) -> list[dict]:
     """Retorna la lista de ítems libres"""
     return session.get('carrito_libre', [])
 
-def carrito_libre_agregar(session: dict, nombre: str, precio: float, costo: float, cantidad: int) -> None:
+def carrito_libre_agregar(session: dict, nombre: str, precio: float, costo: float, cantidad: int, es_gasto: bool = False) -> None:
     carrito = get_carrito_libre(session)
     import uuid
     id_libre = str(uuid.uuid4())
@@ -184,7 +241,8 @@ def carrito_libre_agregar(session: dict, nombre: str, precio: float, costo: floa
         'nombre': nombre,
         'precio': precio,
         'costo': costo,
-        'cantidad': cantidad
+        'cantidad': cantidad,
+        'es_gasto': es_gasto,
     })
     session['carrito_libre'] = carrito
     session.modified = True
@@ -218,15 +276,20 @@ def get_carrito_detalle(session: dict) -> list[dict]:
             
     carrito_libre = get_carrito_libre(session)
     for lib in carrito_libre:
-        subtotal = Decimal(str(lib['precio'])) * int(lib['cantidad'])
+        es_gasto = lib.get('es_gasto', False)
+        precio_val = Decimal(str(lib['precio']))
+        subtotal = precio_val * int(lib['cantidad'])
+        if es_gasto:
+            subtotal = -subtotal
         items.append({
             'producto': None,
             'nombre_libre': lib['nombre'],
-            'precio_libre': Decimal(str(lib['precio'])),
+            'precio_libre': precio_val,
             'costo_libre': Decimal(str(lib['costo'])),
             'cantidad': lib['cantidad'],
             'subtotal': subtotal,
             'es_libre': True,
+            'es_gasto': es_gasto,
             'id_str': lib['id_libre'],
         })
     return items
@@ -260,14 +323,21 @@ def crear_venta(negocio: Negocio, fecha, tipo: str, metodo_pago: str, items_data
     )
     for item in items_data:
         if item.get('es_libre'):
+            es_gasto = item.get('es_gasto', False)
+            # Para gastos: precio negativo, tipo_movimiento=compra_stock
+            precio_ui = item['precio_libre']  # siempre positivo en el item
             ItemVenta.objects.create(
                 venta=venta,
                 producto=None,
                 nombre_libre=item['nombre_libre'],
                 cantidad=item['cantidad'],
-                precio_unitario=item['precio_libre'],
+                precio_unitario=precio_ui,
                 costo_unitario=item['costo_libre'],
             )
+            if es_gasto:
+                venta.tipo_movimiento = 'compra_stock'
+                venta.metodo_pago = 'egreso'
+                venta.save(update_fields=['tipo_movimiento', 'metodo_pago'])
         else:
             ItemVenta.objects.create(
                 venta=venta,
@@ -296,14 +366,49 @@ def eliminar_ventas(venta_ids: list) -> int:
     return count
 
 
+def registrar_visita(negocio: Negocio, session: dict) -> None:
+    """Registra una visita a la tienda pública una sola vez por sesión."""
+    key = f'visita_registrada_{negocio.slug}'
+    if not session.get(key):
+        EventoAnalytics.objects.create(negocio=negocio, tipo='visita')
+        session[key] = True
+        session.modified = True
+
+
+def registrar_busqueda(negocio: Negocio, termino: str) -> None:
+    """Registra una búsqueda en la tienda pública."""
+    if termino:
+        EventoAnalytics.objects.create(
+            negocio=negocio,
+            tipo='busqueda',
+            detalle=termino[:200]
+        )
+
+
+def registrar_click_producto(negocio: Negocio, producto_pk: int) -> None:
+    """Registra un clic/vista detallada de un producto."""
+    try:
+        producto = Producto.objects.get(pk=producto_pk, negocio=negocio)
+        EventoAnalytics.objects.create(
+            negocio=negocio,
+            tipo='click_producto',
+            producto=producto
+        )
+    except Producto.DoesNotExist:
+        pass
+
+
 def get_resumen_estadisticas(negocio_slug: str) -> dict:
     from django.utils import timezone
+    from django.db.models import Count
     import json
     hoy = timezone.now().date()
     # Lunes de esta semana
     inicio_semana = hoy - timezone.timedelta(days=hoy.weekday())
     # Primer día de este mes
     inicio_mes = hoy.replace(day=1)
+    # Últimos 7 días para métricas online
+    hace_7_dias = timezone.now() - timezone.timedelta(days=7)
 
     ventas = Venta.objects.filter(negocio__slug=negocio_slug).prefetch_related('items')
     productos = Producto.objects.filter(negocio__slug=negocio_slug)
@@ -365,6 +470,34 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
         grafico_gastos.append(float(gastos))
         grafico_ganancias.append(float(ganancia_neta))
 
+    # ── Métricas de tienda online (últimos 7 días) ──
+    eventos = EventoAnalytics.objects.filter(negocio__slug=negocio_slug)
+    visitas_semana = eventos.filter(tipo='visita', fecha__gte=hace_7_dias).count()
+    pedidos_online_semana = Pedido.objects.filter(
+        negocio__slug=negocio_slug, creado__gte=hace_7_dias
+    ).count()
+
+    # Top 5 búsquedas (últimos 30 días)
+    hace_30_dias = timezone.now() - timezone.timedelta(days=30)
+    top_busquedas = (
+        eventos
+        .filter(tipo='busqueda', fecha__gte=hace_30_dias)
+        .exclude(detalle='')
+        .values('detalle')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:5]
+    )
+
+    # Top 5 productos más vistos (últimos 30 días)
+    top_clicks = (
+        eventos
+        .filter(tipo='click_producto', fecha__gte=hace_30_dias)
+        .exclude(producto__isnull=True)
+        .values('producto__pk', 'producto__nombre')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:5]
+    )
+
     return {
         'hoy': _calcular(ventas_hoy, is_hoy=True),
         'semana': _calcular(ventas_semana, is_semana=True),
@@ -372,6 +505,11 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
         'grafico_labels': json.dumps(grafico_labels),
         'grafico_gastos': json.dumps(grafico_gastos),
         'grafico_ganancias': json.dumps(grafico_ganancias),
+        # Métricas online
+        'visitas_semana': visitas_semana,
+        'pedidos_online_semana': pedidos_online_semana,
+        'top_busquedas': list(top_busquedas),
+        'top_clicks': list(top_clicks),
     }
 
 
@@ -398,6 +536,7 @@ def crear_pedido_cliente(negocio: Negocio, nombre: str, telefono: str, direccion
         ItemPedido.objects.create(
             pedido=pedido,
             producto=item['producto'],
+            nombre_producto=item['producto'].nombre,
             cantidad=item['cantidad'],
             precio_unitario=item['producto'].precio
         )
@@ -463,8 +602,20 @@ def carrito_publico_agregar(session: dict, producto_pk: int) -> None:
     session.modified = True
 
 def carrito_publico_quitar(session: dict, producto_pk: int) -> None:
+    """Elimina completamente el producto del carrito (sin importar cantidad)."""
     carrito = session.get('carrito_publico', {})
     carrito.pop(str(producto_pk), None)
+    session['carrito_publico'] = carrito
+    session.modified = True
+
+def carrito_publico_decrementar(session: dict, producto_pk: int) -> None:
+    """Descuenta 1 unidad. Si llega a 0, elimina el item del carrito."""
+    carrito = session.get('carrito_publico', {})
+    key = str(producto_pk)
+    if key in carrito:
+        carrito[key] -= 1
+        if carrito[key] <= 0:
+            del carrito[key]
     session['carrito_publico'] = carrito
     session.modified = True
 

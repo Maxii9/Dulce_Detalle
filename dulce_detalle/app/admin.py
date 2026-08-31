@@ -1,3 +1,103 @@
 from django.contrib import admin
+from .models import (
+    Negocio, CategoriaProducto, Producto,
+    Venta, ItemVenta, Insumo,
+    Pedido, ItemPedido, Nota,
+)
 
-# Register your models here.
+
+# ── Negocio ───────────────────────────────────────────────────────────────
+
+@admin.register(Negocio)
+class NegocioAdmin(admin.ModelAdmin):
+    list_display   = ('nombre', 'slug', 'propietario', 'activa', 'pedidos_pendientes_count')
+    search_fields  = ('nombre', 'slug', 'propietario__username')
+    list_filter    = ('activa', 'propietario',)
+    list_editable  = ('activa',)
+    readonly_fields = ('slug',)  # El slug se genera automáticamente al guardar
+
+    def save_model(self, request, obj, form, change):
+        """Genera el slug desde el nombre si no tiene uno todavía."""
+        if not obj.slug:
+            import re
+            base = re.sub(r'[^a-z0-9]', '-', obj.nombre.lower()).strip('-') or 'tienda'
+            slug = base[:28]
+            counter = 1
+            from app.models import Negocio as N
+            while N.objects.filter(slug=slug).exclude(pk=obj.pk).exists():
+                slug = f"{base[:25]}-{counter}"
+                counter += 1
+            obj.slug = slug
+        super().save_model(request, obj, form, change)
+
+
+# ── Categorías ────────────────────────────────────────────────────────────
+
+@admin.register(CategoriaProducto)
+class CategoriaProductoAdmin(admin.ModelAdmin):
+    list_display  = ('nombre', 'negocio')
+    search_fields = ('nombre', 'negocio__nombre')
+    list_filter   = ('negocio',)
+
+
+# ── Productos ─────────────────────────────────────────────────────────────
+
+@admin.register(Producto)
+class ProductoAdmin(admin.ModelAdmin):
+    list_display  = ('nombre', 'negocio', 'categoria', 'precio', 'costo', 'stock', 'creado')
+    search_fields = ('nombre', 'negocio__nombre')
+    list_filter   = ('negocio', 'categoria')
+    readonly_fields = ('creado', 'actualizado')
+    list_editable  = ('stock',)
+
+
+# ── Ventas ────────────────────────────────────────────────────────────────
+
+class ItemVentaInline(admin.TabularInline):
+    model  = ItemVenta
+    extra  = 0
+    readonly_fields = ('subtotal', 'ganancia')
+
+@admin.register(Venta)
+class VentaAdmin(admin.ModelAdmin):
+    list_display  = ('pk', 'negocio', 'fecha', 'tipo', 'metodo_pago', 'total', 'creado')
+    search_fields = ('negocio__nombre',)
+    list_filter   = ('negocio', 'tipo', 'metodo_pago', 'fecha')
+    readonly_fields = ('creado',)
+    inlines       = [ItemVentaInline]
+
+
+# ── Pedidos ───────────────────────────────────────────────────────────────
+
+class ItemPedidoInline(admin.TabularInline):
+    model = ItemPedido
+    extra = 0
+    readonly_fields = ('subtotal',)
+
+@admin.register(Pedido)
+class PedidoAdmin(admin.ModelAdmin):
+    list_display  = ('pk', 'negocio', 'cliente_nombre', 'cliente_telefono', 'estado', 'total', 'creado')
+    search_fields = ('cliente_nombre', 'cliente_telefono', 'negocio__nombre')
+    list_filter   = ('negocio', 'estado')
+    readonly_fields = ('creado',)
+    inlines       = [ItemPedidoInline]
+
+
+# ── Insumos ───────────────────────────────────────────────────────────────
+
+@admin.register(Insumo)
+class InsumoAdmin(admin.ModelAdmin):
+    list_display  = ('nombre', 'negocio', 'costo_unitario', 'actualizado')
+    search_fields = ('nombre', 'negocio__nombre')
+    list_filter   = ('negocio',)
+    readonly_fields = ('creado', 'actualizado')
+
+
+# ── Notas ─────────────────────────────────────────────────────────────────
+
+@admin.register(Nota)
+class NotaAdmin(admin.ModelAdmin):
+    list_display  = ('negocio', 'texto', 'creado')
+    search_fields = ('texto', 'negocio__nombre')
+    list_filter   = ('negocio',)
+    readonly_fields = ('creado',)

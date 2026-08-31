@@ -15,19 +15,19 @@
           <div>
             <label class="block text-xs font-bold text-gray-400 mb-1 uppercase">Nombre de Usuario</label>
             <input type="text" name="username" value="{{ request.user.username }}" required maxlength="150"
-                   class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-content-value focus:ring-2 focus:ring-pink-400 focus:outline-none">
+                   class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-content-value focus:ring-2 focus:ring-input-focus focus:outline-none">
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-400 mb-1 uppercase">Email</label>
             <input type="email" name="email" value="{{ request.user.email }}" maxlength="254"
-                   class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-content-value focus:ring-2 focus:ring-pink-400 focus:outline-none">
+                   class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-content-value focus:ring-2 focus:ring-input-focus focus:outline-none">
           </div>
         </div>
         <div class="flex items-center justify-between pt-2">
           <span class="inline-block px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase">
             {% if request.user.is_superuser %}Superusuario / ROOT{% else %}Administrador de Tienda{% endif %}
           </span>
-          <button type="submit" class="bg-pink-500 hover:bg-pink-400 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all shadow-md">
+          <button type="submit" class="bg-sidebar-text hover:opacity-80 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all shadow-md">
             Guardar Cambios
           </button>
         </div>
@@ -85,12 +85,12 @@
                   <div class="w-full sm:w-1/3">
                     <label class="block text-[9px] font-bold text-gray-500 mb-1 ml-1">Username</label>
                     <input type="text" name="username" value="{{ u.username }}" required maxlength="150"
-                           class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-400 focus:outline-none bg-white">
+                           class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-input-focus focus:outline-none bg-white">
                   </div>
                   <div class="w-full sm:flex-1">
                     <label class="block text-[9px] font-bold text-gray-500 mb-1 ml-1">Email</label>
                     <input type="email" name="email" value="{{ u.email }}" maxlength="254"
-                           class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-400 focus:outline-none bg-white">
+                           class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-input-focus focus:outline-none bg-white">
                   </div>
                   <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all h-[38px] shadow-sm">
                      Actualizar

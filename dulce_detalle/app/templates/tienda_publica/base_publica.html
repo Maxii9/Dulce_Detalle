@@ -1,50 +1,262 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}{{ negocio.nombre }} - Tienda Online{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+  <!-- Fuentes: Inter (UI) + 6 fuentes display para el hero -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Abril+Fatface&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Bebas+Neue&family=Dancing+Script:wght@700&family=Righteous&family=Unbounded:wght@700;900&display=swap" rel="stylesheet"/>
+
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .transition-all { transition: all 0.3s ease; }
+    /* ── Variables del negocio ── */
     :root {
-      --color-primary: {{ negocio.color_primario|default:"#6d28d9" }};
+      --color-primary:   {{ negocio.color_primario|default:"#6d28d9" }};
+      --color-secondary: {{ negocio.color_secundario|default:"#7c3aed" }};
+      --color-primary-bg: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
     }
+
+    /* ── Modo claro (por defecto) ── */
+    [data-theme="light"] {
+      --bg-base:      #f9fafb;
+      --bg-surface:   #ffffff;
+      --bg-nav:       #ffffff;
+      --border-base:  #f3f4f6;
+      --text-base:    #111827;
+      --text-muted:   #6b7280;
+      --text-faint:   #9ca3af;
+      --shadow-nav:   0 1px 3px rgba(0,0,0,.08);
+    }
+
+    /* ── Modo oscuro ── */
+    [data-theme="dark"] {
+      --bg-base:      #0f0f13;
+      --bg-surface:   #1a1a24;
+      --bg-nav:       #12121a;
+      --border-base:  #2a2a38;
+      --text-base:    #f1f5f9;
+      --text-muted:   #94a3b8;
+      --text-faint:   #64748b;
+      --shadow-nav:   0 1px 3px rgba(0,0,0,.4);
+      --color-primary-bg: color-mix(in srgb, var(--color-primary) 18%, #1a1a24);
+    }
+
+    /* ── Aplicar variables al DOM ── */
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-base);
+      transition: background .3s ease, color .3s ease;
+    }
+    nav    { background: var(--bg-nav) !important; border-color: var(--border-base) !important; box-shadow: var(--shadow-nav); }
+    footer { background: var(--bg-surface) !important; border-color: var(--border-base) !important; }
+
+    /* ── Clases utilitarias del negocio ── */
+    .bg-tienda      { background-color: var(--color-primary) !important; }
+    .text-tienda    { color: var(--color-primary) !important; }
+    .border-tienda  { border-color: var(--color-primary) !important; }
+    .bg-tienda-soft { background-color: var(--color-primary-bg) !important; }
+    .hover\:bg-tienda:hover { background-color: var(--color-secondary) !important; }
+
+    /* ── Tarjetas y surfaces ── */
+    .card-surface {
+      background: var(--bg-surface);
+      border-color: var(--border-base);
+      transition: background .3s ease, border-color .3s ease;
+    }
+    .text-base-color  { color: var(--text-base) !important; }
+    .text-muted-color { color: var(--text-muted) !important; }
+    .text-faint-color { color: var(--text-faint) !important; }
+    .border-base-color { border-color: var(--border-base) !important; }
+
+    /* ── Hero del nombre ── */
+    .store-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem 1.5rem;
+      text-align: center;
+      position: relative;
+      /* overflow visible para que la cursiva no se corte */
+      overflow: visible;
+    }
+    .store-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      /* Fondo neutro, sin colores del negocio */
+      background: none;
+      pointer-events: none;
+    }
+    /* ── 6 variantes de fuente ── */
+    .font-abril     { font-family: 'Abril Fatface', serif;      font-style: italic; font-weight: 400; }
+    .font-playfair  { font-family: 'Playfair Display', serif;   font-style: italic; font-weight: 900; }
+    .font-bebas     { font-family: 'Bebas Neue', sans-serif;    font-style: normal; font-weight: 400; letter-spacing:.04em; text-transform:uppercase; }
+    .font-dancing   { font-family: 'Dancing Script', cursive;   font-style: normal; font-weight: 700; }
+    .font-righteous { font-family: 'Righteous', sans-serif;     font-style: normal; font-weight: 400; }
+    .font-unbounded { font-family: 'Unbounded', sans-serif;     font-style: normal; font-weight: 900; letter-spacing:-.02em; }
+
+    .store-hero-name {
+      /* padding lateral para que descenders/itálica no se corten */
+      padding: 0 0.15em 0.08em;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg,
+        var(--color-primary) 0%,
+        var(--color-secondary) 50%,
+        var(--color-primary) 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s linear infinite;
+      font-size: clamp(2.8rem, 8vw, 6rem);
+    }
+    @keyframes shimmer {
+      0%   { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+    .store-hero-emoji {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      margin-bottom: .75rem;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-8px); }
+    }
+    .store-hero-desc {
+      margin-top: .75rem;
+      font-size: .95rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      max-width: 28rem;
+    }
+
+    /* ── Toggle dark mode ── */
+    .theme-toggle {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-base);
+      border: 1px solid var(--border-base);
+      cursor: pointer;
+      transition: all .25s ease;
+      color: var(--text-muted);
+    }
+    .theme-toggle:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+    /* ── Dark mode overrides para tarjetas Tailwind ── */
+    [data-theme="dark"] .bg-white   { background: var(--bg-surface) !important; }
+    [data-theme="dark"] .bg-gray-50 { background: var(--bg-base)    !important; }
+    [data-theme="dark"] .bg-gray-100{ background: #232332 !important; }
+    [data-theme="dark"] .bg-gray-200{ background: #2d2d40 !important; }
+    [data-theme="dark"] .text-gray-900 { color: var(--text-base) !important; }
+    [data-theme="dark"] .text-gray-800 { color: var(--text-base) !important; }
+    [data-theme="dark"] .text-gray-700 { color: var(--text-muted) !important; }
+    [data-theme="dark"] .text-gray-600 { color: var(--text-muted) !important; }
+    [data-theme="dark"] .text-gray-500 { color: var(--text-faint) !important; }
+    [data-theme="dark"] .text-gray-400 { color: var(--text-faint) !important; }
+    [data-theme="dark"] .border-gray-100{ border-color: var(--border-base) !important; }
+    [data-theme="dark"] .border-gray-200{ border-color: var(--border-base) !important; }
+    [data-theme="dark"] .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,.4) !important; }
+    [data-theme="dark"] .shadow-xl { box-shadow: 0 10px 40px rgba(0,0,0,.5) !important; }
+
+    .transition-all { transition: all .3s ease; }
+
+    /* ── Scrollbar custom ── */
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-base); border-radius: 99px; }
   </style>
+
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          colors: {
-            brand: '{{ negocio.color_primario|default:"#6d28d9" }}',
-          }
+          colors: { brand: '{{ negocio.color_primario|default:"#6d28d9" }}' }
         }
       }
     }
   </script>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col selection:bg-brand selection:text-white">
-  <!-- Topbar Pública -->
-  <nav class="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-100">
-    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="{% url 'tienda_publica' negocio.slug %}" class="flex items-center gap-3 group">
-        <span class="text-3xl group-hover:scale-110 transition-transform">{{ negocio.emoji }}</span>
-        <span class="text-xl font-extrabold tracking-tight text-gray-900">{{ negocio.nombre }}</span>
-      </a>
-      
-      <div>
-        <a href="{% url 'checkout_publico' negocio.slug %}" class="relative inline-flex items-center p-2 text-gray-600 hover:text-brand transition-colors bg-gray-100 hover:bg-gray-200 rounded-full">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+
+<body class="min-h-screen flex flex-col selection:bg-brand selection:text-white">
+
+  <!-- ── Navbar ── -->
+  <nav class="sticky top-0 z-40 border-b">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-end gap-4">
+
+
+      <div class="flex items-center gap-2">
+
+        <!-- Toggle dark/light -->
+        <button id="theme-toggle-btn" class="theme-toggle" aria-label="Alternar modo oscuro" title="Modo claro / oscuro">
+          <!-- Ícono sol (modo claro) -->
+          <svg id="icon-sun" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71m12.73 0-.71-.71M6.34 6.34l-.71-.71M12 5a7 7 0 100 14A7 7 0 0012 5z"/>
+          </svg>
+          <!-- Ícono luna (modo oscuro) -->
+          <svg id="icon-moon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
+          </svg>
+        </button>
+
+        {% if es_propietario %}
+        <span class="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full border border-indigo-200">
+          👁️ VISTA PREVIA
+        </span>
+        {% else %}
+        <button id="btn-open-cart"
+                class="relative inline-flex items-center p-2 transition-colors rounded-full cursor-pointer focus:outline-none"
+                style="background:var(--bg-base);border:1px solid var(--border-base);color:var(--text-muted)"
+                aria-label="Ver carrito">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
           {% if carrito_count and carrito_count > 0 %}
-          <span class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white transform translate-x-1/4 -translate-y-1/4 bg-brand rounded-full border-2 border-white">{{ carrito_count }}</span>
+          <span class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white transform translate-x-1/4 -translate-y-1/4 bg-tienda rounded-full border-2"
+                style="border-color:var(--bg-nav)">{{ carrito_count }}</span>
           {% endif %}
-        </a>
+        </button>
+        {% endif %}
+
       </div>
     </div>
   </nav>
-  
+
+  {% if es_propietario %}
+  <div class="bg-indigo-600 text-white text-center text-sm py-2 px-4 font-medium">
+    Estás visualizando tu tienda tal como la ven tus clientes. <strong>La creación de pedidos está desactivada.</strong>
+  </div>
+  {% endif %}
+
+  <!-- ── Hero con el nombre de la tienda ── -->
+  {% block hero %}
+  <div class="store-hero">
+    {% if negocio.logo %}
+      <!-- Logo personalizado de la tienda -->
+      <img src="{{ negocio.logo.url }}" alt="{{ negocio.nombre }}"
+           class="{% if negocio.tamano_logo == 'pequeno' %}max-h-24{% elif negocio.tamano_logo == 'grande' %}max-h-48{% elif negocio.tamano_logo == 'gigante' %}max-h-64{% else %}max-h-32{% endif %} max-w-[360px] sm:max-w-[480px] w-auto object-contain mb-2"
+           style="filter: drop-shadow(0 2px 8px rgba(0,0,0,.10));">
+      {% if negocio.mostrar_descripcion and negocio.descripcion %}
+      <p class="store-hero-desc">{{ negocio.descripcion }}</p>
+      {% endif %}
+    {% else %}
+      <!-- Nombre con fuente personalizada (default) -->
+      <h1 class="store-hero-name font-{{ negocio.estilo_fuente|default:'abril' }}">{{ negocio.nombre }}</h1>
+      {% if negocio.mostrar_descripcion and negocio.descripcion %}
+      <p class="store-hero-desc">{{ negocio.descripcion }}</p>
+      {% endif %}
+    {% endif %}
+    <div style="margin-top:1rem;width:50px;height:3px;border-radius:99px;background:var(--color-primary);opacity:.55"></div>
+  </div>
+  {% endblock %}
+
   <main class="flex-1 max-w-5xl mx-auto w-full p-4 lg:p-8">
     {% if messages %}
     <div class="mb-4 space-y-2">
@@ -60,11 +272,53 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
-  
-  <footer class="bg-white border-t border-gray-100 py-8 mt-auto">
-    <div class="mx-auto max-w-5xl px-4 text-center">
-      <p class="text-gray-500 text-sm">&copy; {% now "Y" %} {{ negocio.nombre }}. Todos los derechos reservados.</p>
+
+  <footer class="border-t py-8 mt-auto">
+    <div class="mx-auto max-w-5xl px-4 text-center space-y-2">
+      <p class="text-sm" style="color:var(--text-muted)">&copy; {% now "Y" %} {{ negocio.nombre }}. Todos los derechos reservados.
+        <a href="{% url 'politica_privacidad' %}" class="underline hover:text-brand">Política de Privacidad</a>
+      </p>
+      <p class="text-xs" style="color:var(--text-faint)">
+        🛍️ ¿Querés tu propia tienda online? Escribínos al
+        <a href="https://wa.me/5493644549416" target="_blank" rel="noopener"
+           class="font-semibold hover:text-brand transition-colors underline underline-offset-2"
+           style="color:var(--text-muted)">3644549416</a>
+      </p>
     </div>
   </footer>
+
+  <!-- ── Script dark/light mode ── -->
+  <script>
+  (function () {
+    var html    = document.documentElement;
+    var btn     = document.getElementById('theme-toggle-btn');
+    var iconSun = document.getElementById('icon-sun');
+    var iconMoon= document.getElementById('icon-moon');
+
+    // Recuperar preferencia guardada — si no hay, siempre claro
+    var saved = localStorage.getItem('tienda-theme');
+    var current = saved || 'light';
+    apply(current);
+
+    function apply(theme) {
+      html.setAttribute('data-theme', theme);
+      if (theme === 'dark') {
+        iconSun.classList.remove('hidden');
+        iconMoon.classList.add('hidden');
+      } else {
+        iconSun.classList.add('hidden');
+        iconMoon.classList.remove('hidden');
+      }
+      localStorage.setItem('tienda-theme', theme);
+    }
+
+    if (btn) {
+      btn.addEventListener('click', function () {
+        apply(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      });
+    }
+  }());
+  </script>
+
 </body>
 </html>

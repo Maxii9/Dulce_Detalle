@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 
 <head>
   <meta charset="UTF-8" />
@@ -11,110 +11,176 @@
     rel="stylesheet" />
 
   <script>
-    /*
-    ╔══════════════════════════════════════════════════════╗
-    ║  CONFIGURACIÓN DE COLORES  — editá solo esta sección ║
-    ╚══════════════════════════════════════════════════════╝
+    // ═══════════════════════════════════════════════════════════
+    //  PALETA DINÁMICA — generada desde los colores del negocio
+    // ═══════════════════════════════════════════════════════════
+    (function () {
+      const PRIMARY   = '{{ negocio.color_primario|default:"#ec4899" }}';
+      const SECONDARY = '{{ negocio.color_secundario|default:"#be185d" }}';
 
-    sidebar_bg      → Fondo del sidebar y topbar
-    sidebar_border  → Bordes del sidebar y topbar
-    sidebar_text    → Texto normal de los ítems del menú
-    sidebar_title   → Nombre del negocio en el sidebar
-    nav_active_bg   → Fondo del ítem activo del menú
-    nav_active_text → Texto del ítem activo del menú
-    nav_active_border → Borde del ítem activo del menú
-    nav_hover_bg    → Fondo al hacer hover en ítems
-    nav_hover_text  → Texto al hacer hover en ítems
-    page_bg         → Fondo general de la página (contenido)
-    page_text       → Color de texto principal del contenido
-    switcher_active → Fondo del botón de tienda activa
-    switcher_inactive → Fondo del botón de tienda inactiva
-    switcher_text_inactive → Texto del botón inactivo
-    footer_text     → Texto del pie del sidebar
-    */
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'sidebar-bg': '#fdf2f8',   /* fondo del sidebar y topbar        */
-            'sidebar-border': '#fbcfe8',   /* bordes del sidebar y topbar       */
-            'sidebar-text': '#ec4899',   /* texto de ítems del menú           */
-            'sidebar-title': '#000000',   /* nombre del negocio                */
-            'nav-active-bg': '#fce7f3',   /* ítem activo — fondo               */
-            'nav-active-text': '#be185d',   /* ítem activo — texto               */
-            'nav-active-border': '#f9a8d4',   /* ítem activo — borde               */
-            'nav-hover-bg': '#fce7f3',   /* hover — fondo                     */
-            'nav-hover-text': '#9d174d',   /* hover — texto                     */
-            'page-bg': '#ffffff',   /* fondo general de la página        */
-            'page-text': '#000000',   /* texto principal del contenido     */
-            'switcher-active': '#ec4899',   /* botón tienda activa               */
-            'switcher-inactive': '#fce7f3',   /* botón tienda inactiva             */
-            'switcher-text-in': '#db2777',   /* texto botón tienda inactiva       */
-            'footer-text': '#f472b6',   /* pie del sidebar                   */
+      function hexToRgb(hex) {
+        return [
+          parseInt(hex.slice(1, 3), 16),
+          parseInt(hex.slice(3, 5), 16),
+          parseInt(hex.slice(5, 7), 16),
+        ];
+      }
+      function toHex(r, g, b) {
+        return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      }
+      function tint(hex, f) {   // mezcla con blanco: f=0.9 → muy claro
+        const [r, g, b] = hexToRgb(hex);
+        return toHex(
+          Math.round(r + (255 - r) * f),
+          Math.round(g + (255 - g) * f),
+          Math.round(b + (255 - b) * f)
+        );
+      }
+      function darken(hex, f) { // oscurece: f=0.15 → un poco más oscuro
+        const [r, g, b] = hexToRgb(hex);
+        return toHex(
+          Math.round(r * (1 - f)),
+          Math.round(g * (1 - f)),
+          Math.round(b * (1 - f))
+        );
+      }
 
-            /* ── Filtros de categoría (botones sobre la grilla de productos) ── */
-            'filter-active-bg': '#ec4899',   /* fondo filtro activo               */
-            'filter-active-text': '#ffffff',   /* texto filtro activo               */
-            'filter-active-border': '#ec4899',   /* borde filtro activo               */
-            'filter-idle-bg': '#ffffff',   /* fondo filtro inactivo             */
-            'filter-idle-text': '#be185d',   /* texto filtro inactivo             */
-            'filter-idle-border': '#f9a8d4',   /* borde filtro inactivo             */
-            'filter-hover-bg': '#fce7f3',   /* fondo filtro al hacer hover       */
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              /* ── Sidebar / Topbar ── */
+              'sidebar-bg':           tint(PRIMARY, 0.93),
+              'sidebar-border':       tint(PRIMARY, 0.78),
+              'sidebar-text':         PRIMARY,
+              'sidebar-title':        '#000000',
+              'nav-active-bg':        tint(PRIMARY, 0.85),
+              'nav-active-text':      SECONDARY,
+              'nav-active-border':    tint(PRIMARY, 0.72),
+              'nav-hover-bg':         tint(PRIMARY, 0.88),
+              'nav-hover-text':       darken(SECONDARY, 0.12),
+              'page-bg':              '#ffffff',
+              'page-text':            '#000000',
+              'switcher-active':      PRIMARY,
+              'switcher-inactive':    tint(PRIMARY, 0.85),
+              'switcher-text-in':     darken(PRIMARY, 0.08),
+              'footer-text':          tint(PRIMARY, 0.38),
 
-            /* ── Buscador de productos ── */
-            'search-bg': '#ffffff',   /* fondo del input de búsqueda       */
-            'search-border': '#f9a8d4',   /* borde del input de búsqueda       */
-            'search-text': '#000000',   /* texto escrito en el buscador      */
-            'search-placeholder': '#f9a8d4',   /* color del placeholder             */
-            'search-focus-border': '#ec4899',   /* borde al enfocar el buscador      */
-            'search-focus-ring': '#ec4899',   /* anillo de foco del buscador       */
+              /* ── Filtros de categoría ── */
+              'filter-active-bg':     PRIMARY,
+              'filter-active-text':   '#ffffff',
+              'filter-active-border': PRIMARY,
+              'filter-idle-bg':       '#ffffff',
+              'filter-idle-text':     SECONDARY,
+              'filter-idle-border':   tint(PRIMARY, 0.72),
+              'filter-hover-bg':      tint(PRIMARY, 0.88),
 
-            /* ════════════════════════════════════════════════════════════════
-               CONTENIDO — aplica a Ventas, Estadísticas, Costos, Notas, Pedidos
-               ════════════════════════════════════════════════════════════════ */
+              /* ── Buscador ── */
+              'search-bg':            '#ffffff',
+              'search-border':        tint(PRIMARY, 0.72),
+              'search-text':          '#000000',
+              'search-placeholder':   tint(PRIMARY, 0.55),
+              'search-focus-border':  PRIMARY,
+              'search-focus-ring':    PRIMARY,
 
-            /* ── Cards / Paneles ── */
-            'card-bg': '#ffffff',   /* fondo de tarjetas y tablas        */
-            'card-border': '#fbcfe8',   /* borde de tarjetas y tablas        */
-            'card-bg-alt': '#fdf2f8',   /* fondo encabezado de tabla         */
-            'card-row-hover': '#fce7f3', /* hover sobre fila de tabla         */
-            'card-expanded': '#fdf2f8', /* fondo de fila expandida           */
-            'card-item-bg': '#ffffff', /* fondo de item dentro de fila exp. */
-            'card-item-border': '#fbcfe8', /* borde de item dentro de fila exp. */
+              /* ── Cards / Tablas ── */
+              'card-bg':              '#ffffff',
+              'card-border':          tint(PRIMARY, 0.78),
+              'card-bg-alt':          tint(PRIMARY, 0.93),
+              'card-row-hover':       tint(PRIMARY, 0.88),
+              'card-expanded':        tint(PRIMARY, 0.93),
+              'card-item-bg':         '#ffffff',
+              'card-item-border':     tint(PRIMARY, 0.78),
 
-            /* ── Texto del contenido ── */
-            'content-title': '#000000',   /* títulos h1/h2 en el contenido     */
-            'content-subtitle': '#6b7280',   /* subtítulos y descripciones        */
-            'content-label': '#be185d',   /* labels de formularios y tablas    */
-            'content-value': '#000000',   /* valores principales en tablas     */
-            'content-muted': '#9d174d',   /* texto secundario                  */
-            'content-num': '#000000',   /* números/importes en la tabla      */
-            'content-accent': '#be185d',   /* ganancias / acentos positivos     */
+              /* ── Texto del contenido ── */
+              'content-title':        '#000000',
+              'content-subtitle':     '#6b7280',
+              'content-label':        SECONDARY,
+              'content-value':        '#000000',
+              'content-muted':        darken(SECONDARY, 0.08),
+              'content-num':          '#000000',
+              'content-accent':       SECONDARY,
 
-            /* ── Formularios / Filtros en Ventas ── */
-            'form-bg': '#fdf2f8',   /* fondo del panel de filtros        */
-            'form-border': '#fbcfe8',   /* borde del panel de filtros        */
-            'input-bg': '#ffffff',   /* fondo de inputs y selects         */
-            'input-border': '#f9a8d4',   /* borde de inputs y selects         */
-            'input-text': '#000000',   /* texto dentro de inputs            */
-            'input-focus': '#ec4899',   /* color de foco de inputs           */
+              /* ── Formularios ── */
+              'form-bg':              tint(PRIMARY, 0.93),
+              'form-border':          tint(PRIMARY, 0.78),
+              'input-bg':             '#ffffff',
+              'input-border':         tint(PRIMARY, 0.70),
+              'input-text':           '#000000',
+              'input-focus':          PRIMARY,
 
-            /* ── Divisores de sección (Estadísticas) ── */
-            'divider': '#fbcfe8',   /* líneas divisoras entre secciones  */
+              /* ── Divisores ── */
+              'divider':              tint(PRIMARY, 0.78),
+            }
           }
         }
-      }
-    }
+      };
+    })();
   </script>
 
   <style>
     body {
       font-family: 'Inter', sans-serif;
+      background: var(--admin-bg);
+      color: var(--admin-text);
+      transition: background .3s ease, color .3s ease;
+    }
+    /* ── Modo claro (default) ── */
+    [data-theme="light"] {
+      --admin-bg: #ffffff;
+      --admin-text: #111827;
+    }
+    /* ── Modo oscuro ── */
+    [data-theme="dark"] {
+      --admin-bg: #0d0d14;
+      --admin-text: #f1f5f9;
+    }
+    /* Overrides Tailwind dark */
+    [data-theme="dark"] .bg-white           { background:#1a1a2e !important; }
+    [data-theme="dark"] .bg-page-bg         { background:#0d0d14 !important; }
+    [data-theme="dark"] .text-page-text     { color:#f1f5f9 !important; }
+    [data-theme="dark"] aside               { background:#12121f !important; border-color:#2a2a3e !important; }
+    [data-theme="dark"] .border-sidebar-border { border-color:#2a2a3e !important; }
+    [data-theme="dark"] .bg-sidebar-bg      { background:#12121f !important; }
+    [data-theme="dark"] .text-sidebar-title { color:#f1f5f9 !important; }
+    [data-theme="dark"] .text-sidebar-text  { color:#a5b4fc !important; }
+    [data-theme="dark"] .text-content-title { color:#f1f5f9 !important; }
+    [data-theme="dark"] .text-content-subtitle { color:#94a3b8 !important; }
+    [data-theme="dark"] .text-content-value { color:#e2e8f0 !important; }
+    [data-theme="dark"] .bg-card-bg         { background:#1e1e30 !important; }
+    [data-theme="dark"] .bg-card-bg-alt     { background:#252538 !important; }
+    [data-theme="dark"] .border-card-border { border-color:#2e2e45 !important; }
+    [data-theme="dark"] .bg-gray-50         { background:#1a1a2e !important; }
+    [data-theme="dark"] .bg-gray-100        { background:#252538 !important; }
+    [data-theme="dark"] .text-gray-500      { color:#64748b !important; }
+    [data-theme="dark"] .text-gray-600      { color:#64748b !important; }
+    [data-theme="dark"] .text-gray-800      { color:#e2e8f0 !important; }
+    [data-theme="dark"] .text-gray-900      { color:#f1f5f9 !important; }
+    [data-theme="dark"] .text-gray-400      { color:#94a3b8 !important; }
+    [data-theme="dark"] .border-gray-100    { border-color:#2e2e45 !important; }
+    [data-theme="dark"] .border-gray-200    { border-color:#2e2e45 !important; }
+    [data-theme="dark"] .border-input-border{ border-color:#3a3a55 !important; }
+    [data-theme="dark"] .text-input-text    { color:#e2e8f0 !important; }
+    [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select {
+      background: #1e1e30 !important;
+      color: #e2e8f0 !important;
+      border-color: #3a3a55 !important;
     }
 
-    .transition-all {
-      transition: all 0.3s ease;
+    /* Toggle button */
+    .admin-theme-toggle {
+      width:36px; height:36px;
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+      border:1px solid transparent;
+      transition:all .25s ease;
+      background: transparent;
+      color: inherit;
+      opacity: .7;
     }
+    .admin-theme-toggle:hover { opacity:1; }
+    .transition-all { transition: all 0.3s ease; }
   </style>
 </head>
 
@@ -139,7 +205,7 @@
     <nav class="flex-1 p-4 space-y-1">
 
       <!-- Productos -->
-      <a href="{% url 'lista_productos' %}"
+      <a href="{% url 'lista_productos' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'producto' in current_view or 'inicio' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,19 +215,19 @@
         Productos
       </a>
 
-      <!-- Ventas -->
-      <a href="{% url 'lista_ventas' %}"
+      <!-- Movimientos -->
+      <a href="{% url 'lista_ventas' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'venta' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
-        Ventas
+        Movimientos
       </a>
 
       <!-- Pedidos -->
-      <a href="{% url 'lista_pedidos' %}"
+      <a href="{% url 'lista_pedidos' slug=negocio.slug %}"
         class="flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'pedidos' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <div class="flex items-center gap-3">
@@ -177,7 +243,7 @@
       </a>
 
       <!-- Estadísticas -->
-      <a href="{% url 'estadisticas_ventas' %}"
+      <a href="{% url 'estadisticas_ventas' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'estadisticas' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,7 +254,7 @@
       </a>
 
       <!-- Calculadora -->
-      <a href="{% url 'calculadora_costos' %}"
+      <a href="{% url 'calculadora_costos' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'calculadora' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,7 +265,7 @@
       </a>
 
       <!-- Notas -->
-      <a href="{% url 'lista_notas' %}"
+      <a href="{% url 'lista_notas' slug=negocio.slug %}"
         class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all
                 {% if 'nota' in current_view %}bg-nav-active-bg text-nav-active-text border border-nav-active-border shadow-inner{% else %}text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,9 +275,18 @@
         Notas
       </a>
 
+      <!-- Tienda Pública -->
+      <a href="{% url 'tienda_publica' negocio.slug %}" target="_blank"
+        class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all text-sidebar-text hover:bg-nav-hover-bg hover:text-nav-hover-text">
+        <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+        </svg>
+        Ver mi tienda online
+      </a>
+
       <!-- Carrito -->
       <div class="pt-4 mt-3 border-t border-sidebar-border">
-        <a href="{% url 'nueva_venta' %}"
+        <a href="{% url 'nueva_venta' slug=negocio.slug %}"
           class="flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all bg-emerald-600/20 text-emerald-600 border border-emerald-500/30 hover:bg-emerald-600/30">
           <div class="flex items-center gap-3">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,9 +316,11 @@
           <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </button>
         <div id="config-menu" class="hidden mt-1 space-y-1 pl-12 pr-4 pb-2">
-          <a href="{% url 'configuracion_tienda' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Mi Tienda</a>
-          <a href="{% url 'configuracion_categorias' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Tipos de Producto</a>
-          <a href="{% url 'configuracion_usuarios' %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Cuenta y Equipo</a>
+          <a href="{% url 'configuracion_tienda' slug=negocio.slug %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Mi Tienda</a>
+          <a href="{% url 'configuracion_categorias' slug=negocio.slug %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">Tipos de Producto</a>
+          <a href="{% url 'configuracion_usuarios' slug=negocio.slug %}" class="block py-2.5 text-sm font-medium text-sidebar-text hover:text-nav-hover-text transition-colors">
+            {% if request.user.is_superuser %}Gestión Global (Usuarios/Tiendas){% else %}Mi Cuenta y Equipo{% endif %}
+          </a>
           <a href="{% url 'logout' %}" class="block py-2.5 text-sm font-bold text-red-500 hover:text-red-600 transition-colors mt-2">Cerrar Sesión</a>
         </div>
       </div>
@@ -281,22 +358,67 @@
         <!-- Logo (desktop, solo sin negocio) -->
         <div class="hidden md:block">
           {% if not negocio %}
-          <a href="{% url 'lista_productos' %}" class="flex items-center gap-2">
+          <a href="{% url 'lista_productos_global' %}" class="flex items-center gap-2">
             <span class="text-xl font-bold text-sidebar-title">Mi Tienda</span>
           </a>
           {% endif %}
         </div>
 
-        <!-- Switcher de negocios -->
-        <div class="flex items-center gap-2 ml-auto">
-          <span class="text-xs text-footer-text uppercase tracking-wider mr-2 hidden sm:block">Cambiar de tienda:</span>
-          {% for n in negocios %}
-          <a href="{% url 'cambiar_negocio' n.slug %}"
-            class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all
-                    {% if negocio and negocio.slug == n.slug %}bg-switcher-active text-white{% else %}bg-switcher-inactive text-switcher-text-in hover:text-nav-hover-text{% endif %}">
-            {{ n.nombre }}
-          </a>
-          {% endfor %}
+        <!-- Botón Compartir Tienda + Switcher de negocios -->
+        <div class="flex items-center gap-3 ml-auto">
+
+          <!-- Toggle dark/light mode -->
+          <button id="admin-theme-toggle" class="admin-theme-toggle" aria-label="Modo oscuro" title="Alternar modo claro/oscuro">
+            <svg id="admin-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71m12.73 0-.71-.71M6.34 6.34l-.71-.71M12 5a7 7 0 100 14A7 7 0 0012 5z"/>
+            </svg>
+            <svg id="admin-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
+            </svg>
+          </button>
+
+          {% if negocio %}
+          <!-- Botón compartir -->
+          <div class="relative">
+            <button id="btn-compartir"
+              onclick="copiarLinkTienda()"
+              title="Copiar link de tu tienda para compartir con clientes"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all bg-switcher-active text-white hover:opacity-90 shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <span id="btn-compartir-texto">Compartir tienda</span>
+            </button>
+            <!-- Tooltip copiado -->
+            <div id="tooltip-copiado"
+              class="absolute right-0 top-9 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 whitespace-nowrap z-50">
+              ✅ ¡Link copiado!
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Switcher de negocios -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-footer-text uppercase tracking-wider mr-1 hidden sm:block">Tienda:</span>
+            {% for n in negocios %}
+            <a href="{% url 'cambiar_negocio' n.slug %}"
+              class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all
+                      {% if negocio and negocio.slug == n.slug %}bg-switcher-active text-white{% else %}bg-switcher-inactive text-switcher-text-in hover:text-nav-hover-text{% endif %}">
+              {{ n.nombre }}
+            </a>
+            {% endfor %}
+            {% if request.user.is_authenticated and negocios|length < 2 and not request.user.is_superuser %}
+            <a href="{% url 'crear_tienda_adicional' %}"
+              title="Agregar segunda tienda"
+              class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all bg-white border border-dashed border-sidebar-border text-sidebar-text hover:bg-nav-hover-bg hover:border-switcher-active">
+              + Nueva
+            </a>
+            {% endif %}
+          </div>
+
         </div>
 
       </div>
@@ -355,6 +477,61 @@
             }, 10);
         }
     }
+
+    {% if negocio %}
+    function copiarLinkTienda() {
+      const linkTienda = '{{ request.scheme }}://{{ request.get_host }}{% url "tienda_publica" negocio.slug %}';
+      navigator.clipboard.writeText(linkTienda).then(() => {
+        const tooltip = document.getElementById('tooltip-copiado');
+        const texto   = document.getElementById('btn-compartir-texto');
+        // Mostrar feedback
+        tooltip.classList.remove('opacity-0');
+        tooltip.classList.add('opacity-100');
+        texto.textContent = '¡Copiado!';
+        // Ocultar después de 2 segundos
+        setTimeout(() => {
+          tooltip.classList.remove('opacity-100');
+          tooltip.classList.add('opacity-0');
+          texto.textContent = 'Compartir tienda';
+        }, 2000);
+      }).catch(() => {
+        // Fallback si clipboard no está disponible
+        prompt('Copiá este link para compartir tu tienda:', linkTienda);
+      });
+    }
+    {% endif %}
+  </script>
+
+  <script>
+    /* ── Admin Dark Mode ── */
+    (function () {
+      var html     = document.documentElement;
+      var btn      = document.getElementById('admin-theme-toggle');
+      var iconSun  = document.getElementById('admin-icon-sun');
+      var iconMoon = document.getElementById('admin-icon-moon');
+
+      var saved = localStorage.getItem('admin-theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      apply(saved || (prefersDark ? 'dark' : 'light'));
+
+      function apply(theme) {
+        html.setAttribute('data-theme', theme);
+        if (theme === 'dark') {
+          if (iconSun)  iconSun.classList.remove('hidden');
+          if (iconMoon) iconMoon.classList.add('hidden');
+        } else {
+          if (iconSun)  iconSun.classList.add('hidden');
+          if (iconMoon) iconMoon.classList.remove('hidden');
+        }
+        localStorage.setItem('admin-theme', theme);
+      }
+
+      if (btn) {
+        btn.addEventListener('click', function () {
+          apply(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        });
+      }
+    }());
   </script>
 </body>
 </html>

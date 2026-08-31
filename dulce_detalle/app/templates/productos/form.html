@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}{{ accion }} — {{ negocio.nombre }}{% endblock %}
 
@@ -8,9 +9,71 @@
 
   <!-- Breadcrumb -->
   <div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
-    <a href="{% url 'lista_productos' %}" class="hover:text-purple-400 transition-all">Productos</a>
+    <a href="{% url 'lista_productos' slug=negocio.slug %}" class="hover:text-purple-400 transition-all">Productos</a>
     <span>/</span>
     <span class="text-gray-300">{{ accion }}</span>
+  </div>
+
+
+  <!-- ══ ESCÁNER DE CÓDIGO DE BARRAS ══ -->
+  <div class="bg-gray-900 rounded-2xl border border-emerald-800/40 shadow-xl overflow-hidden mb-5">
+    <div class="px-6 py-4 border-b border-gray-800 bg-gradient-to-r from-emerald-900/30 to-transparent flex items-center gap-3">
+      <div class="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M2 4h2v16H2V4zm3 0h1v16H5V4zm2 0h2v16H7V4zm3 0h1v16h-1V4zm2 0h2v16h-2V4zm3 0h1v16h-1V4zm2 0h1v16h-1V4zm2 0h2v16h-2V4z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-bold text-white">Escáner de Stock</p>
+        <p class="text-xs text-gray-400">Escaneá un código para buscar y sumar stock sin abrir el formulario</p>
+      </div>
+    </div>
+    <div class="px-6 py-4 space-y-3">
+      <div class="flex gap-2">
+        <input id="barras-input" type="text" placeholder="Escaneá o escribí el código..." autocomplete="off"
+               class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                      font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"/>
+        <button type="button" onclick="buscarBarras()"
+                class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all text-sm">
+          Buscar
+        </button>
+      </div>
+      <!-- Resultado -->
+      <div id="barras-resultado" class="hidden space-y-2">
+        <div id="barras-encontrado" class="hidden bg-gray-800 rounded-xl border border-emerald-700/50 p-4">
+          <div class="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Producto encontrado</p>
+              <p id="barras-nombre" class="text-white font-bold mt-0.5"></p>
+              <p class="text-gray-400 text-xs mt-0.5">Stock: <span id="barras-stock" class="text-white font-semibold"></span> · Precio: $<span id="barras-precio"></span></p>
+            </div>
+            <a id="barras-editar-link" href="#"
+               class="flex-shrink-0 text-xs text-purple-400 hover:text-purple-300 border border-purple-700/50 rounded-lg px-3 py-1.5 transition-colors">
+              Editar
+            </a>
+          </div>
+          <div class="flex items-center gap-2 border-t border-gray-700 pt-3">
+            <div class="flex items-center bg-gray-700 rounded-xl overflow-hidden border border-gray-600">
+              <button type="button" onclick="cambiarCantidad(-1)" class="px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 transition-colors font-bold">−</button>
+              <input id="barras-cantidad" type="number" value="1" min="1" class="w-14 text-center bg-transparent text-white font-semibold py-2 focus:outline-none text-sm"/>
+              <button type="button" onclick="cambiarCantidad(1)" class="px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 transition-colors font-bold">+</button>
+            </div>
+            <button type="button" onclick="sumarStock()"
+                    class="flex-1 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all text-sm">
+              + Agregar al Stock
+            </button>
+          </div>
+        </div>
+        <div id="barras-no-encontrado" class="hidden bg-gray-800 rounded-xl border border-red-700/40 p-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-red-300 text-sm">Código no registrado. Podés asignarlo al producto de abajo ↓</p>
+        </div>
+        <div id="barras-exito" class="hidden bg-emerald-900/40 rounded-xl border border-emerald-600/40 p-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <p id="barras-exito-msg" class="text-emerald-300 text-sm font-semibold"></p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Card del formulario -->
@@ -32,28 +95,89 @@
     <form method="post" enctype="multipart/form-data" class="px-8 py-6 space-y-5">
       {% csrf_token %}
 
-      <!-- Imagen -->
+      <!-- ── IMAGEN PRINCIPAL ─────────────────────────── -->
       <div>
-        <label class="block text-sm font-semibold text-gray-300 mb-2">Imagen del producto</label>
+        <label class="block text-sm font-semibold text-gray-300 mb-2">
+          Imagen principal del producto
+        </label>
         {% if producto and producto.imagen %}
-          <div class="mb-3">
+          <div class="mb-3 flex items-start gap-3">
             <img src="{{ producto.imagen.url }}" alt="Imagen actual"
-                 class="w-32 h-32 object-cover rounded-xl border border-gray-700"/>
+                 class="w-24 h-24 object-cover rounded-xl border border-gray-700"/>
             <p class="text-xs text-gray-500 mt-1">Imagen actual. Subí una nueva para reemplazarla.</p>
           </div>
         {% endif %}
         <label id="imagen-label"
-               class="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-600
+               class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-600
                       rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-900/10 transition-all">
           <svg class="w-8 h-8 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>
-          <span id="imagen-nombre" class="text-sm text-gray-500">Hacé clic para seleccionar una imagen</span>
+          <span id="imagen-nombre" class="text-sm text-gray-500">Hacé clic para seleccionar imagen principal</span>
           <span class="text-xs text-gray-600 mt-1">PNG, JPG, WEBP</span>
           <input type="file" name="imagen" id="imagen" accept="image/*" class="hidden"
-                 onchange="document.getElementById('imagen-nombre').textContent = this.files[0]?.name || 'Hacé clic para seleccionar una imagen'"/>
+                 onchange="document.getElementById('imagen-nombre').textContent = this.files[0]?.name || 'Hacé clic para seleccionar imagen principal'"/>
         </label>
+      </div>
+
+      <!-- ── CÓDIGO DE BARRAS ─────────────────────────── -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M2 4h2v16H2V4zm3 0h1v16H5V4zm2 0h2v16H7V4zm3 0h1v16h-1V4zm2 0h2v16h-2V4zm3 0h1v16h-1V4zm2 0h1v16h-1V4zm2 0h2v16h-2V4z"/>
+          </svg>
+          Código de Barras <span class="text-gray-600 font-normal">(opcional)</span>
+        </label>
+        <input type="text" name="codigo_barras" id="codigo_barras"
+               value="{{ producto.codigo_barras|default:'' }}"
+               placeholder="Ej: 7790123456789"
+               maxlength="50"
+               class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono text-sm
+                      placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500
+                      focus:border-transparent transition-all"/>
+        <p class="text-xs text-gray-600 mt-1">Escaneá directamente en este campo o escribí el código.</p>
+      </div>
+
+      <!-- ── GALERÍA DE IMÁGENES EXTRA ─────────────────── -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-300 mb-2">
+          Galería de fotos adicionales
+          <span class="text-xs font-normal text-gray-500 ml-1">(se muestran en el carrusel de la tienda)</span>
+        </label>
+
+        <!-- Imágenes existentes (solo en edición) -->
+        {% if imagenes_extra %}
+        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3" id="galeria-existentes">
+          {% for img in imagenes_extra %}
+          <div class="relative group" id="img-card-{{ img.pk }}">
+            <img src="{{ img.imagen.url }}" alt="Foto {{ forloop.counter }}"
+                 class="w-full aspect-square object-cover rounded-xl border border-gray-700"/>
+            <label class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl cursor-pointer transition-all">
+              <input type="checkbox" name="eliminar_imagen" value="{{ img.pk }}"
+                     class="hidden eliminar-check" onchange="marcarEliminar(this, 'img-card-{{ img.pk }}')">
+              <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg">✕ Quitar</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Subir nuevas fotos extra -->
+        <label id="extra-label"
+               class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-600
+                      rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-900/10 transition-all">
+          <svg class="w-6 h-6 text-gray-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          <span id="extra-nombre" class="text-sm text-gray-500">Agregar más fotos</span>
+          <span class="text-xs text-gray-600 mt-1">Podés seleccionar varias a la vez</span>
+          <input type="file" name="imagenes_extra" id="imagenes_extra" accept="image/*" multiple class="hidden"
+                 onchange="mostrarPreviewExtra(this)"/>
+        </label>
+
+        <!-- Preview de nuevas fotos seleccionadas -->
+        <div id="preview-extra" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3 hidden"></div>
       </div>
 
       <!-- Nombre -->
@@ -70,27 +194,80 @@
                       focus:border-transparent transition-all"/>
       </div>
 
-      <!-- Tipo / Categoría -->
-      <div>
-        <label for="tipo" class="block text-sm font-semibold text-gray-300 mb-2">Categoría</label>
-        <div class="relative">
-          <select name="tipo" id="tipo"
-                  class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
-                         focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
-                         transition-all appearance-none cursor-pointer">
-            {% for cat in categorias %}
-              <option value="{{ cat.nombre }}" {% if producto.tipo == cat.nombre %}selected{% endif %}>{{ cat.nombre }}</option>
-            {% empty %}
-              <option value="General" selected>General</option>
-            {% endfor %}
-          </select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
+      <!-- Categoría + Subcategoría -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="categoria_id" class="block text-sm font-semibold text-gray-300 mb-2">Categoría</label>
+          <div class="relative">
+            <select name="categoria_id" id="categoria_id"
+                    onchange="actualizarSubcats(this.value)"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
+                           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                           transition-all appearance-none cursor-pointer">
+              <option value="">— Sin categoría —</option>
+              {% for cat in categorias %}
+                <option value="{{ cat.pk }}"
+                        data-subs='[{% for sub in cat.subcategorias.all %}{"pk":{{ sub.pk }},"nombre":"{{ sub.nombre }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
+                        {% if producto.categoria_id == cat.pk %}selected{% endif %}>
+                  {{ cat.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div id="subcategoria-wrapper">
+          <label for="subcategoria_id" class="block text-sm font-semibold text-gray-300 mb-2">
+            Subcategoría <span class="text-gray-600 font-normal">(opcional)</span>
+          </label>
+          <div class="relative">
+            <select name="subcategoria_id" id="subcategoria_id"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
+                           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                           transition-all appearance-none cursor-pointer disabled:opacity-40">
+              <option value="">— Sin subcategoría —</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
+
+      <script>
+      var _productoSubcatActual = {{ producto.subcategoria_id|default:'null' }};
+      function actualizarSubcats(catPk) {
+        var sel = document.getElementById('subcategoria_id');
+        sel.innerHTML = '<option value="">— Sin subcategoría —</option>';
+        if (!catPk) { sel.disabled = true; return; }
+        var catOpt = document.querySelector('#categoria_id option[value="' + catPk + '"]');
+        var subs = [];
+        try { subs = JSON.parse(catOpt ? catOpt.dataset.subs : '[]'); } catch(e) {}
+        if (subs.length === 0) { sel.disabled = true; return; }
+        sel.disabled = false;
+        subs.forEach(function(sub) {
+          var opt = document.createElement('option');
+          opt.value = sub.pk;
+          opt.textContent = sub.nombre;
+          if (sub.pk === _productoSubcatActual) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      }
+      // Inicializar al cargar
+      document.addEventListener('DOMContentLoaded', function() {
+        var catSel = document.getElementById('categoria_id');
+        if (catSel && catSel.value) actualizarSubcats(catSel.value);
+        else document.getElementById('subcategoria_id').disabled = true;
+      });
+      </script>
+
 
       <!-- Precio de venta y Costo en fila -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -101,11 +278,11 @@
           <div class="relative">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">$</span>
             <input type="number" name="precio" id="precio" required step="0.01" min="0"
-                   value="{{ producto.precio|default:'' }}"
+                   value="{{ producto.precio|unlocalize|default:'' }}"
                    placeholder="0.00"
                    class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-8 pr-4 py-3 text-white
                           placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500
-                          focus:border-transparent transition-all"/>
+                          focus:border-transparent transition-all" oninput="calcularGanancia()"/>
           </div>
         </div>
 
@@ -114,17 +291,16 @@
           <div class="relative">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">$</span>
             <input type="number" name="costo" id="costo" step="0.01" min="0"
-                   value="{{ producto.costo|default:'0' }}"
+                   value="{% if producto %}{{ producto.costo|unlocalize }}{% endif %}"
                    placeholder="0.00"
                    class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-8 pr-4 py-3 text-white
                           placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500
-                          focus:border-transparent transition-all"/>
+                          focus:border-transparent transition-all" oninput="calcularGanancia()"/>
           </div>
-          {% if producto and producto.costo %}
-          <p class="text-xs text-emerald-400 mt-1">
-            Ganancia: $ {{ producto.precio|floatformat:2 }}
+          <!-- Ganancia dinámica en tiempo real -->
+          <p id="ganancia-display" class="text-xs text-emerald-400 mt-1" style="display:none">
+            Ganancia: $ <span id="ganancia-valor">0.00</span>
           </p>
-          {% endif %}
         </div>
       </div>
 
@@ -132,7 +308,7 @@
       <div>
         <label class="block text-sm font-semibold text-gray-300 mb-2">Stock</label>
         <input type="number" name="stock" id="stock" min="0"
-               value="{{ producto.stock|default:'0' }}"
+               value="{% if producto %}{{ producto.stock }}{% endif %}"
                placeholder="0"
                class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white
                       placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500
@@ -156,7 +332,7 @@
                        rounded-xl transition-all shadow-lg shadow-purple-900/40 hover:shadow-purple-900/60">
           {% if producto %}Guardar cambios{% else %}Crear producto{% endif %}
         </button>
-        <a href="{% url 'lista_productos' %}"
+        <a href="{% url 'lista_productos' slug=negocio.slug %}"
            class="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold
                   rounded-xl transition-all text-center">
           Cancelar
@@ -166,4 +342,182 @@
   </div>
 </div>
 
+<script>
+function calcularGanancia() {
+  const precio = parseFloat(document.getElementById('precio').value) || 0;
+  const costo = parseFloat(document.getElementById('costo').value) || 0;
+  const display = document.getElementById('ganancia-display');
+  const valor = document.getElementById('ganancia-valor');
+  const ganancia = precio - costo;
+  if (precio > 0 || costo > 0) {
+    valor.textContent = ganancia.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    display.style.display = 'block';
+    display.className = ganancia >= 0
+      ? 'text-xs text-emerald-400 mt-1'
+      : 'text-xs text-red-400 mt-1';
+  } else {
+    display.style.display = 'none';
+  }
+}
+document.addEventListener('DOMContentLoaded', calcularGanancia);
+
+// Preview de imágenes extra seleccionadas
+function mostrarPreviewExtra(input) {
+  const container = document.getElementById('preview-extra');
+  const label = document.getElementById('extra-nombre');
+  container.innerHTML = '';
+  if (input.files.length === 0) {
+    container.classList.add('hidden');
+    label.textContent = 'Agregar más fotos';
+    return;
+  }
+  label.textContent = input.files.length + ' foto(s) seleccionada(s)';
+  container.classList.remove('hidden');
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const div = document.createElement('div');
+      div.className = 'relative';
+      div.innerHTML = `<img src="${e.target.result}" class="w-full aspect-square object-cover rounded-xl border border-purple-500/50"/>`;
+      container.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Marcar imagen existente para eliminar
+function marcarEliminar(checkbox, cardId) {
+  const card = document.getElementById(cardId);
+  if (checkbox.checked) {
+    card.style.opacity = '0.3';
+    card.querySelector('span').textContent = '✓ Se quitará';
+    card.querySelector('span').className = 'bg-red-800 text-white text-xs font-bold px-2 py-1 rounded-lg';
+  } else {
+    card.style.opacity = '1';
+    card.querySelector('span').textContent = '✕ Quitar';
+    card.querySelector('span').className = 'bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg';
+  }
+}
+
+// ── Lógica del Escáner de Barras ──
+let productoEscaneado = null;
+
+// Escuchar enter en el input del escáner
+document.getElementById('barras-input').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    buscarBarras();
+  }
+});
+
+// Auto-focus al cargar si es modo "nuevo producto"
+window.addEventListener('load', () => {
+  if (document.getElementById('barras-input')) {
+    document.getElementById('barras-input').focus();
+  }
+});
+
+function buscarBarras() {
+  const input = document.getElementById('barras-input');
+  const codigo = input.value.trim();
+  if (!codigo) return;
+
+  const urlBusqueda = `{% url 'buscar_por_barras' negocio.slug %}?codigo=${encodeURIComponent(codigo)}`;
+  
+  fetch(urlBusqueda)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('barras-resultado').classList.remove('hidden');
+      document.getElementById('barras-exito').classList.add('hidden');
+      
+      if (data.encontrado) {
+        // Mostrar form encontrado
+        document.getElementById('barras-no-encontrado').classList.add('hidden');
+        document.getElementById('barras-encontrado').classList.remove('hidden');
+        
+        productoEscaneado = data;
+        document.getElementById('barras-nombre').textContent = data.nombre;
+        document.getElementById('barras-stock').textContent = data.stock;
+        document.getElementById('barras-precio').textContent = data.precio;
+        document.getElementById('barras-cantidad').value = 1;
+        document.getElementById('barras-editar-link').href = `/${'{{ negocio.slug }}'}/gestion/productos/${data.pk}/editar/`;
+      } else {
+        // Mostrar form NO encontrado y pre-llenar el formulario de creación
+        document.getElementById('barras-encontrado').classList.add('hidden');
+        document.getElementById('barras-no-encontrado').classList.remove('hidden');
+        
+        const formInput = document.getElementById('codigo_barras');
+        if (formInput) {
+          formInput.value = codigo;
+          // Hacer un breve highlight del input
+          formInput.classList.add('ring-2', 'ring-emerald-500');
+          setTimeout(() => formInput.classList.remove('ring-2', 'ring-emerald-500'), 1500);
+        }
+      }
+      
+      // Limpiar input y volver a focus
+      input.value = '';
+      input.focus();
+    })
+    .catch(err => console.error('Error buscando barras:', err));
+}
+
+function cambiarCantidad(delta) {
+  const input = document.getElementById('barras-cantidad');
+  let val = parseInt(input.value) || 1;
+  val = Math.max(1, val + delta);
+  input.value = val;
+}
+
+function sumarStock() {
+  if (!productoEscaneado) return;
+  const btn = event.currentTarget;
+  const btnText = btn.textContent;
+  
+  const cantidad = parseInt(document.getElementById('barras-cantidad').value) || 1;
+  const urlStock = `{% url 'incrementar_stock_barras' negocio.slug %}`;
+  
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  
+  fetch(urlStock, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: JSON.stringify({ pk: productoEscaneado.pk, cantidad: cantidad })
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = btnText;
+    
+    if (data.ok) {
+      document.getElementById('barras-encontrado').classList.add('hidden');
+      const exito = document.getElementById('barras-exito');
+      exito.classList.remove('hidden');
+      document.getElementById('barras-exito-msg').textContent = `Stock actualizado: ${data.nuevo_stock} u. de "${data.nombre}"`;
+      
+      // Si estamos editando ESE mismo producto, actualizar el form
+      const stockInput = document.querySelector('input[name="stock"]');
+      if (stockInput && '{{ producto.pk }}' == productoEscaneado.pk) {
+        stockInput.value = data.nuevo_stock;
+      }
+      
+      productoEscaneado = null;
+      document.getElementById('barras-input').focus();
+      
+      setTimeout(() => exito.classList.add('hidden'), 5000);
+    } else {
+      alert('Error: ' + data.error);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.textContent = btnText;
+    alert('Error al comunicar con el servidor.');
+  });
+}
+</script>
 {% endblock %}

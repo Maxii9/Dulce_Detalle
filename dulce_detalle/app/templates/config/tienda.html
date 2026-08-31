@@ -5,23 +5,342 @@
   <h1 class="text-2xl font-bold text-content-title mb-6 flex items-center gap-2">
     <span>⚙️</span> Información del Negocio
   </h1>
-  <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6">
-    <form method="post" class="space-y-5">
+  <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border p-6 space-y-8">
+    <form method="post" enctype="multipart/form-data" class="space-y-5">
       {% csrf_token %}
       <div>
         <label class="block text-sm font-bold text-content-subtitle mb-2">Nombre público <span class="text-red-500">*</span></label>
-        <input type="text" name="nombre" value="{{ negocio.nombre }}" required maxlength="100" class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">
+        <input type="text" name="nombre" value="{{ negocio.nombre }}" required maxlength="100"
+          class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">
       </div>
       <div>
         <label class="block text-sm font-bold text-content-subtitle mb-2">Emoji de la tienda</label>
-        <input type="text" name="emoji" value="{{ negocio.emoji }}" maxlength="10" class="w-full sm:w-20 text-2xl border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus text-center">
+        <input type="text" name="emoji" value="{{ negocio.emoji }}" maxlength="10"
+          class="w-full sm:w-20 text-2xl border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus text-center">
       </div>
       <div>
         <label class="block text-sm font-bold text-content-subtitle mb-2">Descripción (Opcional)</label>
-        <textarea name="descripcion" rows="3" maxlength="500" class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">{{ negocio.descripcion }}</textarea>
+        <textarea name="descripcion" rows="3" maxlength="500"
+          class="w-full border border-input-border rounded-lg px-4 py-2 text-input-text focus:outline-none focus:ring-2 focus:ring-input-focus">{{ negocio.descripcion }}</textarea>
       </div>
-      <button type="submit" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Guardar Cambios</button>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- PALETA DE COLORES                                       -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div class="border-t border-card-border pt-5">
+        <h2 class="text-base font-bold text-content-title mb-1">🎨 Paleta de colores</h2>
+        <p class="text-xs text-content-subtitle mb-4">Personalizá los colores de tu tienda. Los cambios se aplican en el panel y en tu tienda pública.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Color Primario</label>
+            <div class="flex items-center gap-3">
+              <input type="color" name="color_primario" id="color_primario"
+                value="{{ negocio.color_primario }}"
+                class="w-12 h-12 rounded-xl border border-input-border cursor-pointer p-1">
+              <div>
+                <input type="text" id="color_primario_hex" value="{{ negocio.color_primario }}"
+                  maxlength="7" placeholder="#ec4899"
+                  class="border border-input-border rounded-lg px-3 py-2 text-sm w-28 text-input-text focus:outline-none focus:ring-1 focus:ring-input-focus font-mono">
+                <p class="text-xs text-content-subtitle mt-1">Principal (sidebar, botones)</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Color Secundario</label>
+            <div class="flex items-center gap-3">
+              <input type="color" name="color_secundario" id="color_secundario"
+                value="{{ negocio.color_secundario }}"
+                class="w-12 h-12 rounded-xl border border-input-border cursor-pointer p-1">
+              <div>
+                <input type="text" id="color_secundario_hex" value="{{ negocio.color_secundario }}"
+                  maxlength="7" placeholder="#be185d"
+                  class="border border-input-border rounded-lg px-3 py-2 text-sm w-28 text-input-text focus:outline-none focus:ring-1 focus:ring-input-focus font-mono">
+                <p class="text-xs text-content-subtitle mt-1">Acento (textos activos)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Vista Previa -->
+        <div class="mt-5 p-4 rounded-xl border border-card-border bg-gray-50">
+          <p class="text-xs text-content-subtitle mb-3 font-semibold uppercase tracking-wider">Vista previa</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <span id="preview_badge"
+              style="background-color: {{ negocio.color_primario }}; color: white;"
+              class="px-4 py-2 rounded-full text-sm font-bold transition-all">Botón principal</span>
+            <span id="preview_text"
+              style="color: {{ negocio.color_secundario }};"
+              class="text-sm font-semibold">Texto acento</span>
+            <span id="preview_outline"
+              style="border: 2px solid {{ negocio.color_primario }}; color: {{ negocio.color_primario }};"
+              class="px-4 py-2 rounded-full text-sm font-bold bg-white">Outlined</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPCIONES VISUALES DE LA TIENDA -->
+      <!-- ====================================================== -->
+      <div class="border-t border-card-border pt-5">
+        <h2 class="text-base font-bold text-content-title mb-1">🎠 Tienda pública</h2>
+        <p class="text-xs text-content-subtitle mb-4">Personalizá cómo se ve tu tienda online para tus clientes.</p>
+        <div class="space-y-4">
+
+          <!-- Velocidad del carrusel -->
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Velocidad del carrusel de productos</label>
+            <div class="grid grid-cols-3 gap-2">
+              {% for val, label in negocio.VELOCIDAD_CHOICES %}
+              <label class="cursor-pointer group">
+                <input type="radio" name="velocidad_carrusel" value="{{ val }}"
+                       class="peer sr-only"
+                       {% if negocio.velocidad_carrusel == val %}checked{% endif %}>
+                <div class="flex flex-col items-center justify-center p-3 border-2 border-card-border rounded-xl
+                            bg-white peer-checked:border-sidebar-text peer-checked:bg-sidebar-bg/10
+                            hover:bg-gray-50 transition-all text-center">
+                  <span class="text-lg mb-1">
+                    {% if val == 'lento' %}🐢{% elif val == 'rapido' %}⚡{% else %}🚶{% endif %}
+                  </span>
+                  <span class="text-xs font-bold text-content-subtitle">{{ label }}</span>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Estilo de fuente del título -->
+          <div>
+            <label class="block text-sm font-semibold text-content-subtitle mb-2">Estilo del nombre en la tienda pública</label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {% for val, label in negocio.ESTILO_FUENTE_CHOICES %}
+              <label class="cursor-pointer">
+                <input type="radio" name="estilo_fuente" value="{{ val }}"
+                       class="peer sr-only"
+                       {% if negocio.estilo_fuente == val %}checked{% endif %}>
+                <div class="flex flex-col items-center justify-center p-3 border-2 border-card-border rounded-xl
+                            bg-white peer-checked:border-sidebar-text peer-checked:bg-sidebar-bg/10
+                            hover:bg-gray-50 transition-all text-center gap-1">
+                  <span class="text-lg leading-none
+                    {% if val == 'abril' %}font-['Abril_Fatface'] italic
+                    {% elif val == 'playfair' %}font-['Playfair_Display'] italic font-black
+                    {% elif val == 'bebas' %}font-['Bebas_Neue'] tracking-widest uppercase
+                    {% elif val == 'dancing' %}font-['Dancing_Script'] font-bold
+                    {% elif val == 'righteous' %}font-['Righteous']
+                    {% elif val == 'unbounded' %}font-['Unbounded'] font-black text-base
+                    {% endif %}"
+                    style="color:{{ negocio.color_primario }}">
+                    Aa
+                  </span>
+                  <span class="text-[10px] font-semibold text-content-subtitle leading-tight">{{ label|truncatechars:22 }}</span>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Mostrar descripción -->
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="mostrar_descripcion" value="1"
+                   {% if negocio.mostrar_descripcion %}checked{% endif %}
+                   class="mt-0.5 w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <div>
+              <p class="font-semibold text-content-value text-sm">Mostrar descripción de la tienda</p>
+              <p class="text-xs text-content-subtitle mt-0.5">Si está activado, se muestra el texto de descripción debajo del nombre en tu tienda online. Desactivá si preferís que no aparezca.</p>
+            </div>
+          </label>
+
+          <!-- ── LOGO DE LA TIENDA ── -->
+          <div class="border-t border-card-border pt-4">
+            <h3 class="text-sm font-bold text-content-title mb-1 flex items-center gap-2">
+              🖼️ Logo de la tienda
+            </h3>
+            <p class="text-xs text-content-subtitle mb-3">El logo se muestra en el encabezado de tu tienda online. Ideal usar una imagen con fondo blanco o sin fondo (PNG/SVG).</p>
+
+            <div class="mb-4">
+              <label class="block text-sm font-semibold text-content-subtitle mb-2">Tamaño del logo</label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {% for val, label in negocio.TAMANO_LOGO_CHOICES %}
+                <label class="cursor-pointer group">
+                  <input type="radio" name="tamano_logo" value="{{ val }}"
+                         class="peer sr-only"
+                         {% if negocio.tamano_logo == val %}checked{% endif %}>
+                  <div class="flex flex-col items-center justify-center p-3 border-2 border-card-border rounded-xl
+                              bg-white peer-checked:border-sidebar-text peer-checked:bg-sidebar-bg/10
+                              hover:bg-gray-50 transition-all text-center">
+                    <span class="text-lg mb-1">
+                      {% if val == 'pequeno' %}S{% elif val == 'mediano' %}M{% elif val == 'grande' %}L{% else %}XL{% endif %}
+                    </span>
+                    <span class="text-xs font-bold text-content-subtitle">{{ label }}</span>
+                  </div>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            {% if negocio.logo %}
+            <!-- Logo actual -->
+            <div class="flex items-center gap-4 mb-3 p-3 bg-card-bg-alt rounded-xl border border-card-border">
+              <img src="{{ negocio.logo.url }}" alt="Logo actual"
+                   class="w-20 h-20 object-contain rounded-lg border border-card-border bg-white p-1">
+              <div class="flex-1">
+                <p class="text-xs font-semibold text-content-value">Logo actual</p>
+                <p class="text-xs text-content-subtitle mt-0.5">Subí una nueva imagen para reemplazarlo.</p>
+                <label class="flex items-center gap-2 mt-2 cursor-pointer group">
+                  <input type="checkbox" name="eliminar_logo" value="1" id="eliminar_logo_check"
+                         class="w-4 h-4 rounded accent-red-500 cursor-pointer">
+                  <span class="text-xs text-red-500 font-semibold group-hover:text-red-600 transition-colors">Eliminar logo actual</span>
+                </label>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Zona de upload -->
+            <label id="logo-label"
+                   class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-card-border
+                          rounded-xl cursor-pointer hover:border-sidebar-text hover:bg-sidebar-bg/30 transition-all">
+              <svg class="w-7 h-7 text-content-subtitle mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              <span id="logo-label-text" class="text-sm text-content-subtitle">Hacé clic para subir el logo</span>
+              <span class="text-xs text-content-subtitle mt-0.5">PNG, JPG, SVG — Recomendado fondo blanco o transparente</span>
+              <input type="file" name="logo" id="logo-input" accept="image/*" class="hidden"
+                     onchange="previewLogo(this)">
+            </label>
+
+            <!-- Preview del nuevo logo seleccionado -->
+            <div id="logo-preview-container" class="hidden mt-3 flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+              <img id="logo-preview-img" src="" alt="Preview" class="w-16 h-16 object-contain rounded-lg bg-white border border-emerald-200 p-1">
+              <div>
+                <p class="text-xs font-semibold text-emerald-700">Logo listo para subir</p>
+                <p id="logo-preview-nombre" class="text-xs text-emerald-600 mt-0.5"></p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ====================================================== -->
+      <!-- OPCIONES DE ENVÍO                                      -->
+      <!-- ====================================================== -->
+      <div class="border-t border-card-border pt-5">
+        <h2 class="text-base font-bold text-content-title mb-1">🚚 Opciones de Envío</h2>
+        <p class="text-xs text-content-subtitle mb-4">Elegí qué métodos de envío ofrecer en tu tienda. Los clientes podrán seleccionar entre las opciones activadas.</p>
+        <div class="space-y-3">
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="envio_domicilio" value="1"
+                   {% if negocio.envio_domicilio %}checked{% endif %}
+                   class="w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <span class="text-xl">🏠</span>
+            <div>
+              <p class="font-semibold text-content-value text-sm">A domicilio</p>
+              <p class="text-xs text-content-subtitle">El pedido se entrega en la dirección del cliente.</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="envio_retiro" value="1"
+                   {% if negocio.envio_retiro %}checked{% endif %}
+                   class="w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <span class="text-xl">🏪</span>
+            <div>
+              <p class="font-semibold text-content-value text-sm">Retiro en tienda</p>
+              <p class="text-xs text-content-subtitle">El cliente pasa a retirar el pedido en tu local.</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-card-border bg-card-bg-alt cursor-pointer hover:border-sidebar-text transition-all">
+            <input type="checkbox" name="envio_convenir" value="1"
+                   {% if negocio.envio_convenir %}checked{% endif %}
+                   class="w-5 h-5 rounded accent-[var(--color-sidebar-text)] cursor-pointer">
+            <span class="text-xl">🤝</span>
+            <div>
+              <p class="font-semibold text-content-value text-sm">A convenir</p>
+              <p class="text-xs text-content-subtitle">El método de entrega se coordina por mensaje.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <button type="submit"
+        class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+        Guardar Cambios
+      </button>
     </form>
   </div>
 </div>
+
+<script>
+  // Sincroniza input[type=color] <-> input[type=text]
+  function syncColor(colorInputId, hexInputId, previewIds) {
+    const colorInput = document.getElementById(colorInputId);
+    const hexInput = document.getElementById(hexInputId);
+
+    colorInput.addEventListener('input', function () {
+      hexInput.value = this.value;
+      updatePreviews(this.value, previewIds);
+    });
+
+    hexInput.addEventListener('input', function () {
+      if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+        colorInput.value = this.value;
+        updatePreviews(this.value, previewIds);
+      }
+    });
+  }
+
+  function updatePreviews(color, type) {
+    const badge = document.getElementById('preview_badge');
+    const text = document.getElementById('preview_text');
+    const outline = document.getElementById('preview_outline');
+    if (type === 'primary') {
+      badge.style.backgroundColor = color;
+      outline.style.borderColor = color;
+      outline.style.color = color;
+    } else {
+      text.style.color = color;
+    }
+  }
+
+  const colorP = document.getElementById('color_primario');
+  const hexP = document.getElementById('color_primario_hex');
+  colorP.addEventListener('input', function () {
+    hexP.value = this.value;
+    updatePreviews(this.value, 'primary');
+  });
+  hexP.addEventListener('input', function () {
+    if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+      colorP.value = this.value;
+      updatePreviews(this.value, 'primary');
+    }
+  });
+
+  const colorS = document.getElementById('color_secundario');
+  const hexS = document.getElementById('color_secundario_hex');
+  colorS.addEventListener('input', function () {
+    hexS.value = this.value;
+    updatePreviews(this.value, 'secondary');
+  });
+  hexS.addEventListener('input', function () {
+    if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+      colorS.value = this.value;
+      updatePreviews(this.value, 'secondary');
+    }
+  });
+
+  // Preview del logo seleccionado
+  function previewLogo(input) {
+    const container = document.getElementById('logo-preview-container');
+    const previewImg = document.getElementById('logo-preview-img');
+    const labelText = document.getElementById('logo-label-text');
+    const previewNombre = document.getElementById('logo-preview-nombre');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        container.classList.remove('hidden');
+        labelText.textContent = '✅ Logo seleccionado';
+        previewNombre.textContent = input.files[0].name;
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+</script>
 {% endblock %}

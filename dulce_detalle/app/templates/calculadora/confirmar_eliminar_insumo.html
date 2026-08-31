@@ -16,7 +16,7 @@
     <p class="text-gray-400 mb-8 px-4">Esta acción no puede deshacerse. El insumo será borrado permanentemente y ya no estará disponible en tu calculadora, aunque los cálculos anteriores no se alterarán al ser estáticos.</p>
 
     <div class="flex items-center gap-4 w-full">
-      <a href="{% url 'calculadora_costos' %}"
+      <a href="{% url 'calculadora_costos' slug=negocio.slug %}"
          class="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-all">
         No, cancelar
       </a>

@@ -1,52 +1,242 @@
 {% extends "tienda_publica/base_publica.html" %}
+{% load imagen_tags %}
+
+{% block hero %}
+<!-- Cabecera -->
+<div class="mt-8 mb-4 px-4 text-center flex flex-col items-center justify-center gap-4 relative">
+  <div class="w-full max-w-2xl mx-auto bg-white/40 backdrop-blur-md border border-white/60 rounded-[2rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent pointer-events-none"></div>
+    {% if negocio.logo %}
+    <img src="{{ negocio.logo.url }}" alt="Logo {{ negocio.nombre }}" class="w-28 h-28 mx-auto rounded-3xl object-cover shadow-lg mb-6 relative z-10 ring-4 ring-white/50">
+    {% endif %}
+    <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 relative z-10 tracking-tight" style="font-family: 'Playfair Display', serif;">Catálogo de Productos</h1>
+    <p class="text-gray-600 md:text-lg leading-relaxed relative z-10">{{ negocio.descripcion }}</p>
+    
+    <form method="get" class="relative flex items-center w-full max-w-md mx-auto mt-8 z-10">
+      {% if tipo_activo %}
+        <input type="hidden" name="tipo" value="{{ tipo_activo }}">
+      {% endif %}
+      <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar en la tienda..."
+             class="w-full pl-12 pr-4 py-3.5 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-full text-base text-gray-900 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 shadow-sm transition-all placeholder-gray-400">
+      <svg class="w-5 h-5 text-brand absolute left-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      {% if query %}
+      <a href="{% url 'tienda_publica' negocio.slug %}{% if tipo_activo %}?tipo={{ tipo_activo }}{% endif %}" class="absolute right-3 text-gray-400 hover:text-red-500 p-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<!-- Cabecera -->
-<div class="mb-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4">
-  <div>
-    <h1 class="text-3xl font-bold text-gray-900">Catálogo de Productos</h1>
-    <p class="text-gray-500 mt-1">{{ negocio.descripcion }}</p>
-  </div>
-  
-  <form method="get" class="relative flex items-center w-full sm:w-auto">
-    <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar en la tienda..."
-           class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm text-gray-900 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand shadow-sm transition-all">
-    <svg class="w-4 h-4 text-gray-400 absolute left-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+<!-- ── Filtros de Categoría: desplegable acordeón ── -->
+{% if categorias_agrupadas %}
+<div class="mb-6 relative" id="tp-cat-wrapper">
+  <button type="button" id="tp-cat-btn" onclick="toggleTpCat()"
+          class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all
+                 {% if cat_activa or sub_activa %}bg-tienda text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h6"/>
     </svg>
-    {% if query %}
-    <a href="{% url 'tienda_publica' negocio.slug %}" class="absolute right-3 text-gray-400 hover:text-red-500 p-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-      </svg>
+    Categorías
+    {% if cat_activa or sub_activa %}<span class="w-2 h-2 bg-white rounded-full inline-block ml-1"></span>{% endif %}
+    <svg id="tp-cat-arrow" class="w-3.5 h-3.5 ml-1 transition-transform duration-200"
+         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+
+  <div id="tp-cat-panel"
+       class="hidden absolute left-0 top-full mt-2 z-30 bg-white border border-gray-100 rounded-2xl shadow-xl w-64 overflow-hidden">
+
+    <a href="{% url 'tienda_publica' negocio.slug %}{% if query %}?q={{ query }}{% endif %}"
+       class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors
+              {% if not cat_activa and not sub_activa %}text-tienda bg-tienda-soft{% else %}text-gray-700{% endif %}">
+      <span class="text-base">🛍️</span> Todos
     </a>
-    {% endif %}
-  </form>
+
+    <div class="border-t border-gray-100">
+      {% for grupo in categorias_agrupadas %}
+      <div>
+        <div class="flex items-center">
+          <a href="?categoria={{ grupo.cat.pk }}{% if query %}&q={{ query }}{% endif %}"
+             class="flex-1 px-4 py-2 text-sm font-bold hover:bg-gray-50 transition-colors
+                    {% if cat_activa == grupo.cat.pk|stringformat:'s' and not sub_activa %}text-tienda bg-tienda-soft{% else %}text-gray-700{% endif %}">
+            {{ grupo.cat.nombre }}
+          </a>
+          {% if grupo.subs %}
+          <button type="button" onclick="toggleTpSub('tp-sub-{{ grupo.cat.pk }}')"
+                  class="pr-3 text-gray-400 hover:text-gray-600 transition-colors">
+            <svg id="tp-arr-{{ grupo.cat.pk }}" class="w-4 h-4 transition-transform duration-200"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+          {% endif %}
+        </div>
+        {% if grupo.subs %}
+        <div id="tp-sub-{{ grupo.cat.pk }}"
+             class="{% if cat_activa == grupo.cat.pk|stringformat:'s' or sub_activa %}block{% else %}hidden{% endif %} bg-gray-50 border-t border-gray-100">
+          {% for sub in grupo.subs %}
+          <a href="?subcategoria={{ sub.pk }}{% if query %}&q={{ query }}{% endif %}"
+             class="flex items-center gap-2 pl-8 pr-4 py-2 text-xs font-semibold hover:bg-gray-100 transition-colors
+                    {% if sub_activa == sub.pk|stringformat:'s' %}text-tienda{% else %}text-gray-500{% endif %}">
+            <span class="text-gray-400">└</span> {{ sub.nombre }}
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 </div>
 
-<!-- Filtros de Categoría -->
-<div class="mb-6 -mx-4 px-4 overflow-x-auto">
-  <div class="flex gap-2 pb-2 min-w-max">
-    <a href="{% url 'tienda_publica' negocio.slug %}{% if query %}?q={{ query }}{% endif %}"
-       class="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all
-              {% if not tipo_activo %}bg-gray-900 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
-      🛍️ Todos
-    </a>
-    {% for valor, etiqueta in tipos %}
-    <a href="?tipo={{ valor }}{% if query %}&q={{ query }}{% endif %}"
-       class="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all
-              {% if tipo_activo == valor %}bg-gray-900 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
-      {{ etiqueta }}
-    </a>
-    {% endfor %}
+<script>
+function toggleTpCat() {
+  var panel = document.getElementById('tp-cat-panel');
+  var arrow = document.getElementById('tp-cat-arrow');
+  var open = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', open);
+  arrow.style.transform = open ? '' : 'rotate(180deg)';
+}
+function toggleTpSub(id) {
+  var panel = document.getElementById(id);
+  var catPk = id.replace('tp-sub-', '');
+  var arrow = document.getElementById('tp-arr-' + catPk);
+  var open = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', open);
+  if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
+}
+document.addEventListener('click', function(e) {
+  var w = document.getElementById('tp-cat-wrapper');
+  if (w && !w.contains(e.target)) {
+    document.getElementById('tp-cat-panel').classList.add('hidden');
+    document.getElementById('tp-cat-arrow').style.transform = '';
+  }
+});
+</script>
+{% endif %}
+
+
+<!-- ── BANDA ANIMADA MARQUEE ────────────────────── -->
+{% if productos_con_cant %}
+<div class="marquee-wrapper w-full overflow-hidden mb-10 py-4" style="position:relative;background: linear-gradient(90deg, rgba(249,250,251,1) 0%, rgba(255,255,255,0) 10%, rgba(255,255,255,0) 90%, rgba(249,250,251,1) 100%); border-radius: 1rem;">
+  
+  <div class="marquee-container flex gap-4 w-max hover:[animation-play-state:paused]"
+       id="marquee-band"
+       style="animation: scroll 60s linear infinite;">
+    
+    <!-- Original -->
+    <div class="flex gap-4 items-center" id="marquee-original">
+      {% for prod, cant in productos_con_cant %}
+        <div class="flex items-center gap-3 bg-white border border-gray-100 rounded-full px-4 py-2 shadow-sm w-max shrink-0 transition-transform hover:scale-105 hover:shadow-md cursor-pointer producto-btn"
+             data-pk="{{ prod.pk }}" data-nombre="{{ prod.nombre }}" data-desc="{{ prod.descripcion }}" data-precio="{{ prod.precio }}">
+          {% if prod.imagen %}
+            <img src="{% cloudinary_thumb prod.imagen 80 80 %}" alt="{{ prod.nombre }}" class="w-10 h-10 object-cover rounded-full shadow-sm" loading="lazy">
+          {% else %}
+            <div class="w-10 h-10 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center shadow-sm">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+          {% endif %}
+          <div class="flex flex-col justify-center">
+            <span class="text-sm font-bold text-gray-900 leading-tight max-w-[120px] truncate">{{ prod.nombre }}</span>
+            <span class="text-xs font-semibold text-emerald-600">
+              ${{ prod.precio }} 
+              {% if prod.stock <= 0 %}<span class="text-red-500">(Agotado)</span>{% endif %}
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Clon para scroll infinito sin cortes -->
+    <div class="flex gap-4 items-center" aria-hidden="true">
+      {% for prod, cant in productos_con_cant %}
+        <div class="flex items-center gap-3 bg-white border border-gray-100 rounded-full px-4 py-2 shadow-sm w-max shrink-0 transition-transform hover:scale-105 hover:shadow-md cursor-pointer producto-btn"
+             data-pk="{{ prod.pk }}" data-nombre="{{ prod.nombre }}" data-desc="{{ prod.descripcion }}" data-precio="{{ prod.precio }}">
+          {% if prod.imagen %}
+            <img src="{% cloudinary_thumb prod.imagen 80 80 %}" alt="{{ prod.nombre }}" class="w-10 h-10 object-cover rounded-full shadow-sm" loading="lazy">
+          {% else %}
+            <div class="w-10 h-10 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center shadow-sm">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+          {% endif %}
+          <div class="flex flex-col justify-center">
+            <span class="text-sm font-bold text-gray-900 leading-tight max-w-[120px] truncate">{{ prod.nombre }}</span>
+            <span class="text-xs font-semibold text-emerald-600">
+              ${{ prod.precio }} 
+              {% if prod.stock <= 0 %}<span class="text-red-500">(Agotado)</span>{% endif %}
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
   </div>
+
+  <style>
+    @keyframes scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(calc(-50% - 0.5rem)); }
+    }
+    /* Pseudo-elementos de difuminado SOLO para el marquee */
+    .marquee-wrapper::before, .marquee-wrapper::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 40px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .marquee-wrapper::before {
+      left: 0;
+      background: linear-gradient(to right, #f9fafb, transparent);
+    }
+    .marquee-wrapper::after {
+      right: 0;
+      background: linear-gradient(to left, #f9fafb, transparent);
+    }
+  </style>
+
+  <script>
+  /* Velocidad constante en px/segundo, independiente del número de productos */
+  (function() {
+    var VELOCIDAD_PX = {% if negocio.velocidad_carrusel == 'lento' %}80{% elif negocio.velocidad_carrusel == 'rapido' %}200{% else %}130{% endif %};
+    var band = document.getElementById('marquee-band');
+    var original = document.getElementById('marquee-original');
+    if (!band || !original) return;
+    
+    function setSpeed() {
+      var anchoPista = original.offsetWidth; /* ancho de UN set de productos */
+      if (!anchoPista) return;
+      var duracion = anchoPista / VELOCIDAD_PX;
+      band.style.animationDuration = duracion.toFixed(2) + 's';
+    }
+    
+    /* Esperar a que el DOM pinte para medir el ancho real */
+    requestAnimationFrame(setSpeed);
+    window.addEventListener('load', setSpeed);
+    window.addEventListener('resize', setSpeed);
+  })();
+  </script>
 </div>
+{% endif %}
+
 
 <!-- Grilla de productos -->
 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
-  
+
   {% for producto, en_carrito in productos_con_cant %}
   <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col group border border-gray-100">
+
+    <!-- Zona imagen -->
     <div class="w-full aspect-[4/5] overflow-hidden bg-gray-50 relative">
       {% if producto.pk in top_vendidos %}
         <div class="absolute top-2 left-2 z-20">
@@ -57,13 +247,25 @@
       {% endif %}
       {% if producto.stock <= 0 %}
         <div class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
-          <span class="bg-gray-900 text-white font-bold text-xs tracking-widest uppercase px-3 py-1.5 rounded-full shadow-lg">Agotado</span>
+          <span class="bg-tienda text-white font-bold text-xs tracking-widest uppercase px-3 py-1.5 rounded-full shadow-lg">Agotado</span>
         </div>
       {% endif %}
 
       {% if producto.imagen %}
-        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
-             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+        {# Botón con todos los datos como atributos — sin depender del DOM #}
+        <button type="button"
+          class="w-full h-full block focus:outline-none cursor-zoom-in producto-btn"
+          data-pk="{{ producto.pk }}"
+          data-nombre="{{ producto.nombre }}"
+          data-desc="{{ producto.descripcion|default:'' }}"
+          data-precio="{{ producto.precio }}"
+          title="Ver fotos del producto">
+          <img src="{% cloudinary_thumb producto.imagen 600 750 %}" alt="{{ producto.nombre }}"
+               loading="lazy"
+               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"/>
+        </button>
+        {# Badge de cantidad de fotos — se rellena por JS #}
+        <span class="galeria-badge absolute bottom-2 right-2 z-20" data-pk="{{ producto.pk }}"></span>
       {% else %}
         <div class="w-full h-full flex items-center justify-center text-gray-300">
           <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,24 +275,37 @@
       {% endif %}
     </div>
 
+    <!-- Info -->
     <div class="p-4 flex flex-col flex-1">
-      <!-- Categoría badge -->
-      <span class="inline-block self-start px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 mb-1">
-        {{ producto.get_tipo_display }}
+      <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-tienda-soft text-tienda tracking-wide mb-1">
+        {{ producto.categoria.nombre|default:"Sin categoría"|upper }}{% if producto.subcategoria %} › {{ producto.subcategoria.nombre|upper }}{% endif %}
       </span>
-      <p class="text-xs text-gray-500 leading-snug line-clamp-2">{{ producto.nombre }}</p>
-      <p class="text-lg font-extrabold text-gray-900 mt-auto">$ {{ producto.precio }}</p>
-      
-      <div class="mt-4">
-        {% if producto.stock > 0 %}
+      <p class="text-xs text-gray-800 font-semibold leading-snug line-clamp-2">{{ producto.nombre }}</p>
+      {% if producto.descripcion %}
+        <p class="text-xs text-gray-400 leading-snug line-clamp-2 mt-0.5">{{ producto.descripcion }}</p>
+      {% endif %}
+      <p class="text-lg font-extrabold text-gray-900 mt-auto pt-2">$ {{ producto.precio }}</p>
+
+      <div class="mt-3">
+        {% if es_propietario %}
+        <button disabled class="w-full py-2.5 bg-indigo-50 text-indigo-500 border border-indigo-200 font-medium rounded-xl cursor-not-allowed text-sm">
+          Modo Vista Previa
+        </button>
+        {% elif producto.stock > 0 %}
           {% if en_carrito >= producto.stock %}
-          <button disabled class="w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm">
-            Máx. en carrito ({{ en_carrito }})
+          <button disabled class="btn-add-disabled w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm"
+                  data-pk="{{ producto.pk }}" data-stock="{{ producto.stock }}">
+            Agotado ❌
           </button>
           {% else %}
+          {# Fallback href para sin JS; JS lo intercepta vía fetch() #}
           <a href="{% url 'agregar_carrito_publico' negocio.slug producto.pk %}"
-             class="block w-full text-center py-2.5 bg-gray-900 hover:bg-brand text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm">
-            Añadir{% if en_carrito > 0 %} · {{ en_carrito }} en carrito{% endif %}
+             class="btn-add block w-full text-center py-2.5 bg-tienda hover:bg-tienda text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm opacity-95 hover:opacity-100"
+             data-pk="{{ producto.pk }}"
+             data-url-agregar="{% url 'carrito_api_agregar' negocio.slug producto.pk %}"
+             data-en-carrito="{{ en_carrito }}"
+             data-stock="{{ producto.stock }}">
+            {% if en_carrito > 0 %}+ Añadir · <span class="carrito-badge-{{ producto.pk }}">{{ en_carrito }}</span> en carrito{% else %}Añadir al carrito{% endif %}
           </a>
           {% endif %}
         {% else %}
@@ -104,9 +319,614 @@
   {% empty %}
   <div class="col-span-full py-16 text-center text-gray-400">
     <span class="text-6xl opacity-30 block mb-4">🛍️</span>
-    <p class="text-lg">No hay productos disponibles por el momento.</p>
+    <p class="text-lg">No hay productos disponibles{% if tipo_activo %} en esta categoría{% endif %}.</p>
   </div>
   {% endfor %}
 
 </div>
+
+{# ── Datos de galería en JSON — |safe evita el escape HTML ── #}
+<script id="galeria-data" type="application/json">{{ galeria_json|safe }}</script>
+
+{# ── LIGHTBOX MODAL CAROUSEL ── #}
+<div id="lightbox-overlay"
+     class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-md"
+     style="display:none">
+
+  {# Backdrop clickeable para cerrar #}
+  <div class="absolute inset-0" id="lightbox-backdrop"></div>
+
+  {# Card centrada - angosta y premium #}
+  <div id="lightbox-card"
+       class="absolute bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col w-full"
+       style="max-width: 440px; margin: auto; border: 1px solid #f1f5f9;">
+
+    {# Botón cerrar - Transúcido y premium #}
+    <button id="lightbox-close"
+            class="absolute top-4 right-4 z-30 w-9 h-9 flex items-center justify-center bg-white/80 hover:bg-white text-gray-800 rounded-full border border-gray-200/50 shadow-md backdrop-blur-sm transition-all active:scale-95">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+
+    {# Zona imagen: Aspecto cuadrado, sin fondo negro, sin bordes #}
+    <div class="relative bg-white overflow-hidden w-full aspect-square flex-shrink-0" style="min-height:0">
+
+      {# Track de slides #}
+      <div id="carousel-track"
+           class="flex h-full transition-transform duration-300 ease-in-out"
+           style="will-change:transform">
+      </div>
+
+      {# Flecha izquierda - Premium blanca #}
+      <button id="btn-prev"
+              class="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9
+                     bg-white/90 hover:bg-white text-gray-800 rounded-full border border-gray-100
+                     shadow-md flex items-center justify-center transition-all active:scale-95 backdrop-blur-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+
+      {# Flecha derecha - Premium blanca #}
+      <button id="btn-next"
+              class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9
+                     bg-white/90 hover:bg-white text-gray-800 rounded-full border border-gray-100
+                     shadow-md flex items-center justify-center transition-all active:scale-95 backdrop-blur-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>
+
+      {# Contador fotos - Translúcido #}
+      <div id="foto-counter"
+           class="absolute top-4 left-4 z-10 bg-white/80 border border-gray-200/50 text-gray-800 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm backdrop-blur-sm">
+        1 / 1
+      </div>
+
+      {# Dots - Pequeñas píldoras minimalistas #}
+      <div id="carousel-dots"
+           class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+      </div>
+    </div>
+
+    {# Info del producto #}
+    <div class="px-6 py-5 border-t border-gray-100 flex-shrink-0 bg-white">
+      <h2 id="lb-nombre" class="text-lg font-bold text-gray-900 leading-tight"></h2>
+      <p id="lb-desc" class="text-xs text-gray-500 mt-1 leading-relaxed max-h-24 overflow-y-auto pr-1 custom-scrollbar"></p>
+      <div class="flex items-center justify-between mt-4">
+        <p id="lb-precio" class="text-xl font-extrabold text-gray-900"></p>
+        <span class="text-[10px] uppercase font-bold tracking-wider text-tienda bg-tienda-soft px-2 py-0.5 rounded-full">Detalle</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+#lightbox-overlay { align-items: center; justify-content: center; }
+#lightbox-card { top:50%; left:50%; transform:translate(-50%,-50%); position:absolute; }
+@media (max-width:640px) {
+  #lightbox-card { width: 92%; max-width: 380px; }
+}
+/* Scrollbar ultra-sutil para descripción */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+</style>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── 1. Leer galería desde JSON embebido ── */
+  var galeriaData = {};
+  try {
+    galeriaData = JSON.parse(document.getElementById('galeria-data').textContent);
+  } catch (e) {
+    console.error('galeria-data JSON error:', e);
+  }
+
+  /* ── 2. Agregar badges en tarjetas con varias fotos ── */
+  document.querySelectorAll('.galeria-badge').forEach(function (el) {
+    var pk = el.dataset.pk;
+    var imgs = galeriaData[pk];
+    if (imgs && imgs.length > 1) {
+      el.innerHTML = '<span style="background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;backdrop-filter:blur(4px)">📷 ' + imgs.length + '</span>';
+    }
+  });
+
+  /* ── 3. Lightbox state ── */
+  var currentImages = [];
+  var currentIndex = 0;
+
+  var overlay  = document.getElementById('lightbox-overlay');
+  var backdrop = document.getElementById('lightbox-backdrop');
+  var track    = document.getElementById('carousel-track');
+  var dots     = document.getElementById('carousel-dots');
+  var counter  = document.getElementById('foto-counter');
+  var btnPrev  = document.getElementById('btn-prev');
+  var btnNext  = document.getElementById('btn-next');
+
+  /* ── 4. Abrir lightbox al hacer clic en cualquier botón de producto ── */
+  /* URL base del endpoint de analytics (inyectada desde Django) */
+  var URL_CLICK_BASE = '{% url "api_registrar_click" negocio.slug 0 %}'.replace('/0/', '/');
+  var CSRF_CLICK = '{{ csrf_token }}';
+
+  document.querySelectorAll('.producto-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pk    = btn.dataset.pk;
+      var imgs  = galeriaData[pk];
+
+      if (!imgs || imgs.length === 0) {
+        /* fallback: usar la imagen del <img> del botón */
+        var img = btn.querySelector('img');
+        imgs = img ? [img.src] : [];
+      }
+
+      currentImages = imgs;
+      currentIndex  = 0;
+
+      /* Datos del producto */
+      document.getElementById('lb-nombre').textContent = btn.dataset.nombre  || '';
+      document.getElementById('lb-desc').textContent   = btn.dataset.desc    || '';
+      document.getElementById('lb-precio').textContent = btn.dataset.precio ? '$ ' + btn.dataset.precio : '';
+
+      /* Registrar clic silenciosamente (analytics) */
+      if (pk && URL_CLICK_BASE) {
+        fetch(URL_CLICK_BASE + pk + '/', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF_CLICK, 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        }).catch(function() {}); /* silencioso: no interrumpir UX si falla */
+      }
+
+      renderCarousel();
+      abrirOverlay();
+    });
+  });
+
+  /* ── 5. Renderizar carousel ── */
+  function renderCarousel() {
+    track.innerHTML = '';
+    dots.innerHTML  = '';
+
+    currentImages.forEach(function (url, i) {
+      /* Slide - Fondo blanco limpio, sin bordes negros */
+      var slide = document.createElement('div');
+      slide.style.cssText = 'flex-shrink:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#ffffff;overflow:hidden;';
+      var img = document.createElement('img');
+      img.src = url;
+      img.alt = 'Foto ' + (i + 1);
+      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;transition:all 0.3s;';
+      slide.appendChild(img);
+      track.appendChild(slide);
+
+      /* Dot - Píldora premium */
+      var dot = document.createElement('button');
+      dot.style.cssText = 'width:7px;height:7px;border-radius:999px;border:none;cursor:pointer;transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1);background:rgba(0,0,0,0.15);padding:0;outline:none;';
+      dot.addEventListener('click', function () { goTo(i); });
+      dots.appendChild(dot);
+    });
+
+    /* Mostrar/ocultar controles */
+    var multi = currentImages.length > 1;
+    btnPrev.style.display  = multi ? 'flex' : 'none';
+    btnNext.style.display  = multi ? 'flex' : 'none';
+    dots.style.display     = multi ? 'flex' : 'none';
+    counter.style.display  = multi ? 'block' : 'none';
+
+    goTo(0);
+  }
+
+  function goTo(idx) {
+    if (currentImages.length === 0) return;
+    currentIndex = Math.max(0, Math.min(idx, currentImages.length - 1));
+    track.style.transform = 'translateX(-' + (currentIndex * 100) + '%)';
+    /* Actualizar dots animando a píldora activa */
+    dots.querySelectorAll('button').forEach(function (d, i) {
+      d.style.background = i === currentIndex ? '#db2777' : 'rgba(0,0,0,0.15)'; // Rosa fuerte premium
+      d.style.width      = i === currentIndex ? '16px' : '7px';
+    });
+    /* Contador */
+    counter.textContent = (currentIndex + 1) + ' / ' + currentImages.length;
+  }
+
+  btnPrev.addEventListener('click', function () { goTo(currentIndex - 1); });
+  btnNext.addEventListener('click', function () { goTo(currentIndex + 1); });
+
+  /* Swipe táctil */
+  var touchX = 0;
+  track.addEventListener('touchstart', function (e) { touchX = e.touches[0].clientX; }, { passive: true });
+  track.addEventListener('touchend', function (e) {
+    var delta = touchX - e.changedTouches[0].clientX;
+    if (Math.abs(delta) > 40) goTo(currentIndex + (delta > 0 ? 1 : -1));
+  });
+
+  /* ── 6. Abrir / Cerrar overlay ── */
+  function abrirOverlay() {
+    overlay.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function cerrarOverlay() {
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('lightbox-close').addEventListener('click', cerrarOverlay);
+  backdrop.addEventListener('click', cerrarOverlay);
+
+  document.addEventListener('keydown', function (e) {
+    if (overlay.style.display !== 'none') {
+      if (e.key === 'Escape')      cerrarOverlay();
+      if (e.key === 'ArrowRight')  goTo(currentIndex + 1);
+      if (e.key === 'ArrowLeft')   goTo(currentIndex - 1);
+    }
+  });
+
+})();
+</script>
+
+{# ── CARRITO DRAWER LATERAL ── #}
+<!-- Overlay oscuro -->
+<div id="cart-overlay" class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40 hidden transition-opacity duration-300 opacity-0"></div>
+
+<!-- Drawer lateral -->
+<div id="cart-drawer" class="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-gray-100">
+  
+  <!-- Header -->
+  <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+      </div>
+      <h2 class="text-xl font-extrabold text-gray-900 tracking-tight">Tu Pedido</h2>
+    </div>
+    <button id="btn-close-cart" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- Body (Items) — Renderizado dinámicamente por JS -->
+  <div id="drawer-body" class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar"></div>
+
+  <!-- Footer (Total y Checkout) — Renderizado dinámicamente por JS -->
+  <div id="drawer-footer"></div>
+
+</div>
+
+{# URLs para JS — evita hardcodear paths en el script #}
+<script id="cart-config" type="application/json">
+{
+  "urlAgregar": "{{ request.scheme }}://{{ request.get_host }}/{{ negocio.slug }}/tienda/carrito/api/agregar/",
+  "urlQuitar":  "{{ request.scheme }}://{{ request.get_host }}/{{ negocio.slug }}/tienda/carrito/api/quitar/",
+  "urlCheckout": "{% url 'checkout_publico' negocio.slug %}",
+  "csrfToken": "{{ csrf_token }}",
+  "carritoInicial": {
+    "count": {{ carrito_count }},
+    "total": "{{ carrito_total }}",
+    "items": [
+      {% for item in carrito_items %}
+      {
+        "pk": {{ item.producto.pk }},
+        "nombre": "{{ item.producto.nombre|escapejs }}",
+        "imagen_url": "{% if item.producto.imagen %}{{ item.producto.imagen.url }}{% endif %}",
+        "cantidad": {{ item.cantidad }},
+        "precio": "{{ item.producto.precio }}",
+        "subtotal": "{{ item.subtotal }}",
+        "stock": {{ item.producto.stock }}
+      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+}
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   CARRITO DINÁMICO — Drawer + AJAX sin recarga de página
+   ══════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  /* ── Configuración desde Django ── */
+  var cfg = {};
+  try { cfg = JSON.parse(document.getElementById('cart-config').textContent); } catch(e) {}
+
+  var URL_AGREGAR  = cfg.urlAgregar  || '';
+  var URL_QUITAR   = cfg.urlQuitar   || '';
+  var URL_CHECKOUT = cfg.urlCheckout || '';
+  var CSRF         = cfg.csrfToken   || '';
+
+  /* ── Estado en memoria ── */
+  /* Normalizar carritoInicial al formato interno {count, total, items} */
+  var raw = cfg.carritoInicial || {};
+  var estado = {
+    count: raw.count || 0,
+    total: raw.total || '0',
+    items: raw.items || []
+  };
+
+  /* ── Elementos del DOM ── */
+  var btnCart      = document.getElementById('btn-open-cart');
+  var drawerCart   = document.getElementById('cart-drawer');
+  var overlayCart  = document.getElementById('cart-overlay');
+  var btnCloseCart = document.getElementById('btn-close-cart');
+  var drawerBody   = document.getElementById('drawer-body');
+  var drawerFooter = document.getElementById('drawer-footer');
+
+  /* ─────────────────────────────────────────
+     RENDER DEL DRAWER
+  ───────────────────────────────────────── */
+  function renderDrawer() {
+    /* Badge del navbar */
+    var badge = btnCart ? btnCart.querySelector('span') : null;
+    if (btnCart) {
+      if (estado.count > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white transform translate-x-1/4 -translate-y-1/4 bg-tienda rounded-full border-2 border-white';
+          btnCart.appendChild(badge);
+        }
+        badge.textContent = estado.count;
+      } else {
+        if (badge) badge.remove();
+      }
+    }
+
+    /* Cuerpo del drawer */
+    if (!drawerBody) return;
+
+    if (estado.items.length === 0) {
+      drawerBody.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-gray-400 space-y-4 pt-16">'
+        + '<div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center border-4 border-white shadow-sm">'
+        + '<svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>'
+        + '</div>'
+        + '<p class="font-medium text-gray-500">Tu carrito está vacío</p>'
+        + '<button onclick="cerrarCarrito()" class="px-6 py-2.5 bg-tienda text-white rounded-full text-sm font-semibold hover:opacity-80 transition">Empezar a comprar</button>'
+        + '</div>';
+      if (drawerFooter) drawerFooter.innerHTML = '';
+      return;
+    }
+
+    var html = '<div class="space-y-3">';
+    estado.items.forEach(function(item) {
+      var imgHtml = item.imagen_url
+        ? '<img src="' + item.imagen_url + '" alt="' + escHtml(item.nombre) + '" class="w-full h-full object-cover"/>'
+        : '<div class="w-full h-full flex items-center justify-center text-gray-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+
+      html += '<div class="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">'
+        /* Miniatura */
+        + '<div class="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">' + imgHtml + '</div>'
+        /* Info */
+        + '<div class="flex-1 min-w-0">'
+        + '<h3 class="text-sm font-bold text-gray-900 leading-tight truncate">' + escHtml(item.nombre) + '</h3>'
+        + '<p class="text-xs text-gray-400 mt-0.5">$' + item.precio + ' c/u</p>'
+        + '</div>'
+        /* Controles cantidad + precio */
+        + '<div class="flex flex-col items-end gap-2 flex-shrink-0">'
+        + '<span class="text-sm font-black text-gray-900">$' + item.subtotal + '</span>'
+        + '<div class="flex items-center gap-1">'
+        /* Botón − */
+        + '<button class="btn-quitar w-7 h-7 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-600 flex items-center justify-center text-lg font-bold transition-colors leading-none" data-pk="' + item.pk + '" aria-label="Quitar uno">−</button>'
+        /* Contador */
+        + '<span class="text-sm font-bold text-gray-900 w-6 text-center">' + item.cantidad + '</span>'
+        /* Botón + */
+        + '<button class="btn-agregar w-7 h-7 rounded-full bg-gray-100 hover:bg-green-100 hover:text-green-700 text-gray-600 flex items-center justify-center text-lg font-bold transition-colors leading-none' + (item.cantidad >= item.stock ? ' opacity-40 cursor-not-allowed' : '') + '" data-pk="' + item.pk + '" data-stock="' + item.stock + '" aria-label="Agregar uno">+</button>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    });
+    html += '</div>';
+    drawerBody.innerHTML = html;
+
+    /* Footer */
+    if (drawerFooter) {
+      drawerFooter.innerHTML = '<div class="px-6 py-5 border-t border-gray-100 bg-white">'
+        + '<div class="flex items-end justify-between mb-5">'
+        + '<span class="text-sm font-bold text-gray-500">Total a pagar:</span>'
+        + '<span class="text-3xl font-black" style="color:var(--color-primary)">$' + (estado.total || estado.carrito_total || '0') + '</span>'
+        + '</div>'
+        + '<a href="' + URL_CHECKOUT + '" class="w-full flex items-center justify-center gap-2 py-4 text-white font-bold rounded-2xl transition-all shadow-lg group" style="background:var(--color-primary)">'
+        + 'Terminar compra'
+        + '<svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>'
+        + '</a></div>';
+    }
+
+    /* Listeners de los botones + y − del drawer */
+    drawerBody.querySelectorAll('.btn-quitar').forEach(function(btn) {
+      btn.addEventListener('click', function() { apiQuitar(parseInt(btn.dataset.pk)); });
+    });
+    drawerBody.querySelectorAll('.btn-agregar').forEach(function(btn) {
+      if (parseInt(btn.dataset.stock) > 0) {
+        btn.addEventListener('click', function() {
+          var item = estado.items.find(function(i){ return i.pk === parseInt(btn.dataset.pk); });
+          if (item && item.cantidad < item.stock) apiAgregar(parseInt(btn.dataset.pk));
+        });
+      }
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     ABRIR / CERRAR DRAWER
+  ───────────────────────────────────────── */
+  function abrirCarrito() {
+    if (!drawerCart) return;
+    drawerCart.style.transform = 'translateX(0)';
+    overlayCart.classList.remove('hidden');
+    setTimeout(function () { overlayCart.style.opacity = '1'; }, 10);
+    /* NO bloqueamos el scroll — el cliente puede seguir navegando */
+  }
+
+  function cerrarCarrito() {
+    if (!drawerCart) return;
+    drawerCart.style.transform = 'translateX(100%)';
+    overlayCart.style.opacity = '0';
+    setTimeout(function () { overlayCart.classList.add('hidden'); }, 300);
+  }
+
+  window.cerrarCarrito = cerrarCarrito;
+
+  if (btnCart)      btnCart.addEventListener('click', abrirCarrito);
+  if (btnCloseCart) btnCloseCart.addEventListener('click', cerrarCarrito);
+  if (overlayCart)  overlayCart.addEventListener('click', cerrarCarrito);
+
+  /* ─────────────────────────────────────────
+     LLAMADAS AJAX
+  ───────────────────────────────────────── */
+  function syncProductButtons() {
+    /* Recorre todos los botones de la grilla para actualizar su texto y estado según el carrito actual */
+    document.querySelectorAll('.btn-add, .btn-add-disabled').forEach(function(btn) {
+      var pk = parseInt(btn.dataset.pk);
+      var stock = parseInt(btn.dataset.stock);
+      var item = estado.items.find(function(i){ return i.pk === pk; });
+      var cant = item ? item.cantidad : 0;
+      
+      btn.dataset.enCarrito = cant;
+      
+      if (cant >= stock) {
+        btn.innerHTML = 'Agotado ❌';
+        btn.className = 'btn-add-disabled w-full py-2.5 bg-amber-50 text-amber-600 border border-amber-200 font-medium rounded-xl cursor-not-allowed text-sm pointer-events-none';
+      } else {
+        if (cant > 0) {
+          btn.innerHTML = '+ Añadir · <span class="carrito-badge-' + pk + '">' + cant + '</span> en carrito';
+        } else {
+          btn.innerHTML = 'Añadir al carrito';
+        }
+        btn.className = 'btn-add block w-full text-center py-2.5 bg-tienda hover:bg-tienda text-white font-medium rounded-xl transition-all shadow-sm group-hover:shadow-md text-sm opacity-95 hover:opacity-100 cursor-pointer pointer-events-auto';
+      }
+    });
+  }
+
+  function apiPost(url, cb) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        /* Normalizar claves: la API devuelve carrito_count/carrito_total */
+        estado = {
+          count:  data.count  !== undefined ? data.count  : (data.carrito_count || 0),
+          total:  data.total  !== undefined ? data.total  : (data.carrito_total || '0'),
+          items:  data.items  || []
+        };
+        renderDrawer();
+        syncProductButtons();
+        if (cb) cb(data);
+      } else {
+        alert(data.error || 'Error');
+      }
+    })
+    .catch(function(e) { console.error('Cart API error:', e); });
+  }
+
+  function apiAgregar(pk) { apiPost(URL_AGREGAR + pk + '/', null); }
+  function apiQuitar(pk)  { apiPost(URL_QUITAR  + pk + '/', null); }
+
+  /* ─────────────────────────────────────────
+     BOTONES "AÑADIR" DE LAS TARJETAS
+  ───────────────────────────────────────── */
+  document.querySelectorAll('.btn-add').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var pk  = parseInt(btn.dataset.pk);
+      var url = btn.dataset.urlAgregar;
+      if (!url) return;
+
+      /* Feedback visual instantáneo */
+      btn.classList.add('opacity-75');
+      var orig = btn.innerHTML;
+      btn.innerHTML = '✓ Agregando...';
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.classList.remove('opacity-75');
+        if (data.ok) {
+          /* Normalizar claves de la API */
+          estado = {
+            count: data.count  !== undefined ? data.count  : (data.carrito_count || 0),
+            total: data.total  !== undefined ? data.total  : (data.carrito_total || '0'),
+            items: data.items  || []
+          };
+          renderDrawer();
+          /* Actualizar texto del botón con la nueva cantidad */
+          var item = estado.items.find(function(i){ return i.pk === pk; });
+          var cant = item ? item.cantidad : 1;
+          btn.innerHTML = '+ Añadir · <span class="carrito-badge-' + pk + '">' + cant + '</span> en carrito';
+          btn.dataset.enCarrito = cant;
+          /* Si alcanzó el stock, deshabilitar */
+          if (item && cant >= item.stock) {
+            btn.innerHTML = 'Agotado ❌';
+            btn.classList.remove('bg-tienda', 'hover:bg-tienda', 'text-white', 'shadow-sm', 'group-hover:shadow-md');
+            btn.classList.add('bg-amber-50', 'text-amber-600', 'border', 'border-amber-200', 'cursor-not-allowed', 'pointer-events-none');
+          } else {
+            btn.innerHTML = '+ Añadir · <span class="carrito-badge-' + pk + '">' + cant + '</span> en carrito';
+          }
+          /* Toast no-bloqueante en vez de abrir el drawer */
+          mostrarToast('Agregado ✅');
+        } else {
+          btn.innerHTML = orig;
+          alert(data.error || 'No se pudo agregar.');
+        }
+      })
+      .catch(function(e) {
+        btn.classList.remove('opacity-75');
+        btn.innerHTML = orig;
+        console.error('Cart API error:', e);
+      });
+    });
+  });
+
+  /* ─────────────────────────────────────────
+     RENDER INICIAL + AUTO-ABRIR
+  ───────────────────────────────────────── */
+  renderDrawer();
+
+  if (window.location.search.indexOf('cart=open') > -1) {
+    abrirCarrito();
+    var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+    window.history.replaceState({ path: newUrl }, '', newUrl);
+  }
+
+  /* ─────────────────────────────────────────
+     UTILIDAD
+  ───────────────────────────────────────── */
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Toast no-bloqueante ── */
+  function mostrarToast(msg) {
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = [
+      'position:fixed','bottom:24px','left:50%','transform:translateX(-50%) translateY(20px)',
+      'background:#111827','color:#fff','font-size:13px','font-weight:600',
+      'padding:10px 20px','border-radius:999px','box-shadow:0 4px 20px rgba(0,0,0,.3)',
+      'z-index:9999','opacity:0','transition:all .25s ease','white-space:nowrap',
+      'pointer-events:none'
+    ].join(';');
+    document.body.appendChild(t);
+    requestAnimationFrame(function(){
+      t.style.opacity = '1';
+      t.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    setTimeout(function(){
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(-50%) translateY(10px)';
+      setTimeout(function(){ t.remove(); }, 300);
+    }, 2200);
+  }
+
+}());
+</script>
+
 {% endblock %}
