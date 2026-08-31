@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load imagen_tags %}
 
 {% block title %}Productos — {{ negocio.nombre }}{% endblock %}
 
@@ -187,7 +188,8 @@ document.addEventListener('click', function(e) {
     <!-- Imagen del producto -->
     <div class="w-full aspect-square overflow-hidden bg-gray-100">
       {% if producto.imagen %}
-        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
+        <img src="{% cloudinary_thumb producto.imagen 400 400 %}" alt="{{ producto.nombre }}"
+             loading="lazy"
              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
       {% else %}
         <div class="w-full h-full flex items-center justify-center text-gray-300">
@@ -279,7 +281,7 @@ document.addEventListener('click', function(e) {
           <div class="flex gap-3 items-start p-3 bg-card-bg-alt rounded-xl border border-card-border">
             <div class="w-12 h-12 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-card-border">
               {% if item.producto.imagen %}
-                <img src="{{ item.producto.imagen.url }}" class="w-full h-full object-cover">
+                <img src="{% cloudinary_thumb item.producto.imagen 96 96 %}" class="w-full h-full object-cover" loading="lazy">
               {% else %}
                 <div class="w-full h-full flex items-center justify-center text-content-subtitle text-xs">📦</div>
               {% endif %}
