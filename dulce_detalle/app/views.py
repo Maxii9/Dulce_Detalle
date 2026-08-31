@@ -133,7 +133,13 @@ def lista_productos(request, slug):
     carrito_items = services.get_carrito_detalle(request.session)
     total = services.carrito_total(request.session)
     
-    valor_inventario = sum(p.costo * p.stock for p in productos)
+    # FIX #3: Calcular valor_inventario con una sola query SQL en lugar de iterar en Python
+    from django.db.models import Sum, F, ExpressionWrapper, DecimalField
+    valor_inventario = (
+        productos
+        .annotate(valor=ExpressionWrapper(F('costo') * F('stock'), output_field=DecimalField()))
+        .aggregate(total=Sum('valor'))['total'] or 0
+    )
 
     # Categorias con subcategorias agrupadas para el desplegable
     from app.models import Subcategoria as SubcatModel
@@ -146,10 +152,17 @@ def lista_productos(request, slug):
         for cat in categorias_raw
     ]
 
-    # PKs de productos cuyo stock ya está agotado en el carrito
-    carrito_cantidades = {item['producto'].pk: item['cantidad'] for item in carrito_items}
-    carrito_maxed = [pk for pk, cant in carrito_cantidades.items()
-                     if cant >= (services.get_producto(pk).stock if services.get_producto(pk) else 0)]
+    # FIX #1: Precarga el stock de los productos del carrito en un dict para evitar N+1 queries
+    carrito_cantidades = {item['producto'].pk: item['cantidad'] for item in carrito_items if item.get('producto')}
+    if carrito_cantidades:
+        from app.models import Producto as ProdModel
+        stock_map = dict(
+            ProdModel.objects.filter(pk__in=carrito_cantidades.keys()).values_list('pk', 'stock')
+        )
+        carrito_maxed = [pk for pk, cant in carrito_cantidades.items()
+                         if cant >= stock_map.get(pk, 0)]
+    else:
+        carrito_maxed = []
         
     return render(request, 'productos/lista.html', {
         'negocio': negocio,
@@ -1436,3 +1449,50 @@ def limpiar_estadisticas(request, slug):
         EventoAnalytics.objects.filter(negocio=negocio).delete()
         messages.success(request, 'Todas las estadísticas, ventas y analíticas han sido reiniciadas.')
     return redirect('estadisticas_ventas', slug=slug)
+
+
+# ── Notificaciones ─────────────────────────────────────────────────────────
+
+@login_required
+def descartar_notificacion(request, notif_id):
+    """AJAX POST: marca una notificacion como descartada para el usuario actual."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Metodo no permitido'}, status=405)
+    from app.models import Notificacion
+    notif = get_object_or_404(Notificacion, pk=notif_id)
+    notif.descartada_por.add(request.user)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def enviar_notificacion(request):
+    """POST solo superusuario: crea una notificacion y la asocia a las tiendas elegidas."""
+    if not request.user.is_superuser:
+        messages.error(request, 'No tenes permiso para hacer esto.')
+        return redirect('inicio')
+
+    if request.method == 'POST':
+        from app.models import Notificacion
+        titulo  = request.POST.get('titulo', '').strip()[:100]
+        mensaje = request.POST.get('mensaje', '').strip()[:500]
+        tipo    = request.POST.get('tipo', 'info')
+        slug    = request.POST.get('slug', '')
+        destino_ids = request.POST.getlist('destinatarios')  # lista de IDs de Negocio
+
+        if titulo and mensaje and tipo in ('info', 'success', 'warning', 'error'):
+            notif = Notificacion.objects.create(titulo=titulo, mensaje=mensaje, tipo=tipo)
+            if destino_ids:
+                # Solo las tiendas seleccionadas
+                tiendas = Negocio.objects.filter(pk__in=[int(x) for x in destino_ids if x.isdigit()])
+                notif.destinatarios.set(tiendas)
+                destino_texto = ', '.join(t.nombre for t in tiendas) or 'ninguna'
+            else:
+                # Sin destinatarios = todas las tiendas
+                destino_texto = 'todas las tiendas'
+            messages.success(request, f'Notificacion "{titulo}" enviada a {destino_texto}.')
+        else:
+            messages.error(request, 'Completa todos los campos requeridos.')
+
+        return redirect('configuracion_usuarios', slug=slug)
+
+    return redirect('inicio')
