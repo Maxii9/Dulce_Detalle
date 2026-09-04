@@ -282,3 +282,42 @@ class EventoAnalytics(models.Model):
 
     def __str__(self):
         return f"{self.tipo} — {self.negocio.nombre} — {self.fecha.strftime('%d/%m/%Y %H:%M')}"
+
+
+class Notificacion(models.Model):
+    """Notificacion global enviada por el superusuario a una o varias tiendas."""
+    TIPO_CHOICES = [
+        ('info',    'Informacion'),
+        ('success', 'Novedad'),
+        ('warning', 'Advertencia'),
+        ('error',   'Urgente'),
+    ]
+    titulo   = models.CharField(max_length=100, verbose_name='Titulo')
+    mensaje  = models.TextField(max_length=500, verbose_name='Mensaje')
+    tipo     = models.CharField(max_length=10, choices=TIPO_CHOICES, default='info')
+    creado   = models.DateTimeField(auto_now_add=True)
+
+    # Si destinatarios queda VACIO -> se muestra a todas las tiendas
+    # Si se seleccionan tiendas  -> solo esas ven la notificacion
+    destinatarios = models.ManyToManyField(
+        'Negocio',
+        blank=True,
+        related_name='notificaciones',
+        verbose_name='Destinatarios',
+        help_text='Dejar vacio para enviar a TODOS. Seleccionar tiendas para envio selectivo.',
+    )
+    # Usuarios que la cerraron individualmente (no vuelve a aparecer)
+    descartada_por = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='notificaciones_descartadas',
+    )
+
+    class Meta:
+        ordering = ['-creado']
+        verbose_name = 'Notificacion'
+        verbose_name_plural = 'Notificaciones'
+
+    def __str__(self):
+        destinos = ', '.join(n.nombre for n in self.destinatarios.all()[:3]) or 'Todas'
+        return f"[{self.tipo.upper()}] {self.titulo} → {destinos}"

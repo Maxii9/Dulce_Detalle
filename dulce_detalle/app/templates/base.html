@@ -379,8 +379,58 @@
             </svg>
           </button>
 
+          <!-- Campanita de Notificaciones -->
+          <div class="relative" id="notif-wrapper">
+            <button id="btn-notif" onclick="toggleNotif(event)" title="Notificaciones" class="relative admin-theme-toggle">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              {% if notificaciones_count > 0 %}
+              <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-bounce leading-none">{{ notificaciones_count }}</span>
+              {% else %}
+              <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none hidden">0</span>
+              {% endif %}
+            </button>
+
+            <!-- Panel dropdown -->
+            <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden" style="max-height:420px;">
+              <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/80">
+                <span class="text-sm font-bold text-gray-700">Notificaciones</span>
+                <span id="notif-count-label" class="text-xs text-gray-400">
+                  {% if notificaciones_count > 0 %}{{ notificaciones_count }} nueva{% if notificaciones_count != 1 %}s{% endif %}{% else %}Al dia{% endif %}
+                </span>
+              </div>
+              <div id="notif-list" class="overflow-y-auto" style="max-height:340px;">
+                {% for n in notificaciones %}
+                <div id="notif-item-{{ n.pk }}" class="flex items-start gap-3 px-4 py-3 border-b border-gray-50 hover:bg-gray-50/60 transition-colors group">
+                  <span class="text-base mt-0.5 flex-shrink-0">{% if n.tipo == 'success' %}&#x2705;{% elif n.tipo == 'warning' %}&#x26A0;&#xFE0F;{% elif n.tipo == 'error' %}&#x1F6A8;{% else %}&#x2139;&#xFE0F;{% endif %}</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-bold text-gray-800 truncate">{{ n.titulo }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">{{ n.mensaje }}</p>
+                    <p class="text-[10px] text-gray-400 mt-1">{{ n.creado|timesince }} atras</p>
+                  </div>
+                  <button onclick="descartarNotif({{ n.pk }})" title="Descartar"
+                    class="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full text-gray-300 hover:bg-red-100 hover:text-red-500 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                {% empty %}
+                <div class="flex flex-col items-center justify-center py-10 text-gray-400">
+                  <svg class="w-10 h-10 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5"/>
+                  </svg>
+                  <p class="text-xs font-medium">Sin notificaciones nuevas</p>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
           {% if negocio %}
-          <!-- Botón compartir -->
+          <!-- Boton compartir -->
           <div class="relative">
             <button id="btn-compartir"
               onclick="copiarLinkTienda()"
@@ -532,6 +582,73 @@
         });
       }
     }());
+  </script>
+
+  <script>
+    /* ── Campanita de Notificaciones ── */
+    const CSRF_TOKEN = '{{ csrf_token }}';
+
+    function toggleNotif(e) {
+      e && e.stopPropagation();
+      const panel = document.getElementById('notif-panel');
+      panel.classList.toggle('hidden');
+    }
+
+    // Cerrar el panel al hacer click fuera
+    document.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('notif-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        const panel = document.getElementById('notif-panel');
+        if (panel) panel.classList.add('hidden');
+      }
+    });
+
+    function descartarNotif(id) {
+      const item  = document.getElementById('notif-item-' + id);
+      const badge = document.getElementById('notif-badge');
+      const label = document.getElementById('notif-count-label');
+
+      // Animar salida
+      if (item) {
+        item.style.transition = 'all 0.25s ease';
+        item.style.opacity = '0';
+        item.style.maxHeight = item.offsetHeight + 'px';
+        setTimeout(() => {
+          item.style.maxHeight = '0';
+          item.style.paddingTop = '0';
+          item.style.paddingBottom = '0';
+          item.style.overflow = 'hidden';
+        }, 50);
+        setTimeout(() => item.remove(), 320);
+      }
+
+      // Actualizar badge
+      if (badge) {
+        let count = parseInt(badge.textContent) || 0;
+        count = Math.max(0, count - 1);
+        if (count === 0) {
+          badge.classList.add('hidden');
+          if (label) label.textContent = 'Al dia';
+        } else {
+          badge.textContent = count;
+          if (label) label.textContent = count + ' nueva' + (count !== 1 ? 's' : '');
+        }
+      }
+
+      // Mostrar estado vacio si no quedan items
+      setTimeout(() => {
+        const list = document.getElementById('notif-list');
+        if (list && list.querySelectorAll('[id^="notif-item-"]').length === 0) {
+          list.innerHTML = '<div class="flex flex-col items-center justify-center py-10 text-gray-400"><p class="text-xs font-medium">Sin notificaciones nuevas</p></div>';
+        }
+      }, 400);
+
+      // Llamada AJAX al backend
+      fetch('/notificaciones/' + id + '/descartar/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      }).catch(() => {});
+    }
   </script>
 </body>
 </html>

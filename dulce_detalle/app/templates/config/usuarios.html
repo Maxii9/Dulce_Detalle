@@ -37,8 +37,8 @@
     {% if request.user.is_superuser and users_list %}
     <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border overflow-hidden">
       <div class="p-6 border-b border-card-border bg-gray-50/50">
-        <h3 class="font-bold text-content-title">Gestión de Usuarios</h3>
-        <p class="text-content-subtitle text-xs">Modifica datos o contraseñas de cualquier cuenta registrada.</p>
+        <h3 class="font-bold text-content-title">Gestion de Usuarios</h3>
+        <p class="text-content-subtitle text-xs">Modifica datos o contrasenas de cualquier cuenta registrada.</p>
       </div>
       <ul class="divide-y divide-card-border">
         {% for u in users_list %}
@@ -56,7 +56,7 @@
                   {% for n in u.negocios.all %}
                   <div class="inline-flex items-center bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-xs font-bold uppercase shadow-sm overflow-hidden">
                     <span class="px-3 py-1">{{ n.emoji }} {{ n.nombre }}</span>
-                    <form method="post" class="h-full border-l border-purple-200" onsubmit="return confirm('¿Eliminar la tienda {{ n.nombre }}? Todos sus datos se perderán.')">
+                    <form method="post" class="h-full border-l border-purple-200" onsubmit="return confirm('Eliminar la tienda {{ n.nombre }}? Todos sus datos se perderan.')">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="delete_negocio">
                       <input type="hidden" name="user_id" value="{{ u.id }}">
@@ -67,13 +67,13 @@
                     </form>
                   </div>
                   {% empty %}
-                  <span class="text-content-muted text-xs italic">Este usuario aún no tiene tiendas</span>
+                  <span class="text-content-muted text-xs italic">Este usuario aun no tiene tiendas</span>
                   {% endfor %}
                 </div>
               </div>
             </div>
 
-            <!-- Fila 2: Formularios de Gestión -->
+            <!-- Fila 2: Formularios de Gestion -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <!-- Datos Perfil -->
               <div class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
@@ -106,8 +106,8 @@
                   <input type="hidden" name="action" value="change_password">
                   <input type="hidden" name="user_id" value="{{ u.id }}">
                   <div class="flex-1">
-                    <label class="block text-[9px] font-bold text-gray-500 mb-1 ml-1">Nueva Contraseña</label>
-                    <input type="password" name="new_password" placeholder="••••••••" required 
+                    <label class="block text-[9px] font-bold text-gray-500 mb-1 ml-1">Nueva Contrasena</label>
+                    <input type="password" name="new_password" placeholder="..." required 
                            class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 focus:outline-none bg-white font-mono">
                   </div>
                   <button type="submit" class="bg-gray-800 hover:bg-black text-white text-xs font-bold px-4 py-2 rounded-xl transition-all h-[38px] shadow-sm">
@@ -117,10 +117,10 @@
               </div>
             </div>
 
-            <!-- Botón de eliminación definitiva -->
+            <!-- Boton de eliminacion definitiva -->
             {% if u.id != request.user.id %}
             <div class="pt-2 flex justify-end">
-              <form method="post" onsubmit="return confirm('¿ESTÁS SEGURO? Se borrará el usuario @{{ u.username }} y TODAS sus tiendas asociadas definitivamente.')">
+              <form method="post" onsubmit="return confirm('ESTAS SEGURO? Se borrara el usuario @{{ u.username }} y TODAS sus tiendas asociadas definitivamente.')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_user">
                 <input type="hidden" name="user_id" value="{{ u.id }}">
@@ -137,6 +137,90 @@
       </ul>
     </div>
     {% endif %}
+
+    <!-- Panel de Notificaciones Globales (solo superusuario) -->
+    {% if request.user.is_superuser %}
+    <div class="bg-card-bg rounded-2xl shadow-sm border border-card-border overflow-hidden">
+      <div class="p-6 border-b border-card-border bg-amber-50/60">
+        <h3 class="font-bold text-content-title flex items-center gap-2">
+          <span class="text-xl">&#x1F4E2;</span> Enviar Notificacion a Tiendas
+        </h3>
+        <p class="text-content-subtitle text-xs mt-1">
+          Aparece en la campanita del panel de cada tienda seleccionada. Si no seleccionas ninguna, la reciben todas.
+        </p>
+      </div>
+      <div class="p-6">
+        <form method="POST" action="{% url 'enviar_notificacion' %}" class="space-y-5">
+          {% csrf_token %}
+          <input type="hidden" name="slug" value="{{ negocio.slug }}">
+
+          <!-- Tipo -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tipo</label>
+            <div class="flex flex-wrap gap-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="tipo" value="info" checked class="accent-blue-500">
+                <span class="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium">&#x2139;&#xFE0F; Informacion</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="tipo" value="success" class="accent-emerald-500">
+                <span class="text-sm px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">&#x2705; Novedad</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="tipo" value="warning" class="accent-amber-500">
+                <span class="text-sm px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">&#x26A0;&#xFE0F; Advertencia</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="tipo" value="error" class="accent-red-500">
+                <span class="text-sm px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-medium">&#x1F6A8; Urgente</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Titulo -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Titulo</label>
+            <input type="text" name="titulo" maxlength="100" required placeholder="Ej: Nuevas funciones disponibles"
+              class="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-input-focus focus:outline-none">
+          </div>
+
+          <!-- Mensaje -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Mensaje</label>
+            <textarea name="mensaje" maxlength="500" required rows="3" placeholder="Describe brevemente la novedad o aviso..."
+              class="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-input-focus focus:outline-none resize-none"></textarea>
+          </div>
+
+          <!-- Destinatarios -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+              Destinatarios <span class="text-gray-400 font-normal normal-case">(dejar vacio = todas las tiendas)</span>
+            </label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+              {% for n in todas_las_tiendas %}
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                <input type="checkbox" name="destinatarios" value="{{ n.pk }}" class="accent-sidebar-text rounded">
+                <span class="text-xs font-medium text-gray-700 truncate">{{ n.emoji }} {{ n.nombre }}</span>
+              </label>
+              {% empty %}
+              <p class="text-xs text-gray-400 col-span-3 italic">No hay tiendas registradas aún.</p>
+              {% endfor %}
+            </div>
+          </div>
+
+
+          <button type="submit"
+            class="w-full sm:w-auto bg-sidebar-text hover:opacity-80 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            </svg>
+            Enviar Notificacion
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
   </div>
 </div>
 {% endblock %}

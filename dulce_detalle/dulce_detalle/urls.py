@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
+from django.views.defaults import page_not_found, server_error, permission_denied, bad_request
 from app import views
 
 urlpatterns = [
@@ -29,6 +30,10 @@ urlpatterns = [
         template_name='auth/password_reset_confirm.html'), name='password_reset_confirm'),
     path('password-reset/completado/', auth_views.PasswordResetCompleteView.as_view(
         template_name='auth/password_reset_complete.html'), name='password_reset_complete'),
+
+    # ── Notificaciones ──
+    path('notificaciones/enviar/', views.enviar_notificacion, name='enviar_notificacion'),
+    path('notificaciones/<int:notif_id>/descartar/', views.descartar_notificacion, name='descartar_notificacion'),
 
     # ── Páginas Estáticas ──
     path('privacidad/', views.politica_privacidad, name='politica_privacidad'),
@@ -97,3 +102,11 @@ urlpatterns = [
     ])),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# ── Handlers de Errores Personalizados ─────────────────────────────────────
+# Estos reemplazan las páginas genéricas del navegador con nuestras páginas
+# personalizadas (400.html, 403.html, 404.html, 500.html).
+handler400 = lambda request, exception: bad_request(request, exception, template_name='400.html')
+handler403 = lambda request, exception: permission_denied(request, exception, template_name='403.html')
+handler404 = lambda request, exception: page_not_found(request, exception, template_name='404.html')
+handler500 = lambda request: server_error(request, template_name='500.html')
