@@ -65,7 +65,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    'app.middleware.CsrfAmiableMiddleware',  # CSRF amigable: redirige en vez de mostrar 403
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -84,6 +84,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'app.context_processors.carrito_info',
+                'app.context_processors.notificaciones_info',
             ],
         },
     },
@@ -184,8 +185,9 @@ if not DEBUG:
     # Render pasa el protocolo real en este header
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# [M-3] Sesión expira en 8 horas (en lugar de las 2 semanas por default)
-SESSION_COOKIE_AGE = 60 * 60 * 8   # 8 horas en segundos
+# Sesión expira en 24 horas — reduce errores CSRF por sesión expirada.
+# 8 horas era demasiado corto para uso diario de gestión.
+SESSION_COOKIE_AGE = 60 * 60 * 24   # 24 horas en segundos
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Mantiene sesión aunque se cierre el tab
 
 # Email configuration (for password reset)

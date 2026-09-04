@@ -1435,7 +1435,10 @@ def configuracion_usuarios(request, slug):
         'negocio': negocio,
         'negocios': negocios,
         'users_list': users_list,
+        # Todas las tiendas del sistema para el panel de notificaciones
+        'todas_las_tiendas': Negocio.objects.all().order_by('nombre') if request.user.is_superuser else [],
     })
+
 
 @tienda_requerida
 def limpiar_estadisticas(request, slug):
