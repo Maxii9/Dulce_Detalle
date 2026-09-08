@@ -123,12 +123,15 @@ def lista_productos(request, slug):
     query = request.GET.get('q', '').strip()
     cat_filter = request.GET.get('categoria', '').strip()
     sub_filter = request.GET.get('subcategoria', '').strip()
+    sin_stock = request.GET.get('sin_stock') == '1'
     if query:
         productos = productos.filter(nombre__icontains=query)
     if sub_filter:
         productos = productos.filter(subcategoria_id=sub_filter)
     elif cat_filter:
         productos = productos.filter(categoria_id=cat_filter)
+    if sin_stock:
+        productos = productos.filter(stock__lte=0)
         
     carrito_items = services.get_carrito_detalle(request.session)
     total = services.carrito_total(request.session)
@@ -171,6 +174,7 @@ def lista_productos(request, slug):
         'query': query,
         'cat_activa': cat_filter,
         'sub_activa': sub_filter,
+        'sin_stock': sin_stock,
         'categorias_agrupadas': categorias_agrupadas,
         'carrito_items': carrito_items,
         'total': total,
@@ -387,6 +391,75 @@ def carrito_agregar(request, slug, pk):
     else:
         services.carrito_agregar(request.session, pk)
     return redirect('lista_productos', slug=slug)
+
+
+def _carrito_json(request, message='', error=False):
+    """Serializa el carrito de gestión para actualizarlo desde JavaScript."""
+    items = services.get_carrito_detalle(request.session)
+    return JsonResponse({
+        'ok': not error,
+        'message': message,
+        'items': [{
+            'pk': item['producto'].pk,
+            'nombre': item['producto'].nombre,
+            'precio': str(item['producto'].precio),
+            'cantidad': item['cantidad'],
+            'subtotal': str(item['subtotal']),
+            'stock': item['producto'].stock,
+            'imagen': item['producto'].imagen.url if item['producto'].imagen else None,
+        } for item in items if item.get('producto')],
+        'total': str(services.carrito_total(request.session)),
+        'count': len(items),
+        'cantidades': services.get_carrito(request.session),
+    }, status=400 if error else 200)
+
+
+@tienda_requerida
+def carrito_actualizar(request, slug):
+    """Agrega, resta, quita o vacía el carrito de gestión sin redireccionar."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'Método no permitido.'}, status=405)
+
+    negocio, _ = _contexto_base(request, slug)
+    if negocio is None:
+        return JsonResponse({'ok': False, 'message': 'Tienda no encontrada.'}, status=404)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'message': 'Datos inválidos.'}, status=400)
+
+    action = payload.get('action')
+    if action == 'clear':
+        services.carrito_limpiar(request.session)
+        return _carrito_json(request)
+
+    try:
+        producto_pk = int(payload.get('producto_id'))
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': False, 'message': 'Producto inválido.'}, status=400)
+
+    producto = get_object_or_404(services.Producto, pk=producto_pk, negocio=negocio)
+    carrito = services.get_carrito(request.session)
+    cantidad_actual = int(carrito.get(str(producto.pk), 0))
+
+    if action == 'add':
+        if cantidad_actual >= producto.stock:
+            return _carrito_json(request, f'Stock máximo alcanzado para "{producto.nombre}".', error=True)
+        services.carrito_agregar(request.session, producto.pk)
+    elif action == 'decrease':
+        if cantidad_actual <= 1:
+            services.carrito_quitar(request.session, producto.pk)
+        else:
+            carrito[str(producto.pk)] = cantidad_actual - 1
+            request.session['carrito'] = carrito
+            request.session.modified = True
+    elif action == 'remove':
+        services.carrito_quitar(request.session, producto.pk)
+    else:
+        return JsonResponse({'ok': False, 'message': 'Acción inválida.'}, status=400)
+
+    return _carrito_json(request)
 
 
 @tienda_requerida
