@@ -53,6 +53,7 @@ urlpatterns = [
         
         # Carrito de Gestión
         path('carrito/agregar/<int:pk>/', views.carrito_agregar, name='carrito_agregar'),
+        path('carrito/actualizar/', views.carrito_actualizar, name='carrito_actualizar'),
         path('carrito/quitar/<int:pk>/', views.carrito_quitar, name='carrito_quitar'),
         path('carrito/limpiar/', views.carrito_limpiar, name='carrito_limpiar'),
         path('carrito_libre/agregar/', views.carrito_libre_agregar_view, name='carrito_libre_agregar'),
