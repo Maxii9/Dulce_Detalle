@@ -101,12 +101,28 @@
           Imagen principal del producto
         </label>
         {% if producto and producto.imagen %}
-          <div class="mb-3 flex items-start gap-3">
+          <div class="mb-3 flex items-start gap-3" id="imagen-principal-actual">
             <img src="{{ producto.imagen.url }}" alt="Imagen actual"
+                 onerror="this.style.display='none'; this.parentNode.querySelector('.img-fallback').classList.remove('hidden')"
                  class="w-24 h-24 object-cover rounded-xl border border-gray-700"/>
-            <p class="text-xs text-gray-500 mt-1">Imagen actual. Subí una nueva para reemplazarla.</p>
+            <div class="img-fallback hidden w-24 h-24 shrink-0 rounded-xl border border-gray-700 bg-gray-800 items-center justify-center text-gray-600">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+            <div class="text-xs text-gray-500 mt-1 space-y-1">
+              <p>Imagen actual. Subí una nueva para reemplazarla.</p>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="quitar_imagen_principal" value="1"
+                       class="accent-red-500" onchange="marcarQuitarPrincipal(this)">
+                <span class="text-red-400 font-semibold" id="quitar-principal-texto">✕ Quitar imagen principal</span>
+              </label>
+            </div>
           </div>
         {% endif %}
+
+        <!-- Miniatura en vivo de la imagen principal recién cargada -->
+        <div id="imagen-preview-actual" class="hidden mb-3">
+          <p class="text-xs text-purple-400 font-semibold mb-1.5">Nueva imagen</p>
+        </div>
         <label id="imagen-label"
                class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-600
                       rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-900/10 transition-all">
@@ -119,6 +135,10 @@
           <input type="file" name="imagen" id="imagen" accept="image/*" class="hidden"
                  onchange="document.getElementById('imagen-nombre').textContent = this.files[0]?.name || 'Hacé clic para seleccionar imagen principal'"/>
         </label>
+        <button type="button" id="imagen-quitar" onclick="quitarSeleccionImagen()"
+                class="hidden mt-2 text-xs text-red-400 hover:text-red-300 font-semibold transition-colors">
+          ✕ Quitar imagen seleccionada
+        </button>
       </div>
 
       <!-- ── CÓDIGO DE BARRAS ─────────────────────────── -->
@@ -170,14 +190,47 @@
           <svg class="w-6 h-6 text-gray-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
           </svg>
-          <span id="extra-nombre" class="text-sm text-gray-500">Agregar más fotos</span>
-          <span class="text-xs text-gray-600 mt-1">Podés seleccionar varias a la vez</span>
+          <span id="extra-nombre" class="text-sm text-gray-500">Agregar fotos</span>
+          <span class="text-xs text-gray-600 mt-1">Podés elegirlas de a una o varias juntas: cada carga se suma, no reemplaza</span>
           <input type="file" name="imagenes_extra" id="imagenes_extra" accept="image/*" multiple class="hidden"
-                 onchange="mostrarPreviewExtra(this)"/>
+                 onchange="onImagenesExtraChange(this)">
         </label>
 
         <!-- Preview de nuevas fotos seleccionadas -->
         <div id="preview-extra" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3 hidden"></div>
+      </div>
+
+      <!-- ── COLORES DISPONIBLES (ATRIBUTOS) ─────────── -->
+      <div class="relative">
+        <label class="block text-sm font-semibold text-gray-300 mb-2">
+          Colores disponibles
+          <span class="text-xs font-normal text-gray-500 ml-1">(atributos)</span>
+        </label>
+        <div id="colores-panel" class="flex flex-wrap items-center gap-2 mb-2"></div>
+        <p id="colores-sin-color" class="text-xs text-gray-500 mb-2">Sin color por defecto.</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="color-preview" title="Hacé clic para elegir otro color"
+                class="w-9 h-9 rounded-full border border-gray-600 cursor-pointer shadow-inner hidden"></span>
+          <span id="color-picker-hex" class="text-xs font-mono text-gray-400 hidden"></span>
+          <button type="button" id="color-abrir"
+                  class="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700
+                         rounded-xl text-sm text-gray-300 font-semibold transition-all">
+            <span class="w-5 h-5 rounded-full inline-block border border-gray-600"
+                  style="background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red)"></span>
+            Elegir color
+          </button>
+          <button type="button" id="color-agregar" disabled
+                  class="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed
+                         text-white rounded-xl text-sm font-semibold transition-all">
+            Agregar color
+          </button>
+          <button type="button" id="color-limpiar" hidden
+                  class="px-2 py-2 text-xs text-red-400 hover:text-red-300 font-semibold">✕ Cancelar</button>
+        </div>
+        <input type="hidden" name="colores" id="colores-input" value="{{ colores_json }}">
+        <input type="color" id="color-picker"
+               style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
+               value="#000000">
       </div>
 
       <!-- Nombre -->
@@ -342,6 +395,23 @@
   </div>
 </div>
 
+<!-- Recortador manual: se procesa en el navegador antes de enviar el formulario. -->
+<div id="crop-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="crop-title">
+  <div class="w-full max-w-md rounded-2xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
+    <h2 id="crop-title" class="text-lg font-bold text-white">Ajustar imagen</h2>
+    <p id="crop-counter" class="mt-1 text-sm text-slate-300">Mové la foto y usá el zoom para elegir el recorte cuadrado.</p>
+    <div id="crop-viewport" class="relative mx-auto mt-4 h-72 w-72 touch-none overflow-hidden rounded-xl bg-slate-800 ring-2 ring-white/80 cursor-move">
+      <img id="crop-image" class="absolute max-w-none select-none pointer-events-none" alt="Vista previa del recorte">
+    </div>
+    <label class="mt-4 block text-sm font-medium text-slate-200" for="crop-zoom">Zoom</label>
+    <input id="crop-zoom" type="range" min="1" max="3" value="1" step="0.01" class="mt-2 w-full accent-violet-500">
+    <div class="mt-5 flex justify-end gap-3">
+      <button id="crop-cancel" type="button" class="rounded-xl border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">Cancelar</button>
+      <button id="crop-apply" type="button" class="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Usar recorte</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function calcularGanancia() {
   const precio = parseFloat(document.getElementById('precio').value) || 0;
@@ -361,29 +431,216 @@ function calcularGanancia() {
 }
 document.addEventListener('DOMContentLoaded', calcularGanancia);
 
-// Preview de imágenes extra seleccionadas
-function mostrarPreviewExtra(input) {
+// ── Galería extra: acumula fotos de a una o en tandas (no reemplaza) ──
+let pendingExtras = []; // Files recortados ya confirmados para subir
+
+function onImagenesExtraChange(input) {
+  const conocidas = new Set(pendingExtras.map(f => f.name + '|' + f.size + '|' + f.lastModified));
+  const nuevos = Array.from(input.files || []).filter(
+    f => f.type && f.type.startsWith('image/') && !conocidas.has(f.name + '|' + f.size + '|' + f.lastModified)
+  );
+  if (nuevos.length === 0) { sincronizarExtras(); return; }
+  abrirRecortador(nuevos, function(results) {
+    pendingExtras = pendingExtras.concat(results);
+    sincronizarExtras();
+  });
+}
+
+function sincronizarExtras() {
+  const input = document.getElementById('imagenes_extra');
+  const transfer = new DataTransfer();
+  pendingExtras.forEach(f => transfer.items.add(f));
+  input.files = transfer.files;
+  mostrarPreviewExtra(pendingExtras);
+}
+
+function quitarExtra(name, size, lastModified) {
+  pendingExtras = pendingExtras.filter(
+    f => !(f.name === name && f.size === size && f.lastModified === lastModified)
+  );
+  sincronizarExtras();
+}
+
+// Preview de fotos extra (agregadas, aún sin guardar)
+function mostrarPreviewExtra(files) {
   const container = document.getElementById('preview-extra');
-  const label = document.getElementById('extra-nombre');
   container.innerHTML = '';
-  if (input.files.length === 0) {
+  if (!files.length) {
     container.classList.add('hidden');
-    label.textContent = 'Agregar más fotos';
+    document.getElementById('extra-nombre').textContent = 'Agregar fotos';
     return;
   }
-  label.textContent = input.files.length + ' foto(s) seleccionada(s)';
+  document.getElementById('extra-nombre').textContent = files.length + ' foto(s) nueva(s) para agregar';
   container.classList.remove('hidden');
-  Array.from(input.files).forEach(file => {
+  files.forEach((file, idx) => {
     const reader = new FileReader();
     reader.onload = function(e) {
       const div = document.createElement('div');
-      div.className = 'relative';
-      div.innerHTML = `<img src="${e.target.result}" class="w-full aspect-square object-cover rounded-xl border border-purple-500/50"/>`;
+      div.className = 'relative group';
+      div.innerHTML = `<img src="${e.target.result}" class="w-full aspect-square object-cover rounded-xl border border-purple-500/50"/>
+        <button type="button" onclick="quitarExtra(${JSON.stringify(file.name).replace(/"/g, '&quot;')},${file.size},${file.lastModified})"
+                title="Quitar esta foto" aria-label="Quitar foto"
+                class="absolute top-1 right-1 w-6 h-6 bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold
+                       rounded-full flex items-center justify-center shadow transition-all">✕</button>`;
       container.appendChild(div);
     };
     reader.readAsDataURL(file);
   });
 }
+
+// Recorte cuadrado manual de imagen principal y galería.
+const cropState = { files: [], index: 0, results: [], image: null, base: 1, zoom: 1, x: 0, y: 0, dragging: false, pointerX: 0, pointerY: 0, onDone: null };
+const cropModal = document.getElementById('crop-modal');
+const cropViewport = document.getElementById('crop-viewport');
+const cropImage = document.getElementById('crop-image');
+const cropZoom = document.getElementById('crop-zoom');
+
+function abrirRecortador(files, onDone) {
+  const lista = (Array.isArray(files) ? files : Array.from(files || []))
+    .filter(f => f.type && f.type.startsWith('image/'));
+  if (!lista.length) return;
+  cropState.files = lista;
+  cropState.index = 0;
+  cropState.results = [];
+  cropState.onDone = onDone || null;
+  cargarImagenParaRecortar();
+}
+
+function cargarImagenParaRecortar() {
+  const file = cropState.files[cropState.index];
+  const image = new Image();
+  image.onload = () => {
+    cropState.image = image;
+    // La vista previa del recorte debe apuntar a la misma imagen cargada.
+    cropImage.src = image.src;
+    // Mostrar el modal ANTES de medir: con display:none el viewport mide 0px
+    // y la imagen quedaría con tamaño 0 (se veía en negro).
+    cropModal.classList.remove('hidden');
+    cropModal.classList.add('flex');
+    const size = cropViewport.clientWidth;
+    cropState.base = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+    cropState.zoom = 1;
+    cropZoom.value = 1;
+    cropState.x = (size - image.naturalWidth * cropState.base) / 2;
+    cropState.y = (size - image.naturalHeight * cropState.base) / 2;
+    document.getElementById('crop-counter').textContent = cropState.files.length > 1
+      ? `Foto ${cropState.index + 1} de ${cropState.files.length}. Mové la foto y usá el zoom.`
+      : 'Mové la foto y usá el zoom para elegir el recorte cuadrado.';
+    actualizarVistaRecorte();
+  };
+  image.src = URL.createObjectURL(file);
+}
+
+function limitarPosicion() {
+  const size = cropViewport.clientWidth;
+  const width = cropState.image.naturalWidth * cropState.base * cropState.zoom;
+  const height = cropState.image.naturalHeight * cropState.base * cropState.zoom;
+  cropState.x = Math.min(0, Math.max(size - width, cropState.x));
+  cropState.y = Math.min(0, Math.max(size - height, cropState.y));
+}
+
+function actualizarVistaRecorte() {
+  limitarPosicion();
+  cropImage.style.width = `${cropState.image.naturalWidth * cropState.base * cropState.zoom}px`;
+  cropImage.style.height = `${cropState.image.naturalHeight * cropState.base * cropState.zoom}px`;
+  cropImage.style.left = `${cropState.x}px`;
+  cropImage.style.top = `${cropState.y}px`;
+}
+
+cropZoom.addEventListener('input', () => {
+  const size = cropViewport.clientWidth;
+  const oldWidth = cropState.image.naturalWidth * cropState.base * cropState.zoom;
+  const oldHeight = cropState.image.naturalHeight * cropState.base * cropState.zoom;
+  const centerX = (size / 2 - cropState.x) / oldWidth;
+  const centerY = (size / 2 - cropState.y) / oldHeight;
+  cropState.zoom = Number(cropZoom.value);
+  const newWidth = cropState.image.naturalWidth * cropState.base * cropState.zoom;
+  const newHeight = cropState.image.naturalHeight * cropState.base * cropState.zoom;
+  cropState.x = size / 2 - centerX * newWidth;
+  cropState.y = size / 2 - centerY * newHeight;
+  actualizarVistaRecorte();
+});
+
+cropViewport.addEventListener('pointerdown', event => {
+  cropState.dragging = true;
+  cropState.pointerX = event.clientX;
+  cropState.pointerY = event.clientY;
+  cropViewport.setPointerCapture(event.pointerId);
+});
+cropViewport.addEventListener('pointermove', event => {
+  if (!cropState.dragging) return;
+  cropState.x += event.clientX - cropState.pointerX;
+  cropState.y += event.clientY - cropState.pointerY;
+  cropState.pointerX = event.clientX;
+  cropState.pointerY = event.clientY;
+  actualizarVistaRecorte();
+});
+cropViewport.addEventListener('pointerup', () => { cropState.dragging = false; });
+
+function cerrarRecortador() {
+  cropModal.classList.add('hidden');
+  cropModal.classList.remove('flex');
+  const eraPrincipal = document.getElementById('imagen').value !== '' && cropState.onDone === null;
+  cropState.onDone = null;
+  if (eraPrincipal) {
+    // Si se canceló el recorte de la imagen principal, descartar la selección
+    const input = document.getElementById('imagen');
+    input.value = '';
+    document.getElementById('imagen-nombre').textContent = 'Hacé clic para seleccionar imagen principal';
+    document.getElementById('imagen-quitar').classList.add('hidden');
+  }
+}
+
+document.getElementById('crop-cancel').addEventListener('click', cerrarRecortador);
+document.getElementById('crop-apply').addEventListener('click', () => {
+  const size = cropViewport.clientWidth;
+  const output = document.createElement('canvas');
+  output.width = output.height = 900;
+  const scale = output.width / size;
+  output.getContext('2d').drawImage(cropState.image, cropState.x * scale, cropState.y * scale,
+    cropState.image.naturalWidth * cropState.base * cropState.zoom * scale,
+    cropState.image.naturalHeight * cropState.base * cropState.zoom * scale);
+  output.toBlob(blob => {
+    const original = cropState.files[cropState.index];
+    cropState.results.push(new File([blob], original.name.replace(/\.[^.]+$/, '') + '-recortada.jpg', { type: 'image/jpeg' }));
+    cropState.index += 1;
+    if (cropState.index < cropState.files.length) {
+      cargarImagenParaRecortar();
+      return;
+    }
+    cropModal.classList.add('hidden');
+    cropModal.classList.remove('flex');
+    const results = cropState.results.slice();
+    const onDone = cropState.onDone;
+    cropState.onDone = null;
+    if (onDone) onDone(results);
+  }, 'image/jpeg', 0.92);
+});
+
+document.getElementById('imagen').addEventListener('change', function() {
+  abrirRecortador(this.files, function(results) {
+    const input = document.getElementById('imagen');
+    const transfer = new DataTransfer();
+    results.forEach(f => transfer.items.add(f));
+    input.files = transfer.files;
+    document.getElementById('imagen-nombre').textContent = results[0].name;
+    document.getElementById('imagen-quitar').classList.remove('hidden');
+    mostrarPreviewImagenPrincipal(results[0]);
+  });
+});
+
+// Miniatura en vivo de la imagen principal recién recortada
+function mostrarPreviewImagenPrincipal(file) {
+  const cont = document.getElementById('imagen-preview-actual');
+  cont.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(file);
+  img.className = 'w-24 h-24 object-cover rounded-xl border-2 border-purple-500/70 shadow';
+  img.alt = 'Nueva imagen principal';
+  cont.appendChild(img);
+  cont.classList.remove('hidden');
+}
+document.getElementById('imagenes_extra').addEventListener('change', function() { onImagenesExtraChange(this); });
 
 // Marcar imagen existente para eliminar
 function marcarEliminar(checkbox, cardId) {
@@ -398,6 +655,169 @@ function marcarEliminar(checkbox, cardId) {
     card.querySelector('span').className = 'bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg';
   }
 }
+
+// Quitar la imagen principal seleccionada (antes de guardar)
+function quitarSeleccionImagen() {
+  const input = document.getElementById('imagen');
+  input.value = '';
+  document.getElementById('imagen-nombre').textContent = 'Hacé clic para seleccionar imagen principal';
+  document.getElementById('imagen-quitar').classList.add('hidden');
+  const cont = document.getElementById('imagen-preview-actual');
+  if (cont) {
+    cont.innerHTML = '';
+    cont.classList.add('hidden');
+  }
+}
+
+// Marcar la imagen principal ya guardada para eliminarla al guardar
+function marcarQuitarPrincipal(checkbox) {
+  const card = document.getElementById('imagen-principal-actual');
+  const texto = document.getElementById('quitar-principal-texto');
+  if (checkbox.checked) {
+    card.style.opacity = '0.3';
+    texto.textContent = '✓ Se quitará al guardar';
+    texto.className = 'text-red-400 font-semibold';
+  } else {
+    card.style.opacity = '1';
+    texto.textContent = '✕ Quitar imagen principal';
+    texto.className = 'text-red-400 font-semibold';
+  }
+}
+
+// ── Colores disponibles (atributos) — panel RGB ──
+let coloresActuales = [];
+(function() {
+  const colorInput = document.getElementById('colores-input');
+  try {
+    coloresActuales = JSON.parse(colorInput.value || '[]');
+  } catch (e) {
+    coloresActuales = [];
+  }
+  if (!Array.isArray(coloresActuales)) coloresActuales = [];
+})();
+
+let pickerModo = 'agregar';  // 'agregar' | 'editar'
+let pickerEditarIndex = -1;
+let colorPendiente = null;   // color elegido aún sin confirmar con el botón
+
+function normalizarColor(v) {
+  v = String(v || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : null;
+}
+
+// Muestra qué color hay pendiente y habilita el botón de confirmación.
+function actualizarControlColor() {
+  const preview = document.getElementById('color-preview');
+  const hex = document.getElementById('color-picker-hex');
+  const btn = document.getElementById('color-agregar');
+  const limpiar = document.getElementById('color-limpiar');
+  if (!colorPendiente) {
+    preview.classList.add('hidden');
+    hex.classList.add('hidden');
+    limpiar.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = 'Agregar color';
+    return;
+  }
+  preview.classList.remove('hidden');
+  preview.style.backgroundColor = colorPendiente;
+  hex.classList.remove('hidden');
+  hex.textContent = colorPendiente;
+  limpiar.classList.remove('hidden');
+  if (pickerModo === 'editar') {
+    btn.textContent = 'Actualizar color';
+    btn.disabled = false;
+  } else {
+    btn.textContent = 'Agregar color';
+    btn.disabled = coloresActuales.indexOf(colorPendiente) !== -1;
+  }
+}
+
+function abrirSelectorColor(modo, index) {
+  pickerModo = modo;
+  pickerEditarIndex = modo === 'editar' ? index : -1;
+  document.getElementById('color-picker').click();
+}
+
+function renderColores() {
+  const panel = document.getElementById('colores-panel');
+  const vacio = document.getElementById('colores-sin-color');
+  const input = document.getElementById('colores-input');
+  panel.innerHTML = '';
+  vacio.style.display = coloresActuales.length === 0 ? 'block' : 'none';
+  input.value = JSON.stringify(coloresActuales);
+  coloresActuales.forEach(function(hex, idx) {
+    const item = document.createElement('div');
+    item.className = 'flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-xl py-1.5 pl-1.5 pr-1';
+
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.title = 'Cambiar color ' + hex;
+    dot.className = 'w-8 h-8 rounded-full border border-gray-600 cursor-pointer hover:scale-110 transition-transform';
+    dot.style.backgroundColor = hex;
+    dot.addEventListener('click', function() {
+      colorPendiente = hex;
+      actualizarControlColor();
+      abrirSelectorColor('editar', idx);
+    });
+
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'text-xs font-mono text-gray-300 min-w-20';
+    etiqueta.textContent = hex;
+
+    const quitar = document.createElement('button');
+    quitar.type = 'button';
+    quitar.title = 'Quitar color';
+    quitar.className = 'w-6 h-6 flex items-center justify-center text-xs text-red-400 hover:text-red-300 font-bold rounded-lg hover:bg-gray-700 transition-colors';
+    quitar.textContent = '✕';
+    quitar.addEventListener('click', function() {
+      coloresActuales.splice(idx, 1);
+      renderColores();
+    });
+
+    item.appendChild(dot);
+    item.appendChild(etiqueta);
+    item.appendChild(quitar);
+    panel.appendChild(item);
+  });
+}
+
+document.getElementById('color-picker').addEventListener('change', function() {
+  colorPendiente = normalizarColor(this.value);
+  actualizarControlColor();
+});
+
+document.getElementById('color-abrir').addEventListener('click', function() {
+  abrirSelectorColor('agregar');
+});
+
+document.getElementById('color-preview').addEventListener('click', function() {
+  abrirSelectorColor(pickerEditarIndex >= 0 ? 'editar' : 'agregar', pickerEditarIndex);
+});
+
+document.getElementById('color-agregar').addEventListener('click', function() {
+  if (!colorPendiente) return;
+  if (pickerModo === 'editar' && pickerEditarIndex >= 0 && pickerEditarIndex < coloresActuales.length) {
+    coloresActuales[pickerEditarIndex] = colorPendiente;
+    renderColores();
+  } else if (coloresActuales.indexOf(colorPendiente) === -1) {
+    coloresActuales.push(colorPendiente);
+    renderColores();
+  }
+  pickerModo = 'agregar';
+  pickerEditarIndex = -1;
+  colorPendiente = null;
+  actualizarControlColor();
+});
+
+document.getElementById('color-limpiar').addEventListener('click', function() {
+  pickerModo = 'agregar';
+  pickerEditarIndex = -1;
+  colorPendiente = null;
+  actualizarControlColor();
+});
+
+document.addEventListener('DOMContentLoaded', renderColores);
 
 // ── Lógica del Escáner de Barras ──
 let productoEscaneado = null;

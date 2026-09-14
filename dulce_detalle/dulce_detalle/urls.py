@@ -96,6 +96,7 @@ urlpatterns = [
         # API JSON para carrito dinámico (AJAX)
         path('carrito/api/agregar/<int:pk>/', views.carrito_publico_api_agregar, name='carrito_api_agregar'),
         path('carrito/api/quitar/<int:pk>/',  views.carrito_publico_api_quitar,  name='carrito_api_quitar'),
+        path('carrito/api/color/<int:pk>/',   views.carrito_publico_api_color,   name='carrito_api_color'),
         # API Analytics
         path('api/click/<int:pk>/', views.api_registrar_click, name='api_registrar_click'),
         path('checkout/', views.checkout_publico, name='checkout_publico'),

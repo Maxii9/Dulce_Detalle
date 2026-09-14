@@ -19,6 +19,7 @@ from app.models import Negocio, CategoriaProducto
 import functools
 import django
 from django.db import models as db_models
+from django.db.models import Count, Q
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,14 @@ def _contexto_base(request, slug=None):
     
     if request.user.is_superuser:
         # Superusuarios ven todo
-        negocios = list(Negocio.objects.all())
+        negocios = list(Negocio.objects.annotate(
+            _pedidos_pendientes_count=Count('pedidos', filter=Q(pedidos__estado='pendiente'))
+        ))
     else:
         # Usuarios normales ven sus tiendas
-        negocios = list(request.user.negocios.all())
+        negocios = list(request.user.negocios.annotate(
+            _pedidos_pendientes_count=Count('pedidos', filter=Q(pedidos__estado='pendiente'))
+        ))
         
     negocio = None
     if slug:
@@ -144,6 +149,12 @@ def lista_productos(request, slug):
         .aggregate(total=Sum('valor'))['total'] or 0
     )
 
+    # Paginación: los agregados de arriba se calculan sobre el queryset completo
+    from django.core.paginator import Paginator
+    paginator = Paginator(productos, 30)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    page_range = paginator.get_elided_page_range(page_obj.number)
+
     # Categorias con subcategorias agrupadas para el desplegable
     from app.models import Subcategoria as SubcatModel
     categorias_raw = negocio.categorias_producto.prefetch_related('subcategorias').all()
@@ -170,7 +181,9 @@ def lista_productos(request, slug):
     return render(request, 'productos/lista.html', {
         'negocio': negocio,
         'negocios': negocios,
-        'productos': productos,
+        'productos': page_obj,
+        'page_obj': page_obj,
+        'page_range': page_range,
         'query': query,
         'cat_activa': cat_filter,
         'sub_activa': sub_filter,
@@ -204,6 +217,7 @@ def crear_producto(request, slug):
         codigo_barras = request.POST.get('codigo_barras', '').strip() or None
         imagen = request.FILES.get('imagen')
         imagenes_extra = request.FILES.getlist('imagenes_extra')
+        colores = services.sanitizar_colores(request.POST.get('colores', ''))
         if nombre and precio:
             try:
                 p_val = float(precio)
@@ -226,6 +240,7 @@ def crear_producto(request, slug):
                         categoria_id=categoria_id,
                         subcategoria_id=subcategoria_id,
                         imagenes_extra=imagenes_extra,
+                        colores=colores,
                     )
                     if codigo_barras:
                         prod.codigo_barras = codigo_barras[:50]
@@ -245,6 +260,7 @@ def crear_producto(request, slug):
         'accion': 'Nuevo producto',
         'producto': None,
         'categorias': categorias,
+        'colores_json': '[]',
     })
 
 
@@ -268,6 +284,8 @@ def editar_producto(request, slug, pk):
         imagenes_extra = request.FILES.getlist('imagenes_extra')
         imagenes_eliminar_raw = request.POST.getlist('eliminar_imagen')
         imagenes_eliminar = [int(x) for x in imagenes_eliminar_raw if x.isdigit()]
+        quitar_imagen_principal = request.POST.get('quitar_imagen_principal') == '1'
+        colores = services.sanitizar_colores(request.POST.get('colores', ''))
         if nombre and precio:
             try:
                 p_val = float(precio)
@@ -291,6 +309,8 @@ def editar_producto(request, slug, pk):
                         subcategoria_id=subcategoria_id,
                         imagenes_extra=imagenes_extra,
                         imagenes_eliminar=imagenes_eliminar,
+                        quitar_imagen_principal=quitar_imagen_principal,
+                        colores=colores,
                     )
                     if prod:
                         prod.codigo_barras = codigo_barras[:50] if codigo_barras else None
@@ -304,6 +324,7 @@ def editar_producto(request, slug, pk):
 
     from app.models import Subcategoria as SubcatModel
     categorias = negocio.categorias_producto.prefetch_related('subcategorias').all()
+    import json
     return render(request, 'productos/form.html', {
         'negocio': negocio,
         'negocios': negocios,
@@ -311,6 +332,7 @@ def editar_producto(request, slug, pk):
         'producto': producto,
         'categorias': categorias,
         'imagenes_extra': producto.imagenes.all(),
+        'colores_json': json.dumps(list(producto.colores or [])),
     })
 
 
@@ -548,10 +570,18 @@ def lista_ventas(request, slug):
         # tipo (pagada/credito) solo aplica a ventas normales
         ventas = ventas.filter(tipo=tipo, tipo_movimiento='venta')
 
+    # Paginación tras aplicar filtros
+    from django.core.paginator import Paginator
+    paginator = Paginator(ventas, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    page_range = paginator.get_elided_page_range(page_obj.number)
+
     return render(request, 'ventas/lista.html', {
         'negocio':          negocio,
         'negocios':         negocios,
-        'ventas':           ventas,
+        'ventas':           page_obj,
+        'page_obj':         page_obj,
+        'page_range':       page_range,
         'filtro_fecha':     fecha,
         'filtro_metodo':    metodo,
         'filtro_tipo':      tipo,
@@ -838,6 +868,10 @@ def tienda_publica(request, slug):
         galeria_map[p.pk] = urls
     galeria_json = json.dumps(galeria_map)
 
+    # Mapa de colores por producto: {pk: ["#hex", ...]} (vacío = sin color)
+    colores_map = {p.pk: list(p.colores or []) for p in productos}
+    colores_json = json.dumps(colores_map)
+
     return render(request, 'tienda_publica/index.html', {
         'negocio': negocio,
         'productos_con_cant': productos_con_cant,
@@ -852,6 +886,8 @@ def tienda_publica(request, slug):
         'es_propietario': es_propietario,
         'galeria_map': galeria_map,
         'galeria_json': galeria_json,
+        'colores_map': colores_map,
+        'colores_json': colores_json,
     })
 
 
@@ -880,7 +916,7 @@ def agregar_carrito_publico(request, slug, pk):
         return redirect('tienda_publica', slug=slug)
         
     carrito = request.session.get('carrito_publico', {})
-    cantidad_actual = carrito.get(str(pk), 0)
+    cantidad_actual = services.carrito_publico_cantidad(carrito, pk)
     if cantidad_actual >= producto.stock:
         messages.warning(request, f'Solo hay {producto.stock} unidad(es) disponible(s) de "{producto.nombre}".')
     else:
@@ -919,6 +955,8 @@ def _carrito_publico_json(request, slug):
             'precio':    str(p.precio),
             'subtotal':  str(i['subtotal']),
             'stock':     p.stock,
+            'color':     i['color'] or '',
+            'colores':   list(p.colores or []),
         })
     return {
         'ok': True,
@@ -929,7 +967,7 @@ def _carrito_publico_json(request, slug):
 
 
 def carrito_publico_api_agregar(request, slug, pk):
-    """API JSON: agrega 1 unidad al carrito público."""
+    """API JSON: agrega 1 unidad (con color opcional) al carrito público."""
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405)
 
@@ -939,15 +977,38 @@ def carrito_publico_api_agregar(request, slug, pk):
     if request.user.is_authenticated and (request.user.is_superuser or request.user == negocio.propietario):
         return JsonResponse({'ok': False, 'error': 'Modo Vista Previa'}, status=403)
 
+    # La fachada envía el color elegido en el cuerpo JSON
+    color = None
+    try:
+        datos = json.loads(request.body or b'{}')
+        color = services.sanitizar_color(datos.get('color'))
+    except (ValueError, TypeError):
+        color = None
+
     carrito = request.session.get('carrito_publico', {})
-    cantidad_actual = carrito.get(str(pk), 0)
+    cantidad_actual = services.carrito_publico_cantidad(carrito, pk)
     if cantidad_actual >= producto.stock:
         return JsonResponse({
             'ok': False,
             'error': f'Solo hay {producto.stock} unidad(es) disponible(s) de "{producto.nombre}".',
         }, status=400)
 
-    services.carrito_publico_agregar(request.session, pk)
+    services.carrito_publico_agregar(request.session, pk, color=color)
+    return JsonResponse(_carrito_publico_json(request, slug))
+
+
+def carrito_publico_api_color(request, slug, pk):
+    """API JSON: actualiza el color de una línea existente del carrito público."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405)
+
+    try:
+        datos = json.loads(request.body or b'{}')
+        color = services.sanitizar_color(datos.get('color'))
+    except (ValueError, TypeError):
+        color = None
+
+    services.carrito_publico_color(request.session, pk, color)
     return JsonResponse(_carrito_publico_json(request, slug))
 
 
@@ -1040,14 +1101,25 @@ def lista_pedidos(request, slug):
         return redirect('lista_productos', slug=slug)
     
     pedidos = services.get_pedidos(negocio.slug)
-    pedidos_pendientes_count = services.get_pedidos_pendientes_count(negocio.slug)
+    # Usar la anotación del menú (ya calculada en _contexto_base) para evitar un COUNT extra.
+    pendientes = getattr(negocio, '_pedidos_pendientes_count', None)
+    if pendientes is None:
+        pendientes = services.get_pedidos_pendientes_count(negocio.slug)
+
+    # Paginación
+    from django.core.paginator import Paginator
+    paginator = Paginator(pedidos, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    page_range = paginator.get_elided_page_range(page_obj.number)
 
     return render(request, 'pedidos/lista.html', {
         'negocio': negocio,
         'negocios': negocios,
-        'pedidos': pedidos,
+        'pedidos': page_obj,
+        'page_obj': page_obj,
+        'page_range': page_range,
         'carrito_count': len(services.get_carrito(request.session)),
-        'pedidos_pendientes_count': pedidos_pendientes_count,
+        'pedidos_pendientes_count': pendientes,
     })
 
 @tienda_requerida

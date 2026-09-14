@@ -166,6 +166,26 @@
       color: #e2e8f0 !important;
       border-color: #3a3a55 !important;
     }
+    /* Controles que usan la paleta personalizada del negocio. En oscuro se
+       prioriza contraste constante sobre el color de marca para que textos y
+       filtros sigan siendo legibles con cualquier combinación elegida. */
+    [data-theme="dark"] .bg-search-bg,
+    [data-theme="dark"] .bg-filter-idle-bg { background: #202033 !important; }
+    [data-theme="dark"] .text-search-text,
+    [data-theme="dark"] .text-filter-idle-text { color: #f1f5f9 !important; }
+    [data-theme="dark"] .border-search-border,
+    [data-theme="dark"] .border-filter-idle-border { border-color: #64748b !important; }
+    [data-theme="dark"] .bg-filter-active-bg,
+    [data-theme="dark"] .bg-nav-active-bg { background: #334155 !important; }
+    [data-theme="dark"] .text-filter-active-text,
+    [data-theme="dark"] .text-nav-active-text { color: #ffffff !important; }
+    [data-theme="dark"] .border-filter-active-border,
+    [data-theme="dark"] .border-nav-active-border { border-color: #94a3b8 !important; }
+    [data-theme="dark"] .hover\:bg-filter-hover-bg:hover,
+    [data-theme="dark"] .hover\:bg-nav-hover-bg:hover { background: #2d3748 !important; }
+    [data-theme="dark"] .hover\:text-nav-hover-text:hover { color: #ffffff !important; }
+    [data-theme="dark"] input::placeholder,
+    [data-theme="dark"] textarea::placeholder { color: #aebbd0 !important; opacity: 1; }
 
     /* Toggle button */
     .admin-theme-toggle {

@@ -1,0 +1,33 @@
+{% load paginacion_tags %}
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-6 flex flex-wrap items-center justify-center gap-2" aria-label="Paginación">
+  {% if page_obj.has_previous %}
+  <a href="?{% url_replace page=page_obj.previous_page_number %}"
+     class="px-3 py-2 rounded-lg text-sm font-semibold text-input-text bg-input-bg border border-input-border hover:border-sidebar-text hover:bg-card-bg-alt transition-all">
+    &lsaquo; Anterior
+  </a>
+  {% endif %}
+
+  {% for p in page_range %}
+    {% if p == page_obj.paginator.ELLIPSIS %}
+      <span class="px-2 py-2 text-sm text-content-muted">…</span>
+    {% elif p == page_obj.number %}
+      <span class="min-w-9 px-3 py-2 rounded-lg text-sm font-bold text-white bg-sidebar-text border border-sidebar-text">
+        {{ p }}
+      </span>
+    {% else %}
+      <a href="?{% url_replace page=p %}"
+         class="min-w-9 px-3 py-2 rounded-lg text-sm font-semibold text-input-text bg-input-bg border border-input-border hover:border-sidebar-text hover:bg-card-bg-alt transition-all">
+        {{ p }}
+      </a>
+    {% endif %}
+  {% endfor %}
+
+  {% if page_obj.has_next %}
+  <a href="?{% url_replace page=page_obj.next_page_number %}"
+     class="px-3 py-2 rounded-lg text-sm font-semibold text-input-text bg-input-bg border border-input-border hover:border-sidebar-text hover:bg-card-bg-alt transition-all">
+    Siguiente &rsaquo;
+  </a>
+  {% endif %}
+</nav>
+{% endif %}

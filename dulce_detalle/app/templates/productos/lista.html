@@ -39,7 +39,7 @@
       <p class="text-gray-500 text-sm">en stock</p>
     </div>
     <div>
-      <span class="text-3xl font-bold text-purple-400">{{ productos.count }}</span>
+      <span class="text-3xl font-bold text-purple-400">{{ productos.paginator.count }}</span>
       <p class="text-gray-500 text-sm">productos</p>
     </div>
   </div>
@@ -260,6 +260,7 @@ document.addEventListener('click', function(e) {
   </div>
   {% endfor %}
 
+  {% include "includes/paginacion.html" %}
 </div>
 
 <!-- Sin productos (solo lista vacía, no como fallback de negocio) -->
