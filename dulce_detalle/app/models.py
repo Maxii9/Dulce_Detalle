@@ -72,6 +72,8 @@ class Negocio(models.Model):
 
     @property
     def pedidos_pendientes_count(self):
+        if hasattr(self, '_pedidos_pendientes_count'):
+            return self._pedidos_pendientes_count
         return self.pedidos.filter(estado='pendiente').count()
 
 
@@ -116,6 +118,7 @@ class Producto(models.Model):
     codigo_barras = models.CharField(max_length=50, blank=True, null=True, unique=True, db_index=True, verbose_name='Código de barras')
     stock = models.IntegerField(default=0)
     imagen = models.ImageField(upload_to='productos/', blank=True, null=True)
+    colores = models.JSONField(default=list, blank=True, verbose_name='Colores disponibles (hex)')
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
 
@@ -124,6 +127,11 @@ class Producto(models.Model):
 
     class Meta:
         ordering = ['-creado']
+        indexes = [
+            models.Index(fields=['negocio', 'stock'], name='producto_neg_stock_idx'),
+            models.Index(fields=['negocio', 'categoria'], name='producto_neg_cat_idx'),
+            models.Index(fields=['negocio', 'subcategoria'], name='producto_neg_subcat_idx'),
+        ]
 
 
 class ImagenProducto(models.Model):
@@ -180,12 +188,17 @@ class Venta(models.Model):
 
     class Meta:
         ordering = ['-creado']
+        indexes = [
+            models.Index(fields=['negocio', 'fecha'], name='venta_neg_fecha_idx'),
+            models.Index(fields=['negocio', 'creado'], name='venta_neg_creado_idx'),
+        ]
 
 
 class ItemVenta(models.Model):
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='items')
     producto = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True, related_name='items_venta')
     nombre_libre = models.CharField(max_length=150, null=True, blank=True)
+    color = models.CharField(max_length=7, null=True, blank=True, verbose_name='Color (hex)')
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
     costo_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -232,10 +245,17 @@ class Pedido(models.Model):
     def __str__(self):
         return f"Pedido #{self.pk} - {self.cliente_nombre} - ${self.total}"
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['negocio', 'estado'], name='pedido_neg_estado_idx'),
+            models.Index(fields=['negocio', 'creado'], name='pedido_neg_creado_idx'),
+        ]
+
 class ItemPedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='items')
     producto = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True, related_name='items_pedido')
     nombre_producto = models.CharField(max_length=150, null=True, blank=True)  # Guardar el nombre en caso de que el producto sea eliminado
+    color = models.CharField(max_length=7, null=True, blank=True, verbose_name='Color (hex)')
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
@@ -279,6 +299,9 @@ class EventoAnalytics(models.Model):
         ordering = ['-fecha']
         verbose_name = 'Evento Analytics'
         verbose_name_plural = 'Eventos Analytics'
+        indexes = [
+            models.Index(fields=['negocio', 'tipo', 'fecha'], name='evento_neg_tipo_fecha_idx'),
+        ]
 
     def __str__(self):
         return f"{self.tipo} — {self.negocio.nombre} — {self.fecha.strftime('%d/%m/%Y %H:%M')}"

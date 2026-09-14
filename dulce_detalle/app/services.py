@@ -3,6 +3,8 @@ Capa de servicios para la lógica CRUD de Productos, Negocios y Ventas.
 Las vistas delegan toda la lógica de datos a este módulo.
 """
 from decimal import Decimal
+import json
+import re
 from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido, Subcategoria, EventoAnalytics
 
 
@@ -48,7 +50,7 @@ def get_producto(pk: int) -> Producto | None:
         return None
 
 
-def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None) -> Producto:
+def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None, colores=None) -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
     producto = Producto.objects.create(
         negocio=negocio,
@@ -60,6 +62,7 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
         descripcion=descripcion,
         stock=stock,
         imagen=imagen,
+        colores=colores or [],
     )
     # Guardar imágenes adicionales
     if imagenes_extra:
@@ -83,7 +86,7 @@ def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: 
     return producto
 
 
-def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None, imagenes_eliminar=None) -> Producto | None:
+def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None, imagenes_eliminar=None, quitar_imagen_principal=False, colores=None) -> Producto | None:
     """Actualiza un producto existente. Si el stock aumenta, registra un movimiento de compra."""
     producto = get_producto(pk)
     if producto is None:
@@ -100,6 +103,9 @@ def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str 
     producto.stock = stock
     if imagen:
         producto.imagen = imagen
+    elif quitar_imagen_principal:
+        producto.imagen = None
+    producto.colores = colores or []
     producto.save()
 
     # Eliminar imágenes extra marcadas para borrar
@@ -152,6 +158,44 @@ def get_top_vendidos(negocio_slug: str, limite: int = 5) -> list:
         .order_by('-total')[:limite]
     )
     return [item['producto_id'] for item in top]
+
+
+def sanitizar_colores(raw) -> list:
+    """Convierte el JSON de colores del formulario en una lista limpia de hex.
+
+    Acepta strings del tipo '["#ff0000","#00ff00"]' (o parseable). Valida formato
+    #RRGGBB, normaliza a minúsculas, elimina duplicados y limita a 20 colores.
+    Un JSON vacío o inválido devuelve [] (producto sin color).
+    """
+    if not raw:
+        return []
+    try:
+        if isinstance(raw, str):
+            valores = json.loads(raw)
+        else:
+            valores = list(raw)
+    except (ValueError, TypeError):
+        return []
+    hex_re = re.compile(r'^#[0-9a-fA-F]{6}$')
+    colores = []
+    for v in valores:
+        hex_code = str(v).strip().lower()
+        if hex_re.match(hex_code) and hex_code not in colores:
+            colores.append(hex_code)
+        if len(colores) >= 20:
+            break
+    return colores
+
+
+def sanitizar_color(raw) -> str | None:
+    """Convierte un único valor en un hex #rrggbb válido, o None si no lo es."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raw = str(raw)
+    hex_re = re.compile(r'^#[0-9a-fA-F]{6}$')
+    color = raw.strip().lower()
+    return color if hex_re.match(color) else None
 
 
 # ── Insumos (Calculadora de Costos) ───────────────────────────────────────
@@ -260,19 +304,21 @@ def get_carrito_detalle(session: dict) -> list[dict]:
     """
     carrito = get_carrito(session)
     items = []
+    # Un carrito con N productos no debe disparar N consultas. Conservamos el
+    # orden de la sesión, pero resolvemos todos los productos de una vez.
+    producto_ids = [int(pk) for pk in carrito if str(pk).isdigit()]
+    productos = Producto.objects.in_bulk(producto_ids)
     for pk_str, cantidad in carrito.items():
-        try:
-            producto = Producto.objects.get(pk=int(pk_str))
+        producto = productos.get(int(pk_str)) if str(pk_str).isdigit() else None
+        if producto:
             subtotal = Decimal(str(producto.precio)) * cantidad
             items.append({
-                'producto': producto, 
-                'cantidad': cantidad, 
+                'producto': producto,
+                'cantidad': cantidad,
                 'subtotal': subtotal,
                 'es_libre': False,
                 'id_str': str(producto.pk),
             })
-        except Producto.DoesNotExist:
-            pass
             
     carrito_libre = get_carrito_libre(session)
     for lib in carrito_libre:
@@ -399,9 +445,16 @@ def registrar_click_producto(negocio: Negocio, producto_pk: int) -> None:
 
 
 def get_resumen_estadisticas(negocio_slug: str) -> dict:
+    """
+    Resumen de estadísticas calculado con agregados SQL en lugar de recorrer
+    todas las ventas/productos en Python. Mantiene la misma estructura de salida.
+    """
     from django.utils import timezone
-    from django.db.models import Count
+    from django.db.models import Sum, Count, F, DecimalField, ExpressionWrapper
+    from django.db.models.functions import ExtractYear, ExtractMonth
+    from decimal import Decimal
     import json
+
     hoy = timezone.now().date()
     # Lunes de esta semana
     inicio_semana = hoy - timezone.timedelta(days=hoy.weekday())
@@ -409,76 +462,137 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
     inicio_mes = hoy.replace(day=1)
     # Últimos 7 días para métricas online
     hace_7_dias = timezone.now() - timezone.timedelta(days=7)
+    hace_30_dias = timezone.now() - timezone.timedelta(days=30)
+    nombres_meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
-    ventas = Venta.objects.filter(negocio__slug=negocio_slug).prefetch_related('items')
-    productos = Producto.objects.filter(negocio__slug=negocio_slug)
+    negocio_id = Negocio.objects.filter(slug=negocio_slug).values_list('pk', flat=True).first()
 
-    ventas_hoy = ventas.filter(fecha=hoy)
-    ventas_semana = ventas.filter(fecha__gte=inicio_semana)
-    ventas_mes = ventas.filter(fecha__gte=inicio_mes)
+    def _stats_vacio():
+        vacio = {'total': 0, 'ganancia': 0, 'gastos': 0, 'cantidad': 0}
+        return {
+            'hoy': dict(vacio),
+            'semana': dict(vacio),
+            'mes': dict(vacio),
+            'grafico_labels': json.dumps([]),
+            'grafico_gastos': json.dumps([]),
+            'grafico_ganancias': json.dumps([]),
+            'visitas_semana': 0,
+            'pedidos_online_semana': 0,
+            'top_busquedas': [],
+            'top_clicks': [],
+        }
 
-    def _calcular(qs_ventas, is_hoy=False, is_semana=False, is_mes=False):
-        qs_list = list(qs_ventas)
-        total = sum(v.total for v in qs_list)
-        ganancia = sum(v.ganancia_total for v in qs_list)
+    if negocio_id is None:
+        return _stats_vacio()
+
+    ventas_qs = Venta.objects.filter(negocio_id=negocio_id)
+    items_qs = ItemVenta.objects.filter(venta__negocio_id=negocio_id)
+    productos_qs = Producto.objects.filter(negocio_id=negocio_id)
+    eventos = EventoAnalytics.objects.filter(negocio_id=negocio_id)
+
+    def _métricas_periodo(fecha_exacta=None, fecha_min=None, productos_filtro=None):
+        v = ventas_qs
+        if fecha_exacta is not None:
+            v = v.filter(fecha=fecha_exacta)
+        elif fecha_min is not None:
+            v = v.filter(fecha__gte=fecha_min)
+
+        agg = v.aggregate(total=Sum('total'), cantidad=Count('id'))
+        total = agg['total'] or Decimal('0')
+        cantidad = agg['cantidad'] or 0
+
+        it = items_qs
+        if fecha_exacta is not None:
+            it = it.filter(venta__fecha=fecha_exacta)
+        elif fecha_min is not None:
+            it = it.filter(venta__fecha__gte=fecha_min)
+        ganancia = it.aggregate(
+            val=Sum(
+                F('cantidad') * (F('precio_unitario') - F('costo_unitario')),
+                output_field=DecimalField(),
+            )
+        )['val'] or Decimal('0')
+
         gastos_ventas = total - ganancia
 
-        if is_hoy:
-            prods = productos.filter(creado__date=hoy)
-        elif is_semana:
-            prods = productos.filter(creado__date__gte=inicio_semana)
-        elif is_mes:
-            prods = productos.filter(creado__date__gte=inicio_mes)
-        else:
-            prods = productos.none()
+        prods = productos_qs.filter(**productos_filtro) if productos_filtro else productos_qs.none()
+        gastos_inventario = prods.aggregate(
+            val=Sum(ExpressionWrapper(F('costo') * F('stock'), output_field=DecimalField()))
+        )['val'] or Decimal('0')
 
-        gastos_inventario = sum(p.costo * p.stock for p in prods)
-        
         return {
             'total': float(total),
             'ganancia': float(ganancia),
             'gastos': float(gastos_ventas + gastos_inventario),
-            'cantidad': len(qs_list),
+            'cantidad': cantidad,
         }
 
-    # Gráfico de 6 meses
+    # Gráfico de 6 meses: últimos 6 meses incluyendo el actual
+    keys_ordenadas = []
     grafico_labels = []
-    grafico_gastos = []
-    grafico_ganancias = []
-
     for i in range(5, -1, -1):
         y = hoy.year
         m = hoy.month - i
         while m <= 0:
             m += 12
             y -= 1
-        
-        ventas_mes_i = [v for v in ventas if v.fecha.year == y and v.fecha.month == m]
-        prods_mes_i = [p for p in productos if p.creado.year == y and p.creado.month == m]
-        
-        total_cobrado = sum(v.total for v in ventas_mes_i)
-        ganancia_neta = sum(v.ganancia_total for v in ventas_mes_i)
-        gastos_ventas = total_cobrado - ganancia_neta
-        gastos_inventario = sum(p.costo * p.stock for p in prods_mes_i)
-        
-        gastos = gastos_ventas + gastos_inventario
-        
-        nombres_meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-        nombre_mes = f"{nombres_meses[m-1]} {y}"
-        
-        grafico_labels.append(nombre_mes)
-        grafico_gastos.append(float(gastos))
-        grafico_ganancias.append(float(ganancia_neta))
+        keys_ordenadas.append((y, m))
+        grafico_labels.append(f"{nombres_meses[m - 1]} {y}")
+
+    fecha_min_grafico = hoy.replace(year=keys_ordenadas[0][0], month=keys_ordenadas[0][1], day=1)
+
+    ventas_por_mes = {
+        (r['año'], r['mes']): r
+        for r in (
+            ventas_qs
+            .filter(fecha__gte=fecha_min_grafico)
+            .annotate(año=ExtractYear('fecha'), mes=ExtractMonth('fecha'))
+            .values('año', 'mes')
+            .annotate(total=Sum('total'))
+        )
+    }
+    ganancia_por_mes = {
+        (r['año'], r['mes']): r['ganancia']
+        for r in (
+            items_qs
+            .filter(venta__fecha__gte=fecha_min_grafico)
+            .annotate(año=ExtractYear('venta__fecha'), mes=ExtractMonth('venta__fecha'))
+            .values('año', 'mes')
+            .annotate(ganancia=Sum(
+                F('cantidad') * (F('precio_unitario') - F('costo_unitario')),
+                output_field=DecimalField(),
+            ))
+        )
+    }
+    inv_por_mes = {
+        (r['año'], r['mes']): r['inv']
+        for r in (
+            productos_qs
+            .filter(creado__date__gte=fecha_min_grafico)
+            .annotate(año=ExtractYear('creado'), mes=ExtractMonth('creado'))
+            .values('año', 'mes')
+            .annotate(inv=Sum(ExpressionWrapper(F('costo') * F('stock'), output_field=DecimalField())))
+        )
+    }
+
+    grafico_gastos = []
+    grafico_ganancias = []
+    for key in keys_ordenadas:
+        fila_ventas = ventas_por_mes.get(key) or {}
+        total_mes = fila_ventas.get('total') or Decimal('0')
+        ganancia_mes = ganancia_por_mes.get(key) or Decimal('0')
+        gastos_inv_mes = inv_por_mes.get(key) or Decimal('0')
+        gastos_mes = (total_mes - ganancia_mes) + gastos_inv_mes
+        grafico_gastos.append(float(gastos_mes))
+        grafico_ganancias.append(float(ganancia_mes))
 
     # ── Métricas de tienda online (últimos 7 días) ──
-    eventos = EventoAnalytics.objects.filter(negocio__slug=negocio_slug)
     visitas_semana = eventos.filter(tipo='visita', fecha__gte=hace_7_dias).count()
     pedidos_online_semana = Pedido.objects.filter(
-        negocio__slug=negocio_slug, creado__gte=hace_7_dias
+        negocio_id=negocio_id, creado__gte=hace_7_dias
     ).count()
 
     # Top 5 búsquedas (últimos 30 días)
-    hace_30_dias = timezone.now() - timezone.timedelta(days=30)
     top_busquedas = (
         eventos
         .filter(tipo='busqueda', fecha__gte=hace_30_dias)
@@ -499,9 +613,9 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
     )
 
     return {
-        'hoy': _calcular(ventas_hoy, is_hoy=True),
-        'semana': _calcular(ventas_semana, is_semana=True),
-        'mes': _calcular(ventas_mes, is_mes=True),
+        'hoy':      _métricas_periodo(fecha_exacta=hoy, productos_filtro={'creado__date': hoy}),
+        'semana':   _métricas_periodo(fecha_min=inicio_semana, productos_filtro={'creado__date__gte': inicio_semana}),
+        'mes':      _métricas_periodo(fecha_min=inicio_mes, productos_filtro={'creado__date__gte': inicio_mes}),
         'grafico_labels': json.dumps(grafico_labels),
         'grafico_gastos': json.dumps(grafico_gastos),
         'grafico_ganancias': json.dumps(grafico_ganancias),
@@ -517,7 +631,12 @@ def get_resumen_estadisticas(negocio_slug: str) -> dict:
 
 def get_pedidos(negocio_slug: str):
     """Retorna todos los pedidos de un negocio, ordenados por fecha descendente."""
-    return Pedido.objects.filter(negocio__slug=negocio_slug).prefetch_related('items__producto')
+    return (
+        Pedido.objects
+        .filter(negocio__slug=negocio_slug)
+        .order_by('-creado')
+        .prefetch_related('items__producto')
+    )
 
 def get_pedidos_pendientes_count(negocio_slug: str) -> int:
     return Pedido.objects.filter(negocio__slug=negocio_slug, estado='pendiente').count()
@@ -537,6 +656,7 @@ def crear_pedido_cliente(negocio: Negocio, nombre: str, telefono: str, direccion
             pedido=pedido,
             producto=item['producto'],
             nombre_producto=item['producto'].nombre,
+            color=sanitizar_color(item.get('color')),
             cantidad=item['cantidad'],
             precio_unitario=item['producto'].precio
         )
@@ -570,9 +690,10 @@ def aceptar_pedido(pk: int) -> bool:
         ItemVenta.objects.create(
             venta=venta,
             producto=item.producto,
+            color=item.color,
             cantidad=item.cantidad,
             precio_unitario=item.precio_unitario,
-            costo_unitario=item.producto.costo
+            costo_unitario=item.producto.costo if item.producto else 0
         )
 
     pedido.estado = 'aceptado'
@@ -591,30 +712,67 @@ def eliminar_pedido(pk: int) -> bool:
 
 # ── Carrito Público (session-based) ───────────────────────────────────────
 
-def get_carrito_publico(session: dict) -> dict:
-    return session.get('carrito_publico', {})
+def _normalizar_carrito_publico(carrito: dict) -> dict:
+    """Convierte el formato legacy {pk: cantidad} a {pk: {'cantidad': n, 'color': hex|None}}."""
+    norm = {}
+    for pk_str, valor in (carrito or {}).items():
+        if isinstance(valor, dict):
+            cantidad = int(valor.get('cantidad', 0) or 0)
+            color = sanitizar_color(valor.get('color'))
+            if cantidad > 0:
+                norm[str(pk_str)] = {'cantidad': cantidad, 'color': color}
+        else:
+            try:
+                cantidad = int(valor)
+            except (TypeError, ValueError):
+                cantidad = 0
+            if cantidad > 0:
+                norm[str(pk_str)] = {'cantidad': cantidad, 'color': None}
+    return norm
 
-def carrito_publico_agregar(session: dict, producto_pk: int) -> None:
-    carrito = session.get('carrito_publico', {})
+def get_carrito_publico(session: dict) -> dict:
+    return _normalizar_carrito_publico(session.get('carrito_publico', {}))
+
+def carrito_publico_cantidad(carrito: dict, producto_pk: int) -> int:
+    """Cantidad acumulada de un producto en el carrito público (soporta formato legacy)."""
+    linea = _normalizar_carrito_publico(carrito).get(str(producto_pk))
+    return linea['cantidad'] if linea else 0
+
+def carrito_publico_agregar(session: dict, producto_pk: int, color: str | None = None) -> None:
+    """Agrega 1 unidad del producto (opcionalmente con un color) al carrito de la sesión."""
+    carrito = _normalizar_carrito_publico(session.get('carrito_publico', {}))
     key = str(producto_pk)
-    carrito[key] = carrito.get(key, 0) + 1
+    linea = carrito.get(key, {'cantidad': 0, 'color': None})
+    linea['cantidad'] += 1
+    if color is not None:
+        linea['color'] = sanitizar_color(color)
+    carrito[key] = linea
     session['carrito_publico'] = carrito
     session.modified = True
 
+def carrito_publico_color(session: dict, producto_pk: int, color: str | None) -> None:
+    """Actualiza el color de una línea existente del carrito público."""
+    carrito = _normalizar_carrito_publico(session.get('carrito_publico', {}))
+    key = str(producto_pk)
+    if key in carrito:
+        carrito[key]['color'] = sanitizar_color(color)
+        session['carrito_publico'] = carrito
+        session.modified = True
+
 def carrito_publico_quitar(session: dict, producto_pk: int) -> None:
     """Elimina completamente el producto del carrito (sin importar cantidad)."""
-    carrito = session.get('carrito_publico', {})
+    carrito = _normalizar_carrito_publico(session.get('carrito_publico', {}))
     carrito.pop(str(producto_pk), None)
     session['carrito_publico'] = carrito
     session.modified = True
 
 def carrito_publico_decrementar(session: dict, producto_pk: int) -> None:
     """Descuenta 1 unidad. Si llega a 0, elimina el item del carrito."""
-    carrito = session.get('carrito_publico', {})
+    carrito = _normalizar_carrito_publico(session.get('carrito_publico', {}))
     key = str(producto_pk)
     if key in carrito:
-        carrito[key] -= 1
-        if carrito[key] <= 0:
+        carrito[key]['cantidad'] -= 1
+        if carrito[key]['cantidad'] <= 0:
             del carrito[key]
     session['carrito_publico'] = carrito
     session.modified = True
@@ -626,12 +784,22 @@ def carrito_publico_limpiar(session: dict) -> None:
 def get_carrito_publico_detalle(session: dict, negocio_slug: str) -> list[dict]:
     carrito = get_carrito_publico(session)
     items = []
-    for pk_str, cantidad in carrito.items():
+    producto_ids = [int(pk) for pk in carrito if str(pk).isdigit()]
+    productos = Producto.objects.filter(pk__in=producto_ids, negocio__slug=negocio_slug).in_bulk()
+    for pk_str, linea in carrito.items():
         try:
             # Asegurarse de que el producto pertenezca a la tienda que se está viendo
-            producto = Producto.objects.get(pk=int(pk_str), negocio__slug=negocio_slug)
+            producto = productos.get(int(pk_str)) if str(pk_str).isdigit() else None
+            if producto is None:
+                continue
+            cantidad = linea['cantidad']
             subtotal = Decimal(str(producto.precio)) * cantidad
-            items.append({'producto': producto, 'cantidad': cantidad, 'subtotal': subtotal})
+            items.append({
+                'producto': producto,
+                'cantidad': cantidad,
+                'subtotal': subtotal,
+                'color': linea['color'],
+            })
         except Producto.DoesNotExist:
             pass
     return items

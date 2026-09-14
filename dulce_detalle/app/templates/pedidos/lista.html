@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load imagen_tags %}
 
 {% block title %}Pedidos Recibidos — {{ negocio.nombre }}{% endblock %}
 
@@ -21,7 +22,7 @@
     </div>
     <div class="w-px h-10 bg-card-border"></div>
     <div>
-      <span class="block text-2xl font-bold text-content-title">{{ pedidos|length }}</span>
+      <span class="block text-2xl font-bold text-content-title">{{ pedidos.paginator.count }}</span>
       <span class="text-xs text-content-label uppercase font-semibold">En Total</span>
     </div>
   </div>
@@ -91,8 +92,8 @@
                 <!-- Miniatura -->
                 <div class="w-10 h-10 rounded-lg overflow-hidden bg-card-bg-alt border border-card-border flex-shrink-0 flex items-center justify-center">
                   {% if item.producto and item.producto.imagen %}
-                    <img src="{{ item.producto.imagen.url }}" alt="{{ item.nombre_producto|default:item.producto.nombre }}"
-                         class="w-full h-full object-cover"/>
+                    <img src="{% cloudinary_thumb item.producto.imagen 96 96 %}" alt="{{ item.nombre_producto|default:item.producto.nombre }}"
+                     class="w-full h-full object-cover" loading="lazy"/>
                   {% else %}
                     <svg class="w-5 h-5 text-content-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -104,6 +105,12 @@
                   <div class="flex items-center gap-3">
                     <span class="w-8 h-8 rounded-lg bg-nav-active-bg text-nav-active-text flex items-center justify-center font-bold text-sm flex-shrink-0">{{ item.cantidad }}x</span>
                     <span class="text-content-value font-medium truncate">{{ item.nombre_producto|default:item.producto.nombre }}</span>
+                    {% if item.color %}
+                    <span class="flex items-center gap-1.5 flex-shrink-0 text-xs text-content-muted">
+                      <span class="inline-block w-3.5 h-3.5 rounded-full border border-card-border" style="background-color: {{ item.color }}"></span>
+                      <span class="font-mono">{{ item.color }}</span>
+                    </span>
+                    {% endif %}
                   </div>
                   <span class="text-content-muted flex-shrink-0 ml-2">${{ item.subtotal }}</span>
                 </div>
@@ -214,6 +221,8 @@
   </div>
   {% endfor %}
 </div>
+
+{% include "includes/paginacion.html" %}
 
 <!-- AlpineJS para el funcionamiento del acordeón -->
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/cdn.min.js"></script>

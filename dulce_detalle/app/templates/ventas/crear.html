@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load imagen_tags %}
 
 {% block title %}Crear Venta — {{ negocio.nombre }}{% endblock %}
 
@@ -306,7 +307,7 @@
                 {% if item.es_libre %}
                   <span class="text-xl text-sidebar-text">✨</span>
                 {% elif item.producto.imagen %}
-                  <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}" class="w-full h-full object-cover">
+                  <img src="{% cloudinary_thumb item.producto.imagen 96 96 %}" alt="{{ item.producto.nombre }}" class="w-full h-full object-cover" loading="lazy">
                 {% else %}
                   <span class="text-xl text-content-subtitle">📦</span>
                 {% endif %}

@@ -1,5 +1,9 @@
 """Context processors that inject variables into every template context."""
 from django.db.models import Q, Exists, OuterRef
+from django.core.cache import cache
+
+# Segundos durante los cuales se reutiliza la consulta de notificaciones por usuario.
+_NOTIFICACIONES_TTL = 60
 
 
 def carrito_info(request):
@@ -12,9 +16,17 @@ def carrito_info(request):
 
 
 def notificaciones_info(request):
-    """Inyecta las notificaciones no descartadas del usuario en todos los templates."""
+    """Inyecta las notificaciones no descartadas del usuario en todos los templates.
+
+    El resultado se cachea brevemente por usuario para no consultar la base en
+    cada render (el dropdown aparece en todas las páginas autenticadas).
+    """
     if not request.user.is_authenticated:
         return {}
+    cache_key = f'notificaciones:{request.user.pk}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     try:
         from app.models import Notificacion, Negocio
 
@@ -45,9 +57,11 @@ def notificaciones_info(request):
             .order_by('-creado')[:20]
         )
         count = notifs.count()
-        return {
-            'notificaciones':       notifs,
+        data = {
+            'notificaciones':       list(notifs),
             'notificaciones_count': count,
         }
+        cache.set(cache_key, data, _NOTIFICACIONES_TTL)
+        return data
     except Exception:
         return {}
