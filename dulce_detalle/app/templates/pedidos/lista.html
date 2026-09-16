@@ -102,15 +102,15 @@
                   {% endif %}
                 </div>
                 <div class="flex items-center justify-between flex-1 min-w-0">
-                  <div class="flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-lg bg-nav-active-bg text-nav-active-text flex items-center justify-center font-bold text-sm flex-shrink-0">{{ item.cantidad }}x</span>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="w-8 h-8 rounded-lg bg-nav-active-bg text-nav-active-text flex items-center justify-center font-bold text-sm flex-shrink-0">{{ item.cantidad }}x</span>
+                <div class="flex items-center gap-3 min-w-0">
                   {% if item.nombre_producto %}
-                    <span class="text-content-value font-medium truncate">{{ item.nombre_producto }}</span>
+                    <span class="text-content-value font-medium truncate min-w-0">{{ item.nombre_producto }}</span>
                   {% elif item.producto %}
-                    <span class="text-content-value font-medium truncate">{{ item.producto.nombre }}</span>
+                    <span class="text-content-value font-medium truncate min-w-0">{{ item.producto.nombre }}</span>
                   {% else %}
-                    <span class="text-content-value font-medium truncate italic text-content-muted">Producto eliminado</span>
+                    <span class="text-content-value font-medium truncate min-w-0 italic text-content-muted">Producto eliminado</span>
                   {% endif %}
                     {% if item.color %}
                     <span class="flex items-center gap-1.5 flex-shrink-0 text-xs text-content-muted">
