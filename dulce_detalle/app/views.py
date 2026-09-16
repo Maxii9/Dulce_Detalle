@@ -249,6 +249,10 @@ def crear_producto(request, slug):
                     return redirect('lista_productos', slug=slug)
             except ValueError:
                 messages.error(request, 'Los valores numéricos ingresados no son válidos.')
+            except Exception as exc:  # Blindaje: no dejar un 500 ciego, registrar el traceback y avisar al usuario
+                import logging
+                logging.getLogger('app.views').exception('Error inesperado al crear producto %r', {'slug': slug, 'nombre': nombre})
+                messages.error(request, f'No se pudo guardar el producto. Ocurrió un error inesperado ({type(exc).__name__}: {exc}). Revisá los datos o intentá de nuevo.')
         else:
             messages.error(request, 'El nombre y el precio son campos obligatorios.')
 
@@ -319,6 +323,10 @@ def editar_producto(request, slug, pk):
                     return redirect('lista_productos', slug=slug)
             except ValueError:
                 messages.error(request, 'Los valores numéricos ingresados no son válidos.')
+            except Exception as exc:  # Blindaje: no dejar un 500 ciego, registrar el traceback y avisar al usuario
+                import logging
+                logging.getLogger('app.views').exception('Error inesperado al actualizar producto pk=%r', {'pk': pk, 'slug': slug, 'nombre': nombre})
+                messages.error(request, f'No se pudo guardar los cambios. Ocurrió un error inesperado ({type(exc).__name__}: {exc}). Revisá los datos o intentá de nuevo.')
         else:
             messages.error(request, 'El nombre y el precio son campos obligatorios.')
 
@@ -1100,17 +1108,22 @@ def lista_pedidos(request, slug):
     if negocio is None:
         return redirect('lista_productos', slug=slug)
     
-    pedidos = services.get_pedidos(negocio.slug)
-    # Usar la anotación del menú (ya calculada en _contexto_base) para evitar un COUNT extra.
-    pendientes = getattr(negocio, '_pedidos_pendientes_count', None)
-    if pendientes is None:
-        pendientes = services.get_pedidos_pendientes_count(negocio.slug)
-
-    # Paginación
     from django.core.paginator import Paginator
-    paginator = Paginator(pedidos, 20)
-    page_obj = paginator.get_page(request.GET.get('page'))
-    page_range = paginator.get_elided_page_range(page_obj.number)
+    try:
+        pedidos = services.get_pedidos(negocio.slug)
+        # Usar la anotación del menú (ya calculada en _contexto_base) para evitar un COUNT extra.
+        pendientes = getattr(negocio, '_pedidos_pendientes_count', None)
+        if pendientes is None:
+            pendientes = services.get_pedidos_pendientes_count(negocio.slug)
+
+        paginator = Paginator(pedidos, 20)
+        page_obj = paginator.get_page(request.GET.get('page'))
+        page_range = paginator.get_elided_page_range(page_obj.number)
+    except Exception as exc:  # Blindaje: registrar el traceback y avisar en vez de un 500 ciego
+        import logging
+        logging.getLogger('app.views').exception('Error inesperado al listar pedidos de %r', {'slug': slug})
+        messages.error(request, f'No se pudieron cargar los pedidos. Ocurrió un error inesperado ({type(exc).__name__}: {exc}). Revisá la conexión o intentá de nuevo.')
+        pedidos, pendientes, page_obj, page_range = [], 0, None, None
 
     return render(request, 'pedidos/lista.html', {
         'negocio': negocio,
