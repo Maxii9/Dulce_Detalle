@@ -877,7 +877,7 @@ def tienda_publica(request, slug):
     galeria_json = json.dumps(galeria_map)
 
     # Mapa de colores por producto: {pk: ["#hex", ...]} (vacío = sin color)
-    colores_map = {p.pk: list(p.colores or []) for p in productos}
+    colores_map = {p.pk: p.colores or {} for p in productos}
     colores_json = json.dumps(colores_map)
 
     return render(request, 'tienda_publica/index.html', {
@@ -995,10 +995,17 @@ def carrito_publico_api_agregar(request, slug, pk):
 
     carrito = request.session.get('carrito_publico', {})
     cantidad_actual = services.carrito_publico_cantidad(carrito, pk)
-    if cantidad_actual >= producto.stock:
+
+    stock_disponible = producto.stock
+    msg_color = ""
+    if color and isinstance(producto.colores, dict) and color in producto.colores:
+        stock_disponible = producto.colores[color]
+        msg_color = " en ese color"
+
+    if cantidad_actual >= stock_disponible:
         return JsonResponse({
             'ok': False,
-            'error': f'Solo hay {producto.stock} unidad(es) disponible(s) de "{producto.nombre}".',
+            'error': f'Solo hay {stock_disponible} unidad(es) disponible(s) de "{producto.nombre}"{msg_color}.',
         }, status=400)
 
     services.carrito_publico_agregar(request.session, pk, color=color)
@@ -1072,6 +1079,25 @@ def checkout_publico(request, slug):
             direccion = ''
         
         if nombre and telefono:
+            # ── Protección anti-duplicado ────────────────────────────────────
+            # Si el mismo teléfono ya generó un pedido pendiente en este negocio
+            # con el mismo total en los últimos 2 minutos, es un reenvío accidental:
+            # redirigimos al pedido existente en vez de crear uno nuevo.
+            from django.utils import timezone
+            from datetime import timedelta
+            from app.models import Pedido as _PedidoModel
+            hace_dos_min = timezone.now() - timedelta(minutes=2)
+            pedido_existente = _PedidoModel.objects.filter(
+                negocio=negocio,
+                cliente_telefono=telefono,
+                estado='pendiente',
+                total=total,
+                creado__gte=hace_dos_min,
+            ).first()
+            if pedido_existente:
+                services.carrito_publico_limpiar(request.session)
+                return redirect('exito_publico', slug=slug, pedido_id=pedido_existente.pk)
+            # ────────────────────────────────────────────────────────────────
             pedido = services.crear_pedido_cliente(
                 negocio=negocio,
                 nombre=nombre,
@@ -1412,7 +1438,7 @@ def configuracion_tienda(request, slug):
         eliminar_logo = request.POST.get('eliminar_logo') == '1'
         logo = request.FILES.get('logo')
         if nombre:
-            negocio.nombre = nombre
+            negocio.nombre = nombre[:100]
             negocio.descripcion = descripcion
             negocio.emoji = emoji
             negocio.color_primario = color_primario
