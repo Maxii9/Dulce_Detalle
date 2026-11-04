@@ -118,7 +118,7 @@ class Producto(models.Model):
     codigo_barras = models.CharField(max_length=50, blank=True, null=True, unique=True, db_index=True, verbose_name='Código de barras')
     stock = models.IntegerField(default=0)
     imagen = models.ImageField(upload_to='productos/', blank=True, null=True)
-    colores = models.JSONField(default=list, blank=True, verbose_name='Colores disponibles (hex)')
+    colores = models.JSONField(default=dict, blank=True, verbose_name='Colores disponibles (hex)')
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
 
@@ -344,3 +344,83 @@ class Notificacion(models.Model):
     def __str__(self):
         destinos = ', '.join(n.nombre for n in self.destinatarios.all()[:3]) or 'Todas'
         return f"[{self.tipo.upper()}] {self.titulo} → {destinos}"
+
+
+class DescuentoWeb(models.Model):
+    """
+    Descuento temporal que aplica únicamente a pedidos de la tienda online.
+    Solo puede existir uno activo por negocio a la vez.
+    """
+    ALCANCE_CHOICES = [
+        ('todos',      'Todos los productos'),
+        ('categoria',  'Por categoría'),
+        ('productos',  'Productos específicos'),
+    ]
+
+    negocio        = models.ForeignKey(
+        Negocio, on_delete=models.CASCADE, related_name='descuentos_web'
+    )
+    porcentaje     = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        verbose_name='Descuento (%)',
+        help_text='Valor entre 1 y 99.'
+    )
+    motivo         = models.CharField(
+        max_length=200,
+        verbose_name='Motivo / etiqueta pública',
+        help_text='Se mostrará en la tienda web. Ej: "Liquidación de temporada".'
+    )
+    fecha_inicio   = models.DateTimeField(verbose_name='Inicio')
+    fecha_fin      = models.DateTimeField(verbose_name='Fin')
+
+    alcance        = models.CharField(
+        max_length=15, choices=ALCANCE_CHOICES, default='todos',
+        verbose_name='Aplica a'
+    )
+    categorias     = models.ManyToManyField(
+        CategoriaProducto, blank=True,
+        related_name='descuentos_web',
+        verbose_name='Categorías en oferta'
+    )
+    productos      = models.ManyToManyField(
+        Producto, blank=True,
+        related_name='descuentos_web',
+        verbose_name='Productos en oferta'
+    )
+
+    activo         = models.BooleanField(
+        default=True,
+        help_text='Se pone en False al cancelar manualmente o al expirar.'
+    )
+    creado         = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado']
+        verbose_name        = 'Descuento Web'
+        verbose_name_plural = 'Descuentos Web'
+
+    def __str__(self):
+        return f"{self.porcentaje}% — {self.motivo} ({self.negocio.nombre})"
+
+    @property
+    def esta_vigente(self):
+        """True si el descuento está activo y dentro del rango de fechas."""
+        from django.utils import timezone
+        ahora = timezone.now()
+        inicio = self.fecha_inicio
+        fin = self.fecha_fin
+        if inicio and timezone.is_naive(inicio):
+            inicio = timezone.make_aware(inicio)
+        if fin and timezone.is_naive(fin):
+            fin = timezone.make_aware(fin)
+        return bool(self.activo and inicio and fin and inicio <= ahora <= fin)
+
+    def aplica_a_producto(self, producto):
+        """Devuelve True si este descuento aplica al producto dado."""
+        if self.alcance == 'todos':
+            return True
+        if self.alcance == 'categoria':
+            return producto.categoria_id in self.categorias.values_list('pk', flat=True)
+        if self.alcance == 'productos':
+            return producto.pk in self.productos.values_list('pk', flat=True)
+        return False

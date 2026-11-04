@@ -123,6 +123,31 @@ document.addEventListener('click', function(e) {
 </script>
 {% endif %}
 
+{% if descuento and descuento.esta_vigente %}
+<div class="flex items-center gap-2 flex-wrap mb-4">
+  <a href="?ofertas=1{% if query %}&q={{ query }}{% endif %}"
+     class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all {% if solo_ofertas %}bg-red-500 text-white shadow-md{% else %}bg-red-50 text-red-600 hover:bg-red-100 border border-red-200{% endif %}">
+    🏷️ Ofertas
+    <span class="text-xs font-bold">-{{ descuento.porcentaje|floatformat:0 }}%</span>
+  </a>
+  {% if solo_ofertas %}
+  <a href="{% url 'tienda_publica' negocio.slug %}{% if query %}?q={{ query }}{% endif %}"
+     class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-all border border-gray-200">
+    ✕ Ver todos
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if descuento and descuento.esta_vigente %}
+<div class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white text-center py-2.5 px-4 text-sm font-bold tracking-wide rounded-xl mb-4 shadow-sm flex items-center justify-center gap-3">
+  <span>🏷️</span>
+  <span>{{ descuento.motivo }} &mdash; {{ descuento.porcentaje|floatformat:0 }}% OFF</span>
+  <span class="opacity-70">·</span>
+  <span class="font-normal text-xs opacity-90">Hasta {{ descuento.fecha_fin|date:"d/m/Y H:i" }}</span>
+</div>
+{% endif %}
+
 
 <!-- ── BANDA ANIMADA MARQUEE ────────────────────── -->
 {% if productos_con_cant %}
@@ -134,9 +159,9 @@ document.addEventListener('click', function(e) {
     
     <!-- Original -->
     <div class="flex gap-4 items-center" id="marquee-original">
-      {% for prod, cant in productos_con_cant %}
+      {% for item in productos_con_cant %}{% with prod=item.producto cant=item.en_carrito %}
         <div class="flex items-center gap-3 bg-white border border-gray-100 rounded-full px-4 py-2 shadow-sm w-max shrink-0 transition-transform hover:scale-105 hover:shadow-md cursor-pointer producto-btn"
-             data-pk="{{ prod.pk }}" data-nombre="{{ prod.nombre }}" data-desc="{{ prod.descripcion }}" data-precio="{{ prod.precio }}">
+             data-pk="{{ prod.pk }}" data-nombre="{{ prod.nombre }}" data-desc="{{ prod.descripcion }}" data-precio="{{ item.precio_final }}" data-precio-orig="{{ item.precio_orig }}" data-con-oferta="{% if item.con_oferta %}1{% else %}0{% endif %}">
           {% if prod.imagen %}
             <img src="{% cloudinary_thumb prod.imagen 80 80 %}" alt="{{ prod.nombre }}" class="w-10 h-10 object-cover rounded-full shadow-sm" loading="lazy">
           {% else %}
@@ -146,20 +171,24 @@ document.addEventListener('click', function(e) {
           {% endif %}
           <div class="flex flex-col justify-center">
             <span class="text-sm font-bold text-gray-900 leading-tight max-w-[120px] truncate">{{ prod.nombre }}</span>
-            <span class="text-xs font-semibold text-emerald-600">
-              ${{ prod.precio }} 
+            <span class="text-xs">
+              {% if item.con_oferta %}
+                <span class="text-gray-400 line-through mr-1">${{ item.precio_orig }}</span><span class="font-bold text-red-500">${{ item.precio_final }}</span>
+              {% else %}
+                <span class="font-semibold text-emerald-600">${{ item.precio_final }}</span>
+              {% endif %}
               {% if prod.stock <= 0 %}<span class="text-red-500">(Agotado)</span>{% endif %}
             </span>
           </div>
         </div>
-      {% endfor %}
+      {% endwith %}{% endfor %}
     </div>
 
     <!-- Clon para scroll infinito sin cortes -->
     <div class="flex gap-4 items-center" aria-hidden="true">
-      {% for prod, cant in productos_con_cant %}
+      {% for item in productos_con_cant %}{% with prod=item.producto cant=item.en_carrito %}
         <div class="flex items-center gap-3 bg-white border border-gray-100 rounded-full px-4 py-2 shadow-sm w-max shrink-0 transition-transform hover:scale-105 hover:shadow-md cursor-pointer producto-btn"
-             data-pk="{{ prod.pk }}" data-nombre="{{ prod.nombre }}" data-desc="{{ prod.descripcion }}" data-precio="{{ prod.precio }}">
+             data-pk="{{ prod.pk }}" data-nombre="{{ prod.nombre }}" data-desc="{{ prod.descripcion }}" data-precio="{{ item.precio_final }}" data-precio-orig="{{ item.precio_orig }}" data-con-oferta="{% if item.con_oferta %}1{% else %}0{% endif %}">
           {% if prod.imagen %}
             <img src="{% cloudinary_thumb prod.imagen 80 80 %}" alt="{{ prod.nombre }}" class="w-10 h-10 object-cover rounded-full shadow-sm" loading="lazy">
           {% else %}
@@ -169,13 +198,17 @@ document.addEventListener('click', function(e) {
           {% endif %}
           <div class="flex flex-col justify-center">
             <span class="text-sm font-bold text-gray-900 leading-tight max-w-[120px] truncate">{{ prod.nombre }}</span>
-            <span class="text-xs font-semibold text-emerald-600">
-              ${{ prod.precio }} 
+            <span class="text-xs">
+              {% if item.con_oferta %}
+                <span class="text-gray-400 line-through mr-1">${{ item.precio_orig }}</span><span class="font-bold text-red-500">${{ item.precio_final }}</span>
+              {% else %}
+                <span class="font-semibold text-emerald-600">${{ item.precio_final }}</span>
+              {% endif %}
               {% if prod.stock <= 0 %}<span class="text-red-500">(Agotado)</span>{% endif %}
             </span>
           </div>
         </div>
-      {% endfor %}
+      {% endwith %}{% endfor %}
     </div>
 
   </div>
@@ -233,7 +266,7 @@ document.addEventListener('click', function(e) {
 <!-- Grilla de productos -->
 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
 
-  {% for producto, en_carrito in productos_con_cant %}
+  {% for item in productos_con_cant %}{% with producto=item.producto en_carrito=item.en_carrito %}
   <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col group border border-gray-100">
 
     <!-- Zona imagen -->
@@ -258,7 +291,9 @@ document.addEventListener('click', function(e) {
           data-pk="{{ producto.pk }}"
           data-nombre="{{ producto.nombre }}"
           data-desc="{{ producto.descripcion|default:'' }}"
-          data-precio="{{ producto.precio }}"
+          data-precio="{{ item.precio_final }}"
+          data-precio-orig="{{ item.precio_orig }}"
+          data-con-oferta="{% if item.con_oferta %}1{% else %}0{% endif %}"
           title="Ver fotos del producto">
           <img src="{% cloudinary_thumb producto.imagen 600 750 %}" alt="{{ producto.nombre }}"
                loading="lazy"
@@ -286,16 +321,23 @@ document.addEventListener('click', function(e) {
       {% endif %}
       {% if producto.colores %}
         <div class="flex items-center gap-1.5 mt-2" data-colores="{{ producto.pk }}">
-          <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mr-1">Colores</span>
-          {% for color in producto.colores %}
+          {% for color, stock in producto.colores.items %}
           <button type="button" data-color="{{ color }}"
-                  class="color-swatch w-5 h-5 rounded-full border border-gray-300 shadow-sm"
+                  class="color-swatch w-5 h-5 rounded-full shadow-sm {% if stock <= 0 %}opacity-30 cursor-not-allowed border border-red-500{% else %}border border-gray-300{% endif %}"
                   style="background-color: {{ color }}"
-                  title="{{ color }}"></button>
+                  title="{{ color }}{% if stock <= 0 %} (Sin stock){% endif %}" {% if stock <= 0 %}disabled{% endif %}></button>
           {% endfor %}
         </div>
       {% endif %}
-      <p class="text-lg font-extrabold text-gray-900 mt-auto pt-2">$ {{ producto.precio }}</p>
+      {% if item.con_oferta %}
+      <p class="mt-auto pt-2 flex flex-col">
+        <span class="text-sm text-gray-400 line-through leading-none">$ {{ item.precio_orig }}</span>
+        <span class="text-lg font-extrabold text-red-500 leading-tight">$ {{ item.precio_final }}</span>
+        <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-bold w-fit mt-0.5">-{{ descuento.porcentaje|floatformat:0 }}%</span>
+      </p>
+      {% else %}
+      <p class="text-lg font-extrabold text-gray-900 mt-auto pt-2">$ {{ item.precio_final }}</p>
+      {% endif %}
 
       <div class="mt-3">
         {% if es_propietario %}
@@ -327,7 +369,7 @@ document.addEventListener('click', function(e) {
       </div>
     </div>
   </div>
-  {% empty %}
+  {% endwith %}{% empty %}
   <div class="col-span-full py-16 text-center text-gray-400">
     <span class="text-6xl opacity-30 block mb-4">🛍️</span>
     <p class="text-lg">No hay productos disponibles{% if tipo_activo %} en esta categoría{% endif %}.</p>
@@ -520,21 +562,28 @@ document.addEventListener('click', function(e) {
       /* Datos del producto */
       document.getElementById('lb-nombre').textContent = btn.dataset.nombre  || '';
       document.getElementById('lb-desc').textContent   = btn.dataset.desc    || '';
-      document.getElementById('lb-precio').textContent = btn.dataset.precio ? '$ ' + btn.dataset.precio : '';
+      var lbPrecioEl = document.getElementById('lb-precio');
+      if (btn.dataset.conOferta === '1') {
+        lbPrecioEl.innerHTML = '<span class="text-sm font-normal text-gray-400 line-through mr-2">$ ' + (btn.dataset.precioOrig || '') + '</span><span class="text-red-500 font-extrabold">$ ' + (btn.dataset.precio || '') + '</span>';
+      } else {
+        lbPrecioEl.textContent = btn.dataset.precio ? '$ ' + btn.dataset.precio : '';
+      }
 
       /* Colores disponibles: selector del color a cargar en el carrito */
       currentProductoPk = pk;
       var lbColores = document.getElementById('lb-colores');
       lbColores.innerHTML = '';
       var cols = coloresData[pk];
-      if (cols && cols.length) {
-        cols.forEach(function (hex) {
+      if (cols && Object.keys(cols).length > 0) {
+        Object.keys(cols).forEach(function (hex) {
+          var stock = cols[hex];
           var sw = document.createElement('button');
           sw.type = 'button';
           sw.dataset.color = hex;
-          sw.className = 'color-swatch w-6 h-6 rounded-full border-2 border-gray-200 shadow-sm';
+          sw.className = 'color-swatch w-6 h-6 rounded-full shadow-sm ' + (stock <= 0 ? 'opacity-30 cursor-not-allowed border border-red-500' : 'border-2 border-gray-200');
           sw.style.backgroundColor = hex;
-          sw.title = hex;
+          sw.title = hex + (stock <= 0 ? ' (Sin stock)' : '');
+          if (stock <= 0) sw.disabled = true;
           lbColores.appendChild(sw);
         });
         lbColores.classList.remove('hidden');
@@ -687,7 +736,9 @@ document.addEventListener('click', function(e) {
         "nombre": "{{ item.producto.nombre|escapejs }}",
         "imagen_url": "{% if item.producto.imagen %}{{ item.producto.imagen.url }}{% endif %}",
         "cantidad": {{ item.cantidad }},
-        "precio": "{{ item.producto.precio }}",
+        "precio": "{{ item.precio_final|default:item.producto.precio }}",
+        "precio_orig": "{{ item.producto.precio }}",
+        "con_oferta": {% if item.con_oferta %}true{% else %}false{% endif %},
         "subtotal": "{{ item.subtotal }}",
         "stock": {{ item.producto.stock }},
         "color": "{{ item.color|default:'' }}",
@@ -791,13 +842,21 @@ document.addEventListener('click', function(e) {
         ? '<img src="' + item.imagen_url + '" alt="' + escHtml(item.nombre) + '" class="w-full h-full object-cover"/>'
         : '<div class="w-full h-full flex items-center justify-center text-gray-300"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
 
+      var currentStock = item.stock;
+      if (item.color && coloresData && coloresData[item.pk] && coloresData[item.pk][item.color] !== undefined) {
+          currentStock = coloresData[item.pk][item.color];
+      }
+
       html += '<div class="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">'
         /* Miniatura */
         + '<div class="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">' + imgHtml + '</div>'
         /* Info */
         + '<div class="flex-1 min-w-0">'
         + '<h3 class="text-sm font-bold text-gray-900 leading-tight truncate">' + escHtml(item.nombre) + '</h3>'
-        + '<p class="text-xs text-gray-400 mt-0.5">$' + item.precio + ' c/u</p>'
+        + (item.con_oferta
+            ? '<p class="text-xs text-gray-400 mt-0.5"><span class="line-through mr-1">$' + (item.precio_orig || item.precio) + '</span><span class="text-red-500 font-bold">$' + item.precio + '</span> c/u</p>'
+            : '<p class="text-xs text-gray-400 mt-0.5">$' + item.precio + ' c/u</p>'
+          )
         + colorRowHtml(item)
         + '</div>'
         /* Controles cantidad + precio */
@@ -809,7 +868,7 @@ document.addEventListener('click', function(e) {
         /* Contador */
         + '<span class="text-sm font-bold text-gray-900 w-6 text-center">' + item.cantidad + '</span>'
         /* Botón + */
-        + '<button class="btn-agregar w-7 h-7 rounded-full bg-gray-100 hover:bg-green-100 hover:text-green-700 text-gray-600 flex items-center justify-center text-lg font-bold transition-colors leading-none' + (item.cantidad >= item.stock ? ' opacity-40 cursor-not-allowed' : '') + '" data-pk="' + item.pk + '" data-stock="' + item.stock + '" aria-label="Agregar uno">+</button>'
+        + '<button class="btn-agregar w-7 h-7 rounded-full bg-gray-100 hover:bg-green-100 hover:text-green-700 text-gray-600 flex items-center justify-center text-lg font-bold transition-colors leading-none' + (item.cantidad >= currentStock ? ' opacity-40 cursor-not-allowed' : '') + '" data-pk="' + item.pk + '" data-stock="' + currentStock + '" aria-label="Agregar uno">+</button>'
         + '</div>'
         + '</div>'
         + '</div>';

@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}Descuento Web — {{ negocio.nombre }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-8">
+
+  <!-- Encabezado -->
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xl"
+         style="background:var(--color-primary)">🏷️</div>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Descuento Web</h1>
+      <p class="text-sm text-gray-500">El descuento aplica solo a pedidos de la tienda online.</p>
+    </div>
+  </div>
+
+  <!-- Mensajes -->
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="rounded-xl px-4 py-3 text-sm font-medium
+                {% if msg.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
+                {% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if descuento and descuento.esta_vigente or descuento and not descuento.esta_vigente %}
+
+    <!-- ── Tarjeta del descuento activo ── -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="px-6 py-4 flex items-center gap-3
+                  {% if descuento.esta_vigente %}bg-red-500{% else %}bg-amber-400{% endif %}">
+        <span class="text-2xl">🏷️</span>
+        <div class="flex-1">
+          <p class="text-white font-bold text-lg leading-tight">{{ descuento.motivo }}</p>
+          <p class="text-white/80 text-sm font-semibold">
+            {{ descuento.porcentaje|floatformat:0 }}% de descuento
+          </p>
+        </div>
+        <span class="text-xs font-bold px-3 py-1 rounded-full
+                     {% if descuento.esta_vigente %}bg-white text-red-600{% else %}bg-white text-amber-600{% endif %}">
+          {% if descuento.esta_vigente %}✓ VIGENTE{% else %}⏳ PROGRAMADO{% endif %}
+        </span>
+      </div>
+
+      <div class="px-6 py-5 space-y-4">
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="text-gray-400 font-medium mb-1">Inicio</p>
+            <p class="text-gray-800 font-semibold">{{ descuento.fecha_inicio|date:"d/m/Y H:i" }}</p>
+          </div>
+          <div>
+            <p class="text-gray-400 font-medium mb-1">Fin</p>
+            <p class="text-gray-800 font-semibold">{{ descuento.fecha_fin|date:"d/m/Y H:i" }}</p>
+          </div>
+        </div>
+
+        <div class="text-sm">
+          <p class="text-gray-400 font-medium mb-1">Aplica a</p>
+          <p class="text-gray-800 font-semibold">
+            {% if descuento.alcance == 'todos' %}
+              🛍️ Todos los productos
+            {% elif descuento.alcance == 'categoria' %}
+              📂 Categorías seleccionadas:
+              {% for cat in descuento.categorias.all %}
+                <span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full ml-1">{{ cat.nombre }}</span>
+              {% endfor %}
+            {% elif descuento.alcance == 'productos' %}
+              📦 Productos seleccionados:
+              {% for prod in descuento.productos.all %}
+                <span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full ml-1">{{ prod.nombre }}</span>
+              {% endfor %}
+            {% endif %}
+          </p>
+        </div>
+
+        <!-- Botón cancelar -->
+        <form method="post" class="pt-2"
+              onsubmit="return confirm('¿Cancelar el descuento? Los precios volverán a su valor original.')">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="cancelar">
+          <button type="submit"
+                  class="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors text-sm">
+            🗑️ Cancelar Descuento
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="text-center text-sm text-gray-400">
+      Para crear un nuevo descuento, primero cancelá el actual.
+    </div>
+
+  {% else %}
+
+    <!-- ── Formulario de creación ── -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+      <h2 class="text-lg font-bold text-gray-900 mb-6">Crear nuevo descuento</h2>
+
+      <form method="post" x-data="{ alcance: 'todos' }" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="crear">
+
+        <!-- Porcentaje -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Descuento (%) <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <input type="number" name="porcentaje" required min="1" max="99" step="0.01"
+                   placeholder="Ej: 20"
+                   class="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent text-gray-900 font-bold text-lg"
+                   style="--tw-ring-color: var(--color-primary)">
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">%</span>
+          </div>
+        </div>
+
+        <!-- Motivo -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            Motivo / Etiqueta pública <span class="text-red-500">*</span>
+          </label>
+          <input type="text" name="motivo" required maxlength="200"
+                 placeholder="Ej: Liquidación de temporada, Oferta de verano..."
+                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent text-gray-900"
+                 style="--tw-ring-color: var(--color-primary)">
+          <p class="text-xs text-gray-400 mt-1">Este texto se mostrará en la tienda pública.</p>
+        </div>
+
+        <!-- Fechas -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Fecha y hora de inicio <span class="text-red-500">*</span>
+            </label>
+            <input type="datetime-local" name="fecha_inicio" required
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent text-gray-900"
+                   style="--tw-ring-color: var(--color-primary)">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              Fecha y hora de fin <span class="text-red-500">*</span>
+            </label>
+            <input type="datetime-local" name="fecha_fin" required
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent text-gray-900"
+                   style="--tw-ring-color: var(--color-primary)">
+          </div>
+        </div>
+
+        <!-- Alcance -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-3">
+            ¿A qué aplica el descuento? <span class="text-red-500">*</span>
+          </label>
+          <div class="grid grid-cols-3 gap-3">
+            <label class="cursor-pointer relative group">
+              <input type="radio" name="alcance" value="todos" x-model="alcance"
+                     class="alcance-radio peer sr-only" checked>
+              <div class="alcance-box flex flex-col items-center justify-center p-3 h-24 border-2 rounded-2xl transition-all text-center relative
+                          border-gray-200 bg-white text-gray-700 hover:border-gray-300
+                          peer-checked:border-red-500 peer-checked:bg-red-50/80 peer-checked:text-red-700 peer-checked:ring-2 peer-checked:ring-red-400/30 peer-checked:shadow-sm"
+                   :class="alcance === 'todos' ? 'border-red-500 bg-red-50/80 text-red-700 ring-2 ring-red-400/30 shadow-sm' : 'border-gray-200 bg-white text-gray-700'">
+                <span class="alcance-check absolute top-2 right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center transition-opacity"
+                      :class="alcance === 'todos' ? 'opacity-100' : 'opacity-0'">✓</span>
+                <span class="text-2xl mb-1">🛍️</span>
+                <span class="text-sm font-bold">Todos</span>
+              </div>
+            </label>
+            <label class="cursor-pointer relative group">
+              <input type="radio" name="alcance" value="categoria" x-model="alcance"
+                     class="alcance-radio peer sr-only">
+              <div class="alcance-box flex flex-col items-center justify-center p-3 h-24 border-2 rounded-2xl transition-all text-center relative
+                          border-gray-200 bg-white text-gray-700 hover:border-gray-300
+                          peer-checked:border-red-500 peer-checked:bg-red-50/80 peer-checked:text-red-700 peer-checked:ring-2 peer-checked:ring-red-400/30 peer-checked:shadow-sm"
+                   :class="alcance === 'categoria' ? 'border-red-500 bg-red-50/80 text-red-700 ring-2 ring-red-400/30 shadow-sm' : 'border-gray-200 bg-white text-gray-700'">
+                <span class="alcance-check absolute top-2 right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center transition-opacity"
+                      :class="alcance === 'categoria' ? 'opacity-100' : 'opacity-0'">✓</span>
+                <span class="text-2xl mb-1">📂</span>
+                <span class="text-sm font-bold">Categoría</span>
+              </div>
+            </label>
+            <label class="cursor-pointer relative group">
+              <input type="radio" name="alcance" value="productos" x-model="alcance"
+                     class="alcance-radio peer sr-only">
+              <div class="alcance-box flex flex-col items-center justify-center p-3 h-24 border-2 rounded-2xl transition-all text-center relative
+                          border-gray-200 bg-white text-gray-700 hover:border-gray-300
+                          peer-checked:border-red-500 peer-checked:bg-red-50/80 peer-checked:text-red-700 peer-checked:ring-2 peer-checked:ring-red-400/30 peer-checked:shadow-sm"
+                   :class="alcance === 'productos' ? 'border-red-500 bg-red-50/80 text-red-700 ring-2 ring-red-400/30 shadow-sm' : 'border-gray-200 bg-white text-gray-700'">
+                <span class="alcance-check absolute top-2 right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center transition-opacity"
+                      :class="alcance === 'productos' ? 'opacity-100' : 'opacity-0'">✓</span>
+                <span class="text-2xl mb-1">📦</span>
+                <span class="text-sm font-bold">Productos</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Selector de categorías (visible solo si alcance == 'categoria') -->
+          <div x-show="alcance === 'categoria'" x-cloak class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <p class="text-sm font-semibold text-gray-700 mb-3">Seleccioná las categorías en oferta:</p>
+            {% if categorias %}
+            <div class="space-y-2 max-h-48 overflow-y-auto">
+              {% for cat in categorias %}
+              <label class="flex items-center gap-3 cursor-pointer hover:bg-gray-100 px-3 py-2 rounded-lg">
+                <input type="checkbox" name="categorias" value="{{ cat.pk }}"
+                       class="w-4 h-4 rounded text-red-500 border-gray-300">
+                <span class="text-sm text-gray-700 font-medium">{{ cat.nombre }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-400 italic">No hay categorías creadas.</p>
+            {% endif %}
+          </div>
+
+          <!-- Selector de productos (visible solo si alcance == 'productos') -->
+          <div x-show="alcance === 'productos'" x-cloak class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-sm font-semibold text-gray-700">Seleccioná los productos en oferta:</p>
+              <span id="cant-seleccionados-prod" class="text-xs text-red-600 font-bold hidden">0 seleccionados</span>
+            </div>
+
+            <!-- Buscador en tiempo real por nombre o código de barras -->
+            <div class="relative mb-3">
+              <input type="text" id="buscador-productos"
+                     placeholder="Buscar por nombre o código de barras (Enter para tildar)..."
+                     class="w-full pl-9 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all placeholder-gray-400">
+              <span class="absolute left-3 top-2.5 text-gray-400 text-sm pointer-events-none">🔍</span>
+              <button type="button" id="limpiar-buscador-prod" class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 hidden text-sm font-bold" title="Limpiar búsqueda">✕</button>
+            </div>
+
+            {% if productos %}
+            <div id="lista-productos-check" class="space-y-1 max-h-64 overflow-y-auto pr-1">
+              {% for prod in productos %}
+              <label class="item-producto-label flex items-center gap-3 cursor-pointer p-2 rounded-xl border border-transparent hover:border-gray-200 hover:bg-white transition-colors"
+                     data-nombre="{{ prod.nombre|lower }}"
+                     data-codigo="{{ prod.codigo_barras|default:''|lower }}">
+                <input type="checkbox" name="productos" value="{{ prod.pk }}"
+                       class="chk-producto w-4 h-4 rounded text-red-500 border-gray-300 focus:ring-red-400">
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm text-gray-800 font-medium block truncate">{{ prod.nombre }}</span>
+                  {% if prod.codigo_barras %}
+                  <span class="text-[11px] font-mono text-gray-400 block">Cód: {{ prod.codigo_barras }}</span>
+                  {% endif %}
+                </div>
+                <span class="text-xs font-semibold text-gray-500">${{ prod.precio }}</span>
+              </label>
+              {% endfor %}
+              <div id="no-prod-encontrado" class="text-center py-6 text-gray-400 text-sm hidden">
+                No se encontraron productos que coincidan con la búsqueda.
+              </div>
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-400 italic">No hay productos con stock disponibles.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Botón submit -->
+        <div class="pt-2">
+          <button type="submit"
+                  class="w-full py-4 text-white font-bold rounded-xl shadow-lg transition-all text-base"
+                  style="background:var(--color-primary)">
+            🏷️ Activar Descuento
+          </button>
+        </div>
+      </form>
+    </div>
+
+  {% endif %}
+
+</div>
+
+<!-- Alpine.js (si no está ya en base.html) -->
+<script>
+// Asegurar indicación de selección y visibilidad de paneles con y sin Alpine
+document.addEventListener('DOMContentLoaded', function() {
+  const radios = document.querySelectorAll('input[name="alcance"]');
+  const panelCat = document.querySelector('[x-show*="categoria"]');
+  const panelProd = document.querySelector('[x-show*="productos"]');
+
+  function actualizarUI() {
+    radios.forEach(function(radio) {
+      const box = radio.closest('label')?.querySelector('.alcance-box');
+      const check = radio.closest('label')?.querySelector('.alcance-check');
+      if (radio.checked) {
+        if (box) {
+          box.style.borderColor = '#ef4444'; // borde rojo destacado
+          box.style.backgroundColor = '#fef2f2'; // fondo rojo suave
+          box.style.color = '#b91c1c';
+          box.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.25)';
+        }
+        if (check) check.style.opacity = '1';
+      } else {
+        if (box) {
+          box.style.borderColor = '#e5e7eb'; // borde gris por defecto
+          box.style.backgroundColor = '#ffffff';
+          box.style.color = '#374151';
+          box.style.boxShadow = 'none';
+        }
+        if (check) check.style.opacity = '0';
+      }
+    });
+
+    const seleccionado = document.querySelector('input[name="alcance"]:checked')?.value || 'todos';
+    if (panelCat) panelCat.style.display = seleccionado === 'categoria' ? 'block' : 'none';
+    if (panelProd) panelProd.style.display = seleccionado === 'productos' ? 'block' : 'none';
+  }
+
+  radios.forEach(function(radio) {
+    radio.addEventListener('change', actualizarUI);
+  });
+
+  actualizarUI();
+
+  // ── Buscador de productos en tiempo real (por nombre y código de barras) ──
+  const inputBuscador = document.getElementById('buscador-productos');
+  const btnLimpiar = document.getElementById('limpiar-buscador-prod');
+  const itemsProd = document.querySelectorAll('.item-producto-label');
+  const noProdMsg = document.getElementById('no-prod-encontrado');
+  const cantSeleccionados = document.getElementById('cant-seleccionados-prod');
+
+  function actualizarContador() {
+    const total = document.querySelectorAll('.chk-producto:checked').length;
+    if (cantSeleccionados) {
+      cantSeleccionados.textContent = total + (total === 1 ? ' producto seleccionado' : ' productos seleccionados');
+      cantSeleccionados.classList.toggle('hidden', total === 0);
+    }
+  }
+
+  function filtrarProductos() {
+    const q = (inputBuscador?.value || '').trim().toLowerCase();
+    let visibles = 0;
+
+    if (btnLimpiar) {
+      btnLimpiar.classList.toggle('hidden', q.length === 0);
+    }
+
+    itemsProd.forEach(function(item) {
+      const nombre = item.dataset.nombre || '';
+      const codigo = item.dataset.codigo || '';
+      const coincide = !q || nombre.includes(q) || codigo.includes(q);
+      item.style.display = coincide ? 'flex' : 'none';
+      if (coincide) visibles++;
+    });
+
+    if (noProdMsg) {
+      noProdMsg.classList.toggle('hidden', visibles > 0);
+    }
+  }
+
+  if (inputBuscador) {
+    inputBuscador.addEventListener('input', filtrarProductos);
+
+    // Soporte para scanner de código de barras o presionar Enter
+    inputBuscador.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // evitar enviar formulario accidentalmente
+        const q = (inputBuscador.value || '').trim().toLowerCase();
+        if (!q) return;
+
+        // Buscar coincidencia exacta por código de barras primero, o único visible
+        let encontrado = null;
+        itemsProd.forEach(function(item) {
+          if (item.dataset.codigo && item.dataset.codigo === q) {
+            encontrado = item;
+          }
+        });
+
+        if (!encontrado) {
+          const visibles = Array.from(itemsProd).filter(item => item.style.display !== 'none');
+          if (visibles.length === 1) {
+            encontrado = visibles[0];
+          }
+        }
+
+        if (encontrado) {
+          const chk = encontrado.querySelector('.chk-producto');
+          if (chk) {
+            chk.checked = true;
+            encontrado.classList.add('bg-red-50');
+            setTimeout(function() { encontrado.classList.remove('bg-red-50'); }, 700);
+            actualizarContador();
+          }
+          inputBuscador.value = '';
+          filtrarProductos();
+        }
+      }
+    });
+  }
+
+  if (btnLimpiar) {
+    btnLimpiar.addEventListener('click', function() {
+      if (inputBuscador) {
+        inputBuscador.value = '';
+        filtrarProductos();
+        inputBuscador.focus();
+      }
+    });
+  }
+
+  document.querySelectorAll('.chk-producto').forEach(function(chk) {
+    chk.addEventListener('change', actualizarContador);
+  });
+  actualizarContador();
+});
+</script>
+
+{% endblock %}

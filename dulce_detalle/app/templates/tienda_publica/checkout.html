@@ -51,7 +51,12 @@
                 <span class="font-mono">{{ item.color }}</span>
               </p>
             {% endif %}
+            {% if item.con_oferta %}
+            <p class="text-xs text-gray-400 line-through mt-1">{{ item.cantidad }} x ${{ item.producto.precio }}</p>
+            <p class="text-xs text-red-500 font-semibold">{{ item.cantidad }} x ${{ item.precio_final }} <span class="bg-red-100 px-1 rounded">oferta</span></p>
+            {% else %}
             <p class="text-xs text-gray-500 mt-1">{{ item.cantidad }} x ${{ item.producto.precio }}</p>
+            {% endif %}
           </div>
           <div class="text-right flex flex-col items-end gap-2 flex-shrink-0">
             <span class="font-bold text-gray-900">${{ item.subtotal }}</span>
@@ -68,6 +73,11 @@
           <span class="text-gray-500 font-medium">Total a Pagar</span>
           <span class="text-3xl font-extrabold text-brand">${{ total }}</span>
         </div>
+        {% if descuento and descuento.esta_vigente %}
+        <p class="text-xs text-red-500 font-semibold mt-2 flex items-center gap-1">
+          🏷️ {{ descuento.motivo }} &mdash; {{ descuento.porcentaje|floatformat:0 }}% aplicado
+        </p>
+        {% endif %}
       </div>
     </div>
   </div>

@@ -86,6 +86,9 @@ urlpatterns = [
         path('configurar/tienda/', views.configuracion_tienda, name='configuracion_tienda'),
         path('configurar/categorias/', views.configuracion_categorias, name='configuracion_categorias'),
         path('configurar/usuarios/', views.configuracion_usuarios, name='configuracion_usuarios'),
+
+        # Descuentos Web
+        path('descuento/', views.gestion_descuento, name='gestion_descuento'),
     ])),
 
     # ── Tienda Pública (Cliente) ──

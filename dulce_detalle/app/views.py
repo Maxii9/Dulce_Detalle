@@ -15,7 +15,7 @@ from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django import forms
-from app.models import Negocio, CategoriaProducto
+from app.models import Negocio, CategoriaProducto, DescuentoWeb
 import functools
 import django
 from django.db import models as db_models
@@ -815,6 +815,7 @@ def tienda_publica(request, slug):
     query = request.GET.get('q', '').strip()
     cat_filter = request.GET.get('categoria', '').strip()
     sub_filter = request.GET.get('subcategoria', '').strip()
+    solo_ofertas = request.GET.get('ofertas') == '1'
 
     # ── Registrar eventos analíticos (solo para clientes, no para el propietario) ──
     if not es_propietario:
@@ -828,6 +829,17 @@ def tienda_publica(request, slug):
         productos = productos.filter(subcategoria_id=sub_filter)
     elif cat_filter:
         productos = productos.filter(categoria_id=cat_filter)
+
+    # ── Descuento web activo ──
+    descuento = services.descuento_activo(negocio)
+
+    # Filtrar solo productos en oferta si se solicita
+    if solo_ofertas and descuento:
+        if descuento.alcance == 'categoria':
+            productos = productos.filter(categoria__in=descuento.categorias.all())
+        elif descuento.alcance == 'productos':
+            productos = productos.filter(pk__in=descuento.productos.all())
+        # alcance == 'todos': no filtra, ya están todos
 
     # Categorías con stock agrupadas con sus subcategorías
     from app.models import CategoriaProducto, Subcategoria as SubcatModel
@@ -851,17 +863,24 @@ def tienda_publica(request, slug):
     ]
 
     from decimal import Decimal
-    carrito_items = services.get_carrito_publico_detalle(request.session, slug)
+    carrito_items = services.get_carrito_publico_detalle(request.session, slug, descuento)
     carrito_count = sum(item['cantidad'] for item in carrito_items)
     carrito_total = sum((item['subtotal'] for item in carrito_items), Decimal('0'))
     top_vendidos = services.get_top_vendidos(slug)
 
     # Anotar cada producto con la cantidad ya en el carrito del cliente
+    # y calcular precio con descuento si corresponde
     carrito_cantidades = {item['producto'].pk: item['cantidad'] for item in carrito_items}
-    productos_con_cant = [
-        (p, carrito_cantidades.get(p.pk, 0))
-        for p in productos
-    ]
+    productos_con_cant = []
+    for p in productos:
+        precio_orig, precio_final, pct_desc = services.precio_con_descuento(p, descuento)
+        productos_con_cant.append({
+            'producto':     p,
+            'en_carrito':   carrito_cantidades.get(p.pk, 0),
+            'precio_orig':  precio_orig,
+            'precio_final': precio_final,
+            'con_oferta':   pct_desc is not None,
+        })
 
     # Construir dict de galería: {producto_pk: [url1, url2, ...]}
     # Incluye la imagen principal primero, luego las adicionales
@@ -896,6 +915,8 @@ def tienda_publica(request, slug):
         'galeria_json': galeria_json,
         'colores_map': colores_map,
         'colores_json': colores_json,
+        'descuento': descuento,
+        'solo_ofertas': solo_ofertas,
     })
 
 
@@ -947,24 +968,29 @@ def quitar_carrito_publico(request, slug, pk):
 
 
 def _carrito_publico_json(request, slug):
-    """Helper: devuelve el estado actual del carrito como dict serializable."""
+    """Helper: devuelve el estado actual del carrito como dict serializable con descuentos aplicados."""
     from decimal import Decimal
-    items_qs = services.get_carrito_publico_detalle(request.session, slug)
+    negocio = get_object_or_404(services.Negocio, slug=slug)
+    descuento = services.descuento_activo(negocio)
+    items_qs = services.get_carrito_publico_detalle(request.session, slug, descuento)
     carrito_count = sum(i['cantidad'] for i in items_qs)
     carrito_total = sum((i['subtotal'] for i in items_qs), Decimal('0'))
     items_out = []
     for i in items_qs:
         p = i['producto']
+        precio_final = i.get('precio_final', p.precio)
         items_out.append({
-            'pk':        p.pk,
-            'nombre':    p.nombre,
-            'imagen_url': p.imagen.url if p.imagen else '',
-            'cantidad':  i['cantidad'],
-            'precio':    str(p.precio),
-            'subtotal':  str(i['subtotal']),
-            'stock':     p.stock,
-            'color':     i['color'] or '',
-            'colores':   list(p.colores or []),
+            'pk':          p.pk,
+            'nombre':      p.nombre,
+            'imagen_url':  p.imagen.url if p.imagen else '',
+            'cantidad':    i['cantidad'],
+            'precio':      str(precio_final),
+            'precio_orig': str(p.precio),
+            'con_oferta':  i.get('con_oferta', False),
+            'subtotal':    str(i['subtotal']),
+            'stock':       p.stock,
+            'color':       i['color'] or '',
+            'colores':     list(p.colores or []),
         })
     return {
         'ok': True,
@@ -1043,8 +1069,9 @@ def checkout_publico(request, slug):
         messages.error(request, 'Modo Vista Previa: No puedes generar pedidos de prueba en tu propia tienda.')
         return redirect('tienda_publica', slug=slug)
 
-    carrito_items = services.get_carrito_publico_detalle(request.session, slug)
-    total = services.carrito_publico_total(request.session, slug)
+    descuento = services.descuento_activo(negocio)
+    carrito_items = services.get_carrito_publico_detalle(request.session, slug, descuento)
+    total = services.carrito_publico_total(request.session, slug, descuento)
 
     if not carrito_items:
         return redirect('tienda_publica', slug=slug)
@@ -1113,6 +1140,7 @@ def checkout_publico(request, slug):
         'carrito_items': carrito_items,
         'total': total,
         'opciones_envio': opciones_envio,
+        'descuento': descuento,
     })
 
 def exito_publico(request, slug, pedido_id):
@@ -1683,3 +1711,71 @@ def enviar_notificacion(request):
         return redirect('configuracion_usuarios', slug=slug)
 
     return redirect('inicio')
+
+
+
+# ─── Descuentos Web ───────────────────────────────────────────────────────────
+
+@tienda_requerida
+def gestion_descuento(request, slug):
+    """Panel para crear o cancelar el descuento web activo (vigente o programado)."""
+    negocio, negocios = _contexto_base(request, slug)
+    descuento = services.get_descuento_gestion(negocio)
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+
+        if accion == 'cancelar' and descuento:
+            services.cancelar_descuento_web(negocio)
+            messages.success(request, 'Descuento cancelado. Los precios volvieron a su valor original.')
+            return redirect('gestion_descuento', slug=slug)
+
+        if accion == 'crear':
+            from decimal import Decimal, InvalidOperation
+            from django.utils.dateparse import parse_datetime
+            try:
+                porcentaje   = Decimal(request.POST['porcentaje'])
+                motivo       = request.POST['motivo'].strip()
+                from django.utils import timezone as dj_tz
+                fecha_inicio = parse_datetime(request.POST['fecha_inicio'])
+                fecha_fin    = parse_datetime(request.POST['fecha_fin'])
+                if fecha_inicio and dj_tz.is_naive(fecha_inicio):
+                    fecha_inicio = dj_tz.make_aware(fecha_inicio)
+                if fecha_fin and dj_tz.is_naive(fecha_fin):
+                    fecha_fin = dj_tz.make_aware(fecha_fin)
+                alcance      = request.POST.get('alcance', 'todos')
+
+                if not (1 <= porcentaje <= 99):
+                    raise ValueError("El porcentaje debe estar entre 1 y 99.")
+                if not motivo:
+                    raise ValueError("El motivo no puede estar vacío.")
+                if not fecha_inicio or not fecha_fin:
+                    raise ValueError("Las fechas son inválidas.")
+                if fecha_fin <= fecha_inicio:
+                    raise ValueError("La fecha de fin debe ser posterior al inicio.")
+
+                cat_ids  = request.POST.getlist('categorias')
+                prod_ids = request.POST.getlist('productos')
+
+                services.crear_descuento_web(
+                    negocio, porcentaje, motivo,
+                    fecha_inicio, fecha_fin, alcance,
+                    cat_ids or None, prod_ids or None
+                )
+                messages.success(request, f'¡Descuento del {porcentaje}% creado exitosamente!')
+            except (InvalidOperation, ValueError, KeyError) as e:
+                messages.error(request, f'Error al crear el descuento: {e}')
+
+            return redirect('gestion_descuento', slug=slug)
+
+    categorias = negocio.categorias_producto.all()
+    productos  = negocio.productos.filter(stock__gt=0).order_by('nombre')
+
+    return render(request, 'descuentos/gestion.html', {
+        'negocio':    negocio,
+        'negocios':   negocios,
+        'descuento':  descuento,
+        'categorias': categorias,
+        'productos':  productos,
+        'current_view': 'descuento',
+    })

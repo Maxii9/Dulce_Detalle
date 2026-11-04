@@ -219,6 +219,8 @@
                   style="background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red)"></span>
             Elegir color
           </button>
+          <input type="number" id="color-stock" min="0" value="0" placeholder="Stock" title="Stock de este color"
+                 class="w-20 bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-white text-sm hidden focus:outline-none focus:ring-2 focus:ring-purple-500" />
           <button type="button" id="color-agregar" disabled
                   class="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed
                          text-white rounded-xl text-sm font-semibold transition-all">
@@ -685,19 +687,23 @@ function marcarQuitarPrincipal(checkbox) {
 }
 
 // ── Colores disponibles (atributos) — panel RGB ──
-let coloresActuales = [];
+let coloresActuales = {};
 (function() {
   const colorInput = document.getElementById('colores-input');
   try {
-    coloresActuales = JSON.parse(colorInput.value || '[]');
+    let parseado = JSON.parse(colorInput.value || '{}');
+    if (Array.isArray(parseado)) {
+      parseado.forEach(c => coloresActuales[c] = 0);
+    } else {
+      coloresActuales = parseado;
+    }
   } catch (e) {
-    coloresActuales = [];
+    coloresActuales = {};
   }
-  if (!Array.isArray(coloresActuales)) coloresActuales = [];
 })();
 
 let pickerModo = 'agregar';  // 'agregar' | 'editar'
-let pickerEditarIndex = -1;
+let pickerEditarHex = null;
 let colorPendiente = null;   // color elegido aún sin confirmar con el botón
 
 function normalizarColor(v) {
@@ -711,31 +717,37 @@ function actualizarControlColor() {
   const hex = document.getElementById('color-picker-hex');
   const btn = document.getElementById('color-agregar');
   const limpiar = document.getElementById('color-limpiar');
+  const stockInput = document.getElementById('color-stock');
+  
   if (!colorPendiente) {
     preview.classList.add('hidden');
     hex.classList.add('hidden');
     limpiar.classList.add('hidden');
+    stockInput.classList.add('hidden');
     btn.disabled = true;
     btn.textContent = 'Agregar color';
     return;
   }
+  
   preview.classList.remove('hidden');
   preview.style.backgroundColor = colorPendiente;
   hex.classList.remove('hidden');
   hex.textContent = colorPendiente;
   limpiar.classList.remove('hidden');
+  stockInput.classList.remove('hidden');
+  
   if (pickerModo === 'editar') {
     btn.textContent = 'Actualizar color';
     btn.disabled = false;
   } else {
     btn.textContent = 'Agregar color';
-    btn.disabled = coloresActuales.indexOf(colorPendiente) !== -1;
+    btn.disabled = coloresActuales.hasOwnProperty(colorPendiente);
   }
 }
 
-function abrirSelectorColor(modo, index) {
+function abrirSelectorColor(modo, hexStr) {
   pickerModo = modo;
-  pickerEditarIndex = modo === 'editar' ? index : -1;
+  pickerEditarHex = modo === 'editar' ? hexStr : null;
   document.getElementById('color-picker').click();
 }
 
@@ -744,9 +756,13 @@ function renderColores() {
   const vacio = document.getElementById('colores-sin-color');
   const input = document.getElementById('colores-input');
   panel.innerHTML = '';
-  vacio.style.display = coloresActuales.length === 0 ? 'block' : 'none';
+  
+  const keys = Object.keys(coloresActuales);
+  vacio.style.display = keys.length === 0 ? 'block' : 'none';
   input.value = JSON.stringify(coloresActuales);
-  coloresActuales.forEach(function(hex, idx) {
+  
+  keys.forEach(function(hex) {
+    const stockVal = coloresActuales[hex];
     const item = document.createElement('div');
     item.className = 'flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-xl py-1.5 pl-1.5 pr-1';
 
@@ -757,13 +773,18 @@ function renderColores() {
     dot.style.backgroundColor = hex;
     dot.addEventListener('click', function() {
       colorPendiente = hex;
+      document.getElementById('color-stock').value = coloresActuales[hex];
       actualizarControlColor();
-      abrirSelectorColor('editar', idx);
+      abrirSelectorColor('editar', hex);
     });
 
     const etiqueta = document.createElement('span');
-    etiqueta.className = 'text-xs font-mono text-gray-300 min-w-20';
+    etiqueta.className = 'text-xs font-mono text-gray-300 min-w-16';
     etiqueta.textContent = hex;
+    
+    const stockBadge = document.createElement('span');
+    stockBadge.className = 'text-xs bg-gray-700 px-2 py-0.5 rounded-lg text-emerald-400 font-bold';
+    stockBadge.textContent = 'x' + stockVal;
 
     const quitar = document.createElement('button');
     quitar.type = 'button';
@@ -771,12 +792,13 @@ function renderColores() {
     quitar.className = 'w-6 h-6 flex items-center justify-center text-xs text-red-400 hover:text-red-300 font-bold rounded-lg hover:bg-gray-700 transition-colors';
     quitar.textContent = '✕';
     quitar.addEventListener('click', function() {
-      coloresActuales.splice(idx, 1);
+      delete coloresActuales[hex];
       renderColores();
     });
 
     item.appendChild(dot);
     item.appendChild(etiqueta);
+    item.appendChild(stockBadge);
     item.appendChild(quitar);
     panel.appendChild(item);
   });
@@ -784,35 +806,44 @@ function renderColores() {
 
 document.getElementById('color-picker').addEventListener('change', function() {
   colorPendiente = normalizarColor(this.value);
+  if (pickerModo === 'agregar' && !coloresActuales.hasOwnProperty(colorPendiente)) {
+      document.getElementById('color-stock').value = 0;
+  }
   actualizarControlColor();
 });
 
 document.getElementById('color-abrir').addEventListener('click', function() {
-  abrirSelectorColor('agregar');
+  abrirSelectorColor('agregar', null);
 });
 
 document.getElementById('color-preview').addEventListener('click', function() {
-  abrirSelectorColor(pickerEditarIndex >= 0 ? 'editar' : 'agregar', pickerEditarIndex);
+  abrirSelectorColor(pickerModo, pickerEditarHex);
 });
 
 document.getElementById('color-agregar').addEventListener('click', function() {
   if (!colorPendiente) return;
-  if (pickerModo === 'editar' && pickerEditarIndex >= 0 && pickerEditarIndex < coloresActuales.length) {
-    coloresActuales[pickerEditarIndex] = colorPendiente;
+  const stockIngresado = parseInt(document.getElementById('color-stock').value) || 0;
+  
+  if (pickerModo === 'editar' && pickerEditarHex) {
+    if (pickerEditarHex !== colorPendiente) {
+        delete coloresActuales[pickerEditarHex];
+    }
+    coloresActuales[colorPendiente] = Math.max(0, stockIngresado);
     renderColores();
-  } else if (coloresActuales.indexOf(colorPendiente) === -1) {
-    coloresActuales.push(colorPendiente);
+  } else if (!coloresActuales.hasOwnProperty(colorPendiente)) {
+    coloresActuales[colorPendiente] = Math.max(0, stockIngresado);
     renderColores();
   }
   pickerModo = 'agregar';
-  pickerEditarIndex = -1;
+  pickerEditarHex = null;
   colorPendiente = null;
+  document.getElementById('color-stock').value = 0;
   actualizarControlColor();
 });
 
 document.getElementById('color-limpiar').addEventListener('click', function() {
   pickerModo = 'agregar';
-  pickerEditarIndex = -1;
+  pickerEditarHex = null;
   colorPendiente = null;
   actualizarControlColor();
 });

@@ -6,6 +6,23 @@ from decimal import Decimal
 import json
 import re
 from .models import Negocio, Producto, ImagenProducto, Venta, ItemVenta, Insumo, Pedido, ItemPedido, Subcategoria, EventoAnalytics
+from django.db.models import Model, Field
+
+
+def _ajustar_longitud(instancia: Model, campo: str, valor):
+    """Recorta un valor string al max_length real declarado en el modelo.
+    Sirve de red de seguridad contra DataError 'value too long' por exceso
+    de texto, sin importar desde qué vista o script se llame."""
+    if valor is None or not isinstance(valor, str):
+        return valor
+    try:
+        campo_modelo: Field = instancia._meta.get_field(campo)
+        limite = getattr(campo_modelo, 'max_length', None)
+    except Exception:
+        limite = None
+    if limite:
+        return valor[:limite]
+    return valor
 
 
 # ── Negocios ──────────────────────────────────────────────────────────────
@@ -52,17 +69,21 @@ def get_producto(pk: int) -> Producto | None:
 
 def crear_producto(negocio: Negocio, nombre: str, precio, costo=0, descripcion: str = '', stock: int = 0, imagen=None, categoria_id: int = None, subcategoria_id: int = None, imagenes_extra=None, colores=None) -> Producto:
     """Crea y retorna un nuevo producto para el negocio dado."""
+    colores_dict = colores or {}
+    if colores_dict:
+        stock = sum(colores_dict.values())
+
     producto = Producto.objects.create(
         negocio=negocio,
         categoria_id=categoria_id,
         subcategoria_id=subcategoria_id,
-        nombre=nombre,
+        nombre=nombre[:100],
         precio=precio,
         costo=costo,
-        descripcion=descripcion,
+        descripcion=descripcion[:500] if descripcion else '',
         stock=stock,
         imagen=imagen,
-        colores=colores or [],
+        colores=colores_dict,
     )
     # Guardar imágenes adicionales
     if imagenes_extra:
@@ -94,9 +115,13 @@ def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str 
 
     stock_anterior = producto.stock  # Guardar antes de actualizar
 
+    colores_dict = colores or {}
+    if colores_dict:
+        stock = sum(colores_dict.values())
+
     producto.categoria_id = categoria_id
     producto.subcategoria_id = subcategoria_id
-    producto.nombre = nombre
+    producto.nombre = _ajustar_longitud(producto, 'nombre', nombre)
     producto.precio = precio
     producto.costo = costo
     producto.descripcion = descripcion
@@ -105,7 +130,7 @@ def actualizar_producto(pk: int, nombre: str, precio, costo=0, descripcion: str 
         producto.imagen = imagen
     elif quitar_imagen_principal:
         producto.imagen = None
-    producto.colores = colores or []
+    producto.colores = colores_dict
     producto.save()
 
     # Eliminar imágenes extra marcadas para borrar
@@ -160,28 +185,36 @@ def get_top_vendidos(negocio_slug: str, limite: int = 5) -> list:
     return [item['producto_id'] for item in top]
 
 
-def sanitizar_colores(raw) -> list:
-    """Convierte el JSON de colores del formulario en una lista limpia de hex.
+def sanitizar_colores(raw) -> dict:
+    """Convierte el JSON de colores del formulario en un diccionario de {hex: stock}.
 
-    Acepta strings del tipo '["#ff0000","#00ff00"]' (o parseable). Valida formato
-    #RRGGBB, normaliza a minúsculas, elimina duplicados y limita a 20 colores.
-    Un JSON vacío o inválido devuelve [] (producto sin color).
+    Acepta strings del tipo '{"#ff0000": 5, "#00ff00": 3}' (o parseable).
+    Valida formato #RRGGBB, normaliza a minúsculas, elimina duplicados y limita a 20 colores.
+    Un JSON vacío o inválido devuelve {} (producto sin color).
     """
     if not raw:
-        return []
+        return {}
     try:
         if isinstance(raw, str):
             valores = json.loads(raw)
         else:
-            valores = list(raw)
+            valores = dict(raw)
+        if not isinstance(valores, dict):
+            return {}
     except (ValueError, TypeError):
-        return []
+        return {}
+    
     hex_re = re.compile(r'^#[0-9a-fA-F]{6}$')
-    colores = []
-    for v in valores:
-        hex_code = str(v).strip().lower()
-        if hex_re.match(hex_code) and hex_code not in colores:
-            colores.append(hex_code)
+    colores = {}
+    for hex_code, stock_val in valores.items():
+        hex_code_clean = str(hex_code).strip().lower()
+        if hex_re.match(hex_code_clean) and hex_code_clean not in colores:
+            try:
+                stock_int = int(stock_val)
+                stock_int = max(0, stock_int) # Evitar stocks negativos
+            except (ValueError, TypeError):
+                stock_int = 0
+            colores[hex_code_clean] = stock_int
         if len(colores) >= 20:
             break
     return colores
@@ -217,7 +250,7 @@ def crear_insumo(negocio: Negocio, nombre: str, costo_unitario) -> Insumo:
     """Crea y retorna un nuevo insumo para el negocio dado."""
     return Insumo.objects.create(
         negocio=negocio,
-        nombre=nombre,
+        nombre=nombre[:100],
         costo_unitario=costo_unitario
     )
 
@@ -227,7 +260,7 @@ def actualizar_insumo(pk: int, nombre: str, costo_unitario) -> Insumo | None:
     insumo = get_insumo(pk)
     if insumo is None:
         return None
-    insumo.nombre = nombre
+    insumo.nombre = _ajustar_longitud(insumo, 'nombre', nombre)
     insumo.costo_unitario = costo_unitario
     insumo.save()
     return insumo
@@ -394,7 +427,14 @@ def crear_venta(negocio: Negocio, fecha, tipo: str, metodo_pago: str, items_data
             )
             # Reducir stock
             prod = item['producto']
+            color = item.get('color')
+            if color and prod.colores and color in prod.colores:
+                prod.colores[color] -= item['cantidad']
+                if prod.colores[color] < 0:
+                    prod.colores[color] = 0
             prod.stock -= item['cantidad']
+            if prod.stock < 0:
+                prod.stock = 0
             prod.save()
     return venta
 
@@ -673,6 +713,12 @@ def aceptar_pedido(pk: int) -> bool:
     # Descontar stock
     for item in pedido.items.all():
         producto = item.producto
+        if not producto:
+            continue
+        if item.color and producto.colores and item.color in producto.colores:
+            producto.colores[item.color] -= item.cantidad
+            if producto.colores[item.color] < 0:
+                producto.colores[item.color] = 0
         producto.stock -= item.cantidad
         if producto.stock < 0:
             producto.stock = 0
@@ -781,7 +827,7 @@ def carrito_publico_limpiar(session: dict) -> None:
     session['carrito_publico'] = {}
     session.modified = True
 
-def get_carrito_publico_detalle(session: dict, negocio_slug: str) -> list[dict]:
+def get_carrito_publico_detalle(session: dict, negocio_slug: str, descuento=None) -> list[dict]:
     carrito = get_carrito_publico(session)
     items = []
     producto_ids = [int(pk) for pk in carrito if str(pk).isdigit()]
@@ -793,16 +839,103 @@ def get_carrito_publico_detalle(session: dict, negocio_slug: str) -> list[dict]:
             if producto is None:
                 continue
             cantidad = linea['cantidad']
-            subtotal = Decimal(str(producto.precio)) * cantidad
+            precio_orig, precio_final, pct_desc = precio_con_descuento(producto, descuento)
+            subtotal = precio_final * cantidad
             items.append({
-                'producto': producto,
-                'cantidad': cantidad,
-                'subtotal': subtotal,
-                'color': linea['color'],
+                'producto':     producto,
+                'cantidad':     cantidad,
+                'subtotal':     subtotal,
+                'color':        linea['color'],
+                'precio_final': precio_final,
+                'con_oferta':   pct_desc is not None,
             })
         except Producto.DoesNotExist:
             pass
     return items
 
-def carrito_publico_total(session: dict, negocio_slug: str) -> Decimal:
-    return sum(item['subtotal'] for item in get_carrito_publico_detalle(session, negocio_slug)) or Decimal('0')
+def carrito_publico_total(session: dict, negocio_slug: str, descuento=None) -> Decimal:
+    return sum(item['subtotal'] for item in get_carrito_publico_detalle(session, negocio_slug, descuento)) or Decimal('0')
+
+
+
+# ─── Descuentos Web ───────────────────────────────────────────────────────────
+
+def descuento_activo(negocio):
+    """
+    Retorna el DescuentoWeb vigente para el negocio, o None.
+    Desactiva automáticamente los expirados.
+    """
+    from django.utils import timezone
+    from .models import DescuentoWeb
+    ahora = timezone.now()
+
+    # Desactivar expirados (lazy cleanup)
+    DescuentoWeb.objects.filter(
+        negocio=negocio, activo=True, fecha_fin__lt=ahora
+    ).update(activo=False)
+
+    return DescuentoWeb.objects.filter(
+        negocio=negocio, activo=True,
+        fecha_inicio__lte=ahora,
+        fecha_fin__gte=ahora,
+    ).prefetch_related('categorias', 'productos').first()
+
+
+def get_descuento_gestion(negocio):
+    """
+    Retorna el DescuentoWeb activo (vigente o programado para el futuro) para el panel de gestión.
+    """
+    from django.utils import timezone
+    from .models import DescuentoWeb
+    ahora = timezone.now()
+
+    DescuentoWeb.objects.filter(
+        negocio=negocio, activo=True, fecha_fin__lt=ahora
+    ).update(activo=False)
+
+    return DescuentoWeb.objects.filter(
+        negocio=negocio, activo=True,
+        fecha_fin__gte=ahora,
+    ).prefetch_related('categorias', 'productos').first()
+
+
+def precio_con_descuento(producto, descuento):
+    """
+    Dado un Producto y un DescuentoWeb (puede ser None),
+    retorna (precio_original, precio_final, porcentaje).
+    precio_final == precio_original si no aplica descuento.
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+    if descuento and descuento.esta_vigente and descuento.aplica_a_producto(producto):
+        factor = Decimal('1') - (descuento.porcentaje / Decimal('100'))
+        final  = (producto.precio * factor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return producto.precio, final, descuento.porcentaje
+    return producto.precio, producto.precio, None
+
+
+def crear_descuento_web(negocio, porcentaje, motivo, fecha_inicio, fecha_fin,
+                        alcance, categoria_ids=None, producto_ids=None):
+    """Crea un nuevo descuento. Cancela cualquier descuento activo previo."""
+    from .models import DescuentoWeb
+    # Cancelar activos previos
+    DescuentoWeb.objects.filter(negocio=negocio, activo=True).update(activo=False)
+
+    desc = DescuentoWeb.objects.create(
+        negocio=negocio,
+        porcentaje=porcentaje,
+        motivo=motivo,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        alcance=alcance,
+    )
+    if alcance == 'categoria' and categoria_ids:
+        desc.categorias.set(categoria_ids)
+    if alcance == 'productos' and producto_ids:
+        desc.productos.set(producto_ids)
+    return desc
+
+
+def cancelar_descuento_web(negocio):
+    """Cancela el descuento activo del negocio (si existe)."""
+    from .models import DescuentoWeb
+    DescuentoWeb.objects.filter(negocio=negocio, activo=True).update(activo=False)
